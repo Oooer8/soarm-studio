@@ -164,8 +164,6 @@ def _add_camera_setup_args(parser: argparse.ArgumentParser) -> None:
 
 def _handle_scan(args) -> None:
     ports = detect_serial_ports(include_system=args.include_system)
-    payload: dict[str, object] = {}
-    notes = _scan_notes(ports)
     if args.probe_arms:
         if not args.arm_config:
             raise SystemExit("--probe-arms requires --arm-config")
@@ -173,13 +171,22 @@ def _handle_scan(args) -> None:
         candidates = [port.device for port in ports if port.soarm_candidate]
         if not candidates:
             candidates = [port.device for port in ports if port.preferred_for_connection]
-        payload["arm_probe"] = [
+        arm_ports = [
             _compact_arm_probe(result.to_dict())
             for result in probe_soarm_ports(candidates, arm_config=args.arm_config, ids=ids)
         ]
-        payload["preferred_ports"] = [
-            port.device for port in ports if port.preferred_for_connection
-        ]
+        _print_json(
+            {
+                "summary": {
+                    "ok": all(port.get("ok") for port in arm_ports) if arm_ports else False,
+                    "probed_ports": len(arm_ports),
+                    "online_ports": sum(1 for port in arm_ports if port.get("ok")),
+                },
+                "arm_ports": arm_ports,
+                "next_steps": _probe_next_steps(arm_ports),
+            }
+        )
+        return
     if args.preview_cameras:
         try:
             previews = preview_camera_devices(
@@ -192,36 +199,45 @@ def _handle_scan(args) -> None:
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc)) from exc
-        payload["camera_previews"] = [
+        camera_previews = [
             _compact_camera_preview(preview.to_dict()) for preview in previews
         ]
-        notes.extend(_camera_preview_notes(previews))
-    if not args.probe_arms and not args.preview_cameras:
-        payload.update(
+        _print_json(
             {
-                "ports": [
-                    _compact_serial_port(port.to_dict())
-                    for port in ports
-                    if port.role_hint != "system"
-                ],
-                "ignored_ports": [
-                    _compact_ignored_port(port.to_dict())
-                    for port in ports
-                    if port.role_hint == "system"
-                ],
-                "preferred_ports": [port.device for port in ports if port.preferred_for_connection],
-                "soarm_candidate_ports": [port.device for port in ports if port.soarm_candidate],
-                "cameras": [
-                    _compact_camera(camera.to_dict())
-                    for camera in detect_camera_devices(
-                        max_devices=args.max_cameras,
-                        probe_opencv=False,
-                    )
-                ],
+                "summary": {
+                    "ok": any(preview.get("ok") for preview in camera_previews),
+                    "previewed": len(camera_previews),
+                    "saved_frames": sum(1 for preview in camera_previews if preview.get("ok")),
+                },
+                "camera_previews": camera_previews,
+                "next_steps": _camera_preview_next_steps(camera_previews),
             }
         )
-    payload["notes"] = notes
-    _print_json(payload)
+        return
+
+    arm_ports = [
+        _compact_serial_port(port.to_dict()) for port in ports if port.role_hint != "system"
+    ]
+    cameras = [
+        _compact_camera(camera.to_dict())
+        for camera in detect_camera_devices(
+            max_devices=args.max_cameras,
+            probe_opencv=False,
+        )
+    ]
+    ignored_system_ports = sum(1 for port in ports if port.role_hint == "system")
+    _print_json(
+        {
+            "summary": {
+                "arm_ports": len(arm_ports),
+                "cameras": len(cameras),
+                "ignored_system_ports": ignored_system_ports,
+            },
+            "arm_ports": arm_ports,
+            "cameras": cameras,
+            "next_steps": _scan_next_steps(arm_ports, cameras),
+        }
+    )
 
 
 def _handle_setup(args) -> None:
@@ -345,31 +361,16 @@ def _handle_web(config: SessionConfig, *, host: str, port: int) -> None:
 
 
 def _print_json(data: dict) -> None:
-    print(json.dumps(data, indent=2, sort_keys=True))
+    print(json.dumps(data, indent=2))
 
 
 def _compact_serial_port(port: dict[str, Any]) -> dict[str, Any]:
     return _without_none(
         {
             "device": port.get("device"),
-            "serial_number": port.get("serial_number"),
+            "serial": port.get("serial_number"),
             "location": port.get("location"),
-            "vid": port.get("vid"),
-            "pid": port.get("pid"),
-            "product": port.get("product") or port.get("description"),
-            "preferred_for_connection": port.get("preferred_for_connection"),
-            "soarm_candidate": port.get("soarm_candidate"),
-            "notes": _non_empty(port.get("notes")),
-        }
-    )
-
-
-def _compact_ignored_port(port: dict[str, Any]) -> dict[str, Any]:
-    return _without_none(
-        {
-            "device": port.get("device"),
-            "role_hint": port.get("role_hint"),
-            "notes": _non_empty(port.get("notes")),
+            "usb_id": _usb_id(port),
         }
     )
 
@@ -380,10 +381,7 @@ def _compact_camera(camera: dict[str, Any]) -> dict[str, Any]:
             "name": camera.get("name"),
             "location_id": camera.get("location_id"),
             "usb_address": camera.get("usb_address"),
-            "vid": camera.get("vid"),
-            "pid": camera.get("pid"),
-            "opencv_index": camera.get("opencv_index"),
-            "notes": _non_empty(camera.get("notes")),
+            "usb_id": _usb_id(camera),
         }
     )
 
@@ -490,6 +488,43 @@ def _non_empty(value):
     return value
 
 
+def _usb_id(item: dict[str, Any]) -> str | None:
+    vid = item.get("vid")
+    pid = item.get("pid")
+    if vid and pid:
+        return f"{vid}:{pid}"
+    return None
+
+
+def _scan_next_steps(arm_ports: list[dict[str, Any]], cameras: list[dict[str, Any]]) -> list[str]:
+    steps: list[str] = []
+    if arm_ports:
+        steps.append("Probe arm ports, then decide which port is leader and which is follower.")
+    else:
+        steps.append("No SOARM serial ports were found; check power, USB cables, and permissions.")
+    if cameras:
+        steps.append("Preview cameras before assigning wrist and third-person roles.")
+    else:
+        steps.append("No USB cameras were found; check camera cables and macOS Camera permission.")
+    return steps
+
+
+def _probe_next_steps(arm_ports: list[dict[str, Any]]) -> list[str]:
+    if not arm_ports:
+        return ["No arm ports were probed; run scan first and check USB connections."]
+    if all(port.get("ok") for port in arm_ports):
+        return ["Use the verified devices in setup arms as leader/follower ports."]
+    if any("No module named 'soarm'" in str(port.get("error")) for port in arm_ports):
+        return ["soarm-sdk is not importable in this environment; activate/install the SDK env, then probe again."]
+    return ["Fix failed ports before setup arms; check power, bus wiring, IDs, and baudrate."]
+
+
+def _camera_preview_next_steps(previews: list[dict[str, Any]]) -> list[str]:
+    if any(preview.get("ok") for preview in previews):
+        return ["Open the saved preview images, then use the confirmed indexes in setup cameras."]
+    return ["No preview frames were saved; check Camera permission, backend, and whether another app is using the cameras."]
+
+
 def _parse_ids(value: str) -> list[int]:
     return [int(item.strip()) for item in value.split(",") if item.strip()]
 
@@ -500,34 +535,3 @@ def _parse_indices(value: str) -> list[int]:
         raise SystemExit("--indices must include at least one camera index")
     return indices
 
-
-def _scan_notes(ports) -> list[str]:
-    notes = [
-        "Use /dev/cu.* on macOS for SOARM arm ports.",
-        "Use `setup arms` to save leader/follower ports after probing or testing one arm at a time.",
-        "Use `scan --preview-cameras` before `setup cameras`; camera USB metadata alone is not enough.",
-    ]
-    preferred = [port.device for port in ports if port.preferred_for_connection]
-    soarm_candidates = [port.device for port in ports if port.soarm_candidate]
-    if len(preferred) > 1 or len(soarm_candidates) > 1:
-        notes.append("Multiple serial ports were found; label the hub ports or cables before saving roles.")
-    if not preferred:
-        notes.append("No preferred USB serial callout port was found.")
-    return notes
-
-
-def _camera_preview_notes(previews) -> list[str]:
-    notes = [
-        "Inspect the saved preview images, then run `setup cameras` with the confirmed wrist "
-        "and third-person indexes."
-    ]
-    if not any(preview.ok for preview in previews):
-        notes.extend(
-            [
-                "USB detection can succeed while OpenCV preview fails; this means the failure "
-                "is in camera permissions, backend selection, camera busy state, or OpenCV index mapping.",
-                "On macOS, grant Camera permission to the terminal app you run from, then restart that terminal.",
-                "Try a wider scan: `soarm-studio scan --preview-cameras --camera-indices 0,1,2,3,4,5 --backend avfoundation`.",
-            ]
-        )
-    return notes

@@ -100,45 +100,42 @@
               <details class="cli-result">
                 <summary>查看精简结果</summary>
                 <pre><code>{
-  "cameras": [
-    {
-      "name": "DSJ-2062-309",
-      "location_id": "0x00110000",
-      "usb_address": 3,
-      "vid": "0x0c45",
-      "pid": "0x64ab"
-    },
-    {
-      "name": "DSJ-2062-309",
-      "location_id": "0x00120000",
-      "usb_address": 4,
-      "vid": "0x0c45",
-      "pid": "0x64ab"
-    }
-  ],
-  "ports": [
+  "summary": {
+    "arm_ports": 2,
+    "cameras": 2,
+    "ignored_system_ports": 2
+  },
+  "arm_ports": [
     {
       "device": "/dev/cu.usbmodem5A7C1190351",
-      "serial_number": "5A7C119035",
       "location": "0-1.4",
-      "preferred_for_connection": true,
-      "soarm_candidate": true
+      "serial": "5A7C119035",
+      "usb_id": "0x1a86:0x55d3"
     },
     {
       "device": "/dev/cu.usbmodem5A7C1219051",
-      "serial_number": "5A7C121905",
       "location": "0-1.3",
-      "preferred_for_connection": true,
-      "soarm_candidate": true
+      "serial": "5A7C121905",
+      "usb_id": "0x1a86:0x55d3"
     }
   ],
-  "preferred_ports": [
-    "/dev/cu.usbmodem5A7C1190351",
-    "/dev/cu.usbmodem5A7C1219051"
+  "cameras": [
+    {
+      "location_id": "0x00110000",
+      "name": "DSJ-2062-309",
+      "usb_address": 3,
+      "usb_id": "0x0c45:0x64ab"
+    },
+    {
+      "location_id": "0x00120000",
+      "name": "DSJ-2062-309",
+      "usb_address": 4,
+      "usb_id": "0x0c45:0x64ab"
+    }
   ],
-  "notes": [
-    "Use /dev/cu.* on macOS for SOARM arm ports.",
-    "Multiple serial ports were found; label the hub ports or cables before saving roles."
+  "next_steps": [
+    "Probe arm ports, then decide which port is leader and which is follower.",
+    "Preview cameras before assigning wrist and third-person roles."
   ]
 }</code></pre>
               </details>
@@ -158,25 +155,27 @@
                     <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看精简结果</summary>
-                    <pre><code>{
-  "arm_probe": [
+                <summary>查看精简结果</summary>
+                <pre><code>{
+  "summary": {
+    "ok": false,
+    "probed_ports": 2,
+    "online_ports": 0
+  },
+  "arm_ports": [
     {
       "device": "/dev/cu.usbmodem5A7C1190351",
-      "ok": false,
-      "online_ids": [],
-      "error": "soarm-sdk is not importable: No module named 'soarm'"
+      "error": "soarm-sdk is not importable: No module named 'soarm'",
+      "ok": false
     },
     {
       "device": "/dev/cu.usbmodem5A7C1219051",
-      "ok": false,
-      "online_ids": [],
-      "error": "soarm-sdk is not importable: No module named 'soarm'"
+      "error": "soarm-sdk is not importable: No module named 'soarm'",
+      "ok": false
     }
   ],
-  "preferred_ports": [
-    "/dev/cu.usbmodem5A7C1190351",
-    "/dev/cu.usbmodem5A7C1219051"
+  "next_steps": [
+    "soarm-sdk is not importable in this environment; activate/install the SDK env, then probe again."
   ]
 }</code></pre>
                   </details>
@@ -228,8 +227,13 @@
   --output-dir previews/cameras</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看精简结果</summary>
-                    <pre><code>{
+                <summary>查看精简结果</summary>
+                <pre><code>{
+  "summary": {
+    "ok": true,
+    "previewed": 2,
+    "saved_frames": 2
+  },
   "camera_previews": [
     {
       "index": 0,
@@ -248,8 +252,8 @@
       "height": 480
     }
   ],
-  "notes": [
-    "Inspect the saved preview images, then run `setup cameras` with the confirmed wrist and third-person indexes."
+  "next_steps": [
+    "Open the saved preview images, then use the confirmed indexes in setup cameras."
   ]
 }</code></pre>
                   </details>

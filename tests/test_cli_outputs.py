@@ -53,20 +53,25 @@ def test_scan_output_is_compact(monkeypatch, capsys) -> None:
 
     payload = json.loads(capsys.readouterr().out)
     rendered = json.dumps(payload)
-    assert payload["ports"] == [
+    assert payload["summary"] == {
+        "arm_ports": 1,
+        "cameras": 1,
+        "ignored_system_ports": 1,
+    }
+    assert payload["arm_ports"] == [
         {
             "device": "/dev/cu.usbmodem5A7C1190351",
             "location": "0-1.4",
-            "pid": "0x55d3",
-            "preferred_for_connection": True,
-            "product": "USB Single Serial",
-            "serial_number": "5A7C119035",
-            "soarm_candidate": True,
-            "vid": "0x1a86",
+            "serial": "5A7C119035",
+            "usb_id": "0x1a86:0x55d3",
         }
     ]
-    assert payload["ignored_ports"][0]["device"] == "/dev/cu.Bluetooth-Incoming-Port"
     assert payload["cameras"][0]["location_id"] == "0x00110000"
+    assert payload["cameras"][0]["usb_id"] == "0x0c45:0x64ab"
+    assert "ignored_ports" not in payload
+    assert "preferred_ports" not in payload
+    assert "soarm_candidate_ports" not in payload
+    assert "notes" not in payload
     assert "USB VID:PID=1A86:55D3" not in rendered
     assert "device_class" not in rendered
 
@@ -99,11 +104,17 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
     cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm.yaml"])
 
     payload = json.loads(capsys.readouterr().out)
-    assert set(payload) == {"arm_probe", "notes", "preferred_ports"}
-    assert payload["arm_probe"] == [
+    assert set(payload) == {"summary", "arm_ports", "next_steps"}
+    assert payload["summary"] == {
+        "ok": False,
+        "online_ports": 0,
+        "probed_ports": 1,
+    }
+    assert payload["arm_ports"] == [
         {
             "device": "/dev/cu.usbmodem5A7C1190351",
             "error": "soarm-sdk is not importable: No module named 'soarm'",
             "ok": False,
         }
     ]
+    assert "soarm-sdk is not importable" in payload["next_steps"][0]
