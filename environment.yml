@@ -6,4 +6,4 @@ dependencies:
   - pip
   - pip:
       - -e .[config,dataset,ports,dev,rerun]
-      - -e ../soarm
+      - -e ../soarm-sdk

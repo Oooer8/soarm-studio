@@ -668,7 +668,7 @@
         <section id="installation">
           <h2>Installation</h2>
           <p>
-            The project expects a sibling <code class="inline">../soarm</code>
+            The project expects a sibling <code class="inline">../soarm-sdk</code>
             checkout for the SDK. The conda environment installs both packages
             editable so CLI changes are immediately available.
           </p>
@@ -702,7 +702,7 @@ soarm-studio check --config configs/sessions/mock.yaml --overwrite</code></pre>
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER \
-  --base-arm-config ../soarm/configs/soarm.yaml
+  --base-arm-config ../soarm-sdk/configs/soarm.yaml
 soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
 soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
 soarm-studio check --overwrite
@@ -870,7 +870,7 @@ configs/arms/follower.yaml</code></pre>
               <div>
                 <h3>Probe arms</h3>
                 <p>Probe one bus at a time when ports are ambiguous.</p>
-                <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm/configs/soarm.yaml</code></pre>
+                <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
               </div>
             </article>
             <article class="step">
@@ -880,7 +880,7 @@ configs/arms/follower.yaml</code></pre>
                 <pre><code>soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER \
-  --base-arm-config ../soarm/configs/soarm.yaml</code></pre>
+  --base-arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
               </div>
             </article>
             <article class="step">

@@ -12,7 +12,7 @@ DEFAULT_SESSION_CONFIG = "configs/session.yaml"
 DEFAULT_SESSION_TEMPLATE = "configs/sessions/dual_soarm.example.yaml"
 DEFAULT_LEADER_ARM_CONFIG = "configs/arms/leader.yaml"
 DEFAULT_FOLLOWER_ARM_CONFIG = "configs/arms/follower.yaml"
-DEFAULT_SOARM_BASE_CONFIG = "../soarm/configs/soarm.yaml"
+DEFAULT_SOARM_BASE_CONFIG = "../soarm-sdk/configs/soarm.yaml"
 
 
 def assign_arm_roles(

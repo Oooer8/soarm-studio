@@ -32,7 +32,7 @@ conda activate soarm-studio
 ```
 
 The provided environment installs the local package and the sibling
-`../soarm` SDK checkout in editable mode.
+`../soarm-sdk` SDK checkout in editable mode.
 
 ## Recommended Flow
 
@@ -41,7 +41,7 @@ soarm-studio scan --include-system
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER \
-  --base-arm-config ../soarm/configs/soarm.yaml
+  --base-arm-config ../soarm-sdk/configs/soarm.yaml
 soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
 soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
 soarm-studio check --overwrite
