@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from soarm_studio import cli
 from soarm_studio.hardware.cameras import CameraDeviceInfo
 from soarm_studio.hardware.ports import SOARMPortProbe, _build_info
@@ -207,3 +209,55 @@ def test_probe_arms_output_guides_serial_permission_error(monkeypatch, capsys) -
         "This process cannot open the serial port. Run from your normal Terminal in the "
         "soarm-studio conda env, close apps using the port, and check macOS permissions.",
     ]
+
+
+def test_calibrate_exits_nonzero_when_result_fails(tmp_path, monkeypatch, capsys) -> None:
+    config_path = tmp_path / "session.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "name": "test",
+                "leader": {"mock": True},
+                "follower": {"mock": True},
+            }
+        )
+    )
+    monkeypatch.setattr(
+        cli,
+        "calibrate_session",
+        lambda config, *, role, announce=None: {"ok": False, "role": role, "results": []},
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["calibrate", "--config", str(config_path), "--role", "leader"])
+
+    assert exc.value.code == 1
+    output = capsys.readouterr().out
+    assert "标定机械臂: 主臂" in output
+    assert "标定结果: 失败 (主臂)" in output
+    assert "调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。" in output
+
+
+def test_calibrate_json_preserves_machine_readable_result(tmp_path, monkeypatch, capsys) -> None:
+    config_path = tmp_path / "session.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "name": "test",
+                "leader": {"mock": True},
+                "follower": {"mock": True},
+            }
+        )
+    )
+    monkeypatch.setattr(
+        cli,
+        "calibrate_session",
+        lambda config, *, role, announce=None: {"ok": False, "role": role, "results": []},
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["calibrate", "--config", str(config_path), "--role", "leader", "--json"])
+
+    assert exc.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {"ok": False, "role": "leader", "results": []}

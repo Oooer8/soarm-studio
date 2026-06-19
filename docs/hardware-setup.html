@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Step 1 Hardware setup</title>
+    <title>SOARM Studio Docs: 检查并写入配置</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Step 1 Hardware setup" />
+    <meta property="og:title" content="SOARM Studio Docs: 检查并写入配置" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -57,8 +57,8 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a class="active" aria-current="page" href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
+          <a class="active" aria-current="page" href="hardware-setup.html">检查并写入配置</a>
+          <a href="calibration.html">标定机械臂</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
         </div>
@@ -71,10 +71,10 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Step 1 Hardware setup</div>
+        <div class="crumbs">Docs <span>/</span> 检查并写入配置</div>
 
         <section id="hardware-setup" class="doc-page">
-          <h1>Step 1 Hardware setup</h1>
+          <h1>检查并写入配置</h1>
           <p>
             第一步先把本机可见的两台机械臂和两路摄像头绑定到
             <code class="inline">configs/session.yaml</code>。完成后，标定、
@@ -339,7 +339,7 @@
             </section>
 
             <section class="tutorial-step">
-              <h2 id="check-readiness">检查完整配置</h2>
+              <h2 id="check-readiness">检查并写入配置</h2>
               <p>
                 最后用生成的 session 配置重新打开两条 servo bus 和两个摄像头，确认 bindings 和 preflight 都通过。
                 <code class="inline">--overwrite</code> 会刷新检查产物，方便后续标定继续使用。
@@ -414,13 +414,13 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
         <nav class="footer-nav" aria-label="Footer">
           <a href="publishing.html"><span>Previous</span>Publishing</a>
-          <a href="calibration.html"><span>Next</span>Step 2 Calibration</a>
+          <a href="calibration.html"><span>Next</span>标定机械臂</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Step 1 Hardware setup</p>
+        <p class="toc-current">检查并写入配置</p>
         <a class="toc-level-1" href="#hardware-setup">Overview</a>
         <a class="toc-level-1" href="#scan-hardware">扫描硬件</a>
         <a class="toc-level-1" href="#arm-setup">配置机械臂</a>
@@ -429,7 +429,7 @@ hardware: disconnecting; disabling servo torque before closing the port.
         <a class="toc-level-1" href="#camera-setup">配置摄像头</a>
         <a class="toc-level-2" href="#preview-cameras">预览摄像头</a>
         <a class="toc-level-2" href="#setup-camera-roles">写入摄像头角色</a>
-        <a class="toc-level-1" href="#check-readiness">检查完整配置</a>
+        <a class="toc-level-1" href="#check-readiness">检查并写入配置</a>
       </aside>
     </div>
     <script src="assets/docs.js"></script>

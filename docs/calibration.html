@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Step 2 Calibration</title>
+    <title>SOARM Studio Docs: 标定机械臂</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Step 2 Calibration" />
+    <meta property="og:title" content="SOARM Studio Docs: 标定机械臂" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -57,8 +57,8 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a class="active" aria-current="page" href="calibration.html">Step 2 Calibration</a>
+          <a href="hardware-setup.html">检查并写入配置</a>
+          <a class="active" aria-current="page" href="calibration.html">标定机械臂</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
         </div>
@@ -71,90 +71,72 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Step 2 Calibration</div>
+        <div class="crumbs">Docs <span>/</span> 标定机械臂</div>
 
         <section id="step-2" class="doc-page">
-          <h1>Step 2 Calibration</h1>
+          <h1>标定机械臂</h1>
           <p>
-            Calibration captures physical zero first, then continuously records
-            joint min/max while you move the arm by hand. The program disables
-            torque and reads encoders; it does not command motion.
+            标定会先记录物理零位，再在你手动推动机械臂时记录每个关节的可用范围。
+            程序会关闭扭矩并读取编码器，不会主动发送运动目标。
           </p>
           <p>
-            For the underlying model, see
-            <a href="calibration-principles.html">Calibration principles</a>.
+            先在“检查并写入配置”中完成端口和摄像头绑定，然后按主臂、从臂的顺序分别标定。
+            底层模型说明见
+            <a href="calibration-principles.html">Calibration principles</a>。
           </p>
 
-          <h3 id="before-you-calibrate">Before you calibrate</h3>
+          <h3 id="calibrate-leader">1. 标定主臂</h3>
           <p>
-            Run readiness check after Step 1 hardware setup. Treat this as
-            pre-work for calibration, not as one of the interactive calibration
-            commands.
+            主臂对应 <code class="inline">configs/arms/leader.yaml</code>。
+            启动后，CLI 会先做一次状态检查，再关闭扭矩并等待你摆放零位。
           </p>
           <div class="code-title">
-            <span>Prerequisite readiness check</span>
+            <span>标定主臂</span>
             <span>zsh</span>
           </div>
-          <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+          <pre><code>soarm-studio calibrate --config configs/session.yaml --role leader</code></pre>
 
-          <h3 id="calibration-commands">Calibration commands</h3>
           <p>
-            Calibrate one arm at a time. Start with the leader, finish the
-            prompt-driven flow, then repeat the same process for the follower.
+            当终端提示放置零位时，把主臂每个关节摆到物理零位，保持不动后按 Enter。
+            随后按提示缓慢扫过肩、肘、腕和夹爪的安全可用范围，不要硬顶机械限位。
+            扫完后停住机械臂，再按 Enter 写入新的
+            <code class="inline">zero_tick</code>、方向和软限位。
+          </p>
+
+          <div class="code-title">
+            <span>交互提示</span>
+            <span>terminal</span>
+          </div>
+          <pre><code>Place every joint in the physical zero pose, then press Enter to record zero ticks:
+Freely sweep the full range of motion for each joint. Press Enter when done:</code></pre>
+
+          <h3 id="calibrate-follower">2. 标定从臂</h3>
+          <p>
+            从臂对应 <code class="inline">configs/arms/follower.yaml</code>。
+            主臂完成后，用同样流程标定从臂。两台机械臂要分别完成零位记录和动态范围扫描，
+            不要复用另一台机械臂的标定结果。
           </p>
           <div class="code-title">
-            <span>Interactive calibration</span>
+            <span>标定从臂</span>
             <span>zsh</span>
           </div>
-          <pre><code>soarm-studio calibrate --config configs/session.yaml --role leader
-soarm-studio calibrate --config configs/session.yaml --role follower</code></pre>
+          <pre><code>soarm-studio calibrate --config configs/session.yaml --role follower</code></pre>
 
-          <h3 id="leader-terminal-walkthrough">Leader terminal walkthrough</h3>
           <p>
-            After you start leader calibration, the command opens
-            <code class="inline">configs/arms/leader.yaml</code>, records
-            pre-calibration diagnostics, disables torque, and pauses at the
-            first prompt.
+            如果某个关节扫动范围不足，输出会标记为 under-excited。重新标定这台机械臂，
+            并让对应关节覆盖更多安全行程。
+          </p>
+
+          <h3 id="completion-report">输出与排查</h3>
+          <p>
+            成功时，结果中会包含 <code class="inline">ok: true</code>、角色、
+            配置路径、零位 tick、扫描范围和保存路径。失败时先看
+            <code class="inline">error</code> 和报告里的 failed summary：
+            通信失败通常检查串口、电源、总线和 ID；电压失败先确认该机械臂的实际供电档位和
+            <code class="inline">low_voltage</code> 阈值是否匹配。
           </p>
           <div class="code-title">
-            <span>Start leader calibration</span>
-            <span>terminal</span>
-          </div>
-          <pre><code>$ soarm-studio calibrate --config configs/session.yaml --role leader
-Place every joint in the physical zero pose, then press Enter to record zero ticks: </code></pre>
-
-          <p>
-            At this prompt, move the leader arm by hand into the physical zero
-            pose. Align every joint deliberately, keep the arm still, then press
-            Enter once. The SDK reads the raw encoder ticks and saves them as
-            temporary <code class="inline">zero_tick</code> values for the sweep.
-          </p>
-
-          <div class="code-title">
-            <span>Range sweep prompt</span>
-            <span>terminal</span>
-          </div>
-          <pre><code>Freely sweep the full range of motion for each joint. Press Enter when done: </code></pre>
-
-          <p>
-            Now slowly move all leader joints through their safe usable range by
-            hand. Cover shoulder, elbow, wrist, and gripper travel without
-            forcing mechanical stops. When every joint has been exercised, stop
-            moving the arm and press Enter. The SDK computes the observed
-            min/max range for each joint and writes the calibrated values back
-            to <code class="inline">configs/arms/leader.yaml</code>.
-          </p>
-
-          <h3 id="completion-report">Completion report</h3>
-          <p>
-            When calibration finishes, SOARM Studio prints a JSON result. The
-            exact diagnostics depend on your hardware, but a successful run has
-            <code class="inline">ok: true</code>, the role, the config path, and
-            a report with zero ticks, sweep ranges, soft limits, and post-check
-            diagnostics.
-          </p>
-          <div class="code-title">
-            <span>Representative completed output</span>
+            <span>代表性完成输出</span>
             <span>json</span>
           </div>
           <pre><code>{
@@ -183,47 +165,32 @@ Place every joint in the physical zero pose, then press Enter to record zero tic
   ]
 }</code></pre>
 
-          <h3 id="repeat-and-verify">Repeat and verify</h3>
-          <p>
-            Repeat the same terminal flow with
-            <code class="inline">--role follower</code>. After both arms are
-            calibrated, run readiness check again as the handoff into
-            teleoperation.
-          </p>
-          <div class="code-title">
-            <span>Post-calibration verification</span>
-            <span>zsh</span>
-          </div>
-          <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
-
           <div class="callout warn">
             <span class="icon">!</span>
             <div>
-              <strong>Under-excited joints</strong>
+              <strong>标定后再检查一次</strong>
               <p>
-                A joint with less than 100 ticks of observed motion is reported
-                as under-excited. Re-run calibration for that arm and move that
-                joint through more of its safe range.
+                主臂和从臂都标定完成后，运行
+                <code class="inline">soarm-studio check --config configs/session.yaml --overwrite</code>
+                确认 bindings、软限位、电压和摄像头都正常，再进入遥操作。
               </p>
             </div>
           </div>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="hardware-setup.html"><span>Previous</span>Step 1 Hardware setup</a>
+          <a href="hardware-setup.html"><span>Previous</span>检查并写入配置</a>
           <a href="teleoperation.html"><span>Next</span>Teleoperation</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Step 2 Calibration</p>
+        <p class="toc-current">标定机械臂</p>
         <a class="toc-level-1" href="#step-2">Overview</a>
-        <a class="toc-level-2" href="#before-you-calibrate">Before you calibrate</a>
-        <a class="toc-level-2" href="#calibration-commands">Calibration commands</a>
-        <a class="toc-level-2" href="#leader-terminal-walkthrough">Leader terminal walkthrough</a>
-        <a class="toc-level-2" href="#completion-report">Completion report</a>
-        <a class="toc-level-2" href="#repeat-and-verify">Repeat and verify</a>
+        <a class="toc-level-2" href="#calibrate-leader">1. 标定主臂</a>
+        <a class="toc-level-2" href="#calibrate-follower">2. 标定从臂</a>
+        <a class="toc-level-2" href="#completion-report">输出与排查</a>
       </aside>
     </div>
   </body>

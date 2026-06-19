@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .assignment import (
     DEFAULT_FOLLOWER_ARM_CONFIG,
@@ -18,7 +19,7 @@ from .hardware import (
     detect_camera_devices,
     preview_camera_devices,
 )
-from .hardware.calibration import calibrate_session
+from .hardware.calibration import CalibrationRole, calibrate_session
 from .hardware.ports import detect_serial_ports, probe_soarm_ports
 from .hardware.runtime import HardwareSession, preflight_report_to_dict
 from .recording import record_lerobot_episodes
@@ -71,6 +72,17 @@ def main(argv: list[str] | None = None) -> None:
         choices=["leader", "follower", "both"],
         default="both",
     )
+    calibrate.add_argument(
+        "--json",
+        dest="output_json",
+        action="store_true",
+        help="Print the full machine-readable calibration result",
+    )
+    calibrate.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Include the full cleaned calibration report in human output",
+    )
 
     teleop = subcommands.add_parser("teleop", help="Run leader-to-follower teleop")
     teleop.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
@@ -115,7 +127,12 @@ def main(argv: list[str] | None = None) -> None:
             include_status=args.status,
         )
     elif args.command == "calibrate":
-        _print_json(calibrate_session(load_session_config(args.config), role=args.role))
+        _handle_calibrate(
+            load_session_config(args.config),
+            role=args.role,
+            output_json=args.output_json,
+            verbose=args.verbose,
+        )
     elif args.command == "teleop":
         _handle_teleop(
             load_session_config(args.config),
@@ -357,8 +374,201 @@ def _handle_web(config: SessionConfig, *, host: str, port: int) -> None:
     run_web(config, host=host, port=port)
 
 
+def _handle_calibrate(
+    config: SessionConfig,
+    *,
+    role: str,
+    output_json: bool,
+    verbose: bool,
+) -> None:
+    calibration_role = cast(CalibrationRole, role)
+    if output_json:
+        result = calibrate_session(config, role=calibration_role)
+        _print_json(result)
+    else:
+        print(f"标定机械臂: {_role_label(role)}")
+        result = calibrate_session(
+            config,
+            role=calibration_role,
+            announce=_print_calibration_event,
+        )
+        _print_calibration_summary(result, verbose=verbose)
+    if not result.get("ok"):
+        raise SystemExit(1)
+
+
 def _print_json(data: dict) -> None:
     print(json.dumps(data, indent=2))
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_SWEEP_RE = re.compile(
+    r"^\s*(?P<joint>[A-Za-z0-9_]+): direction=(?P<direction>[+-]\d+) \| "
+    r"raw=\[(?P<raw>[^\]]+)\] ticks \(range=(?P<range>\d+)\) \| "
+    r"safe=\[(?P<safe>[^\]]+)\] rad(?P<extra>.*)$"
+)
+
+
+def _print_calibration_event(role: str, message: str) -> None:
+    clean = _clean_report_line(message).strip()
+    label = _role_label(role)
+    if clean.startswith("Calibration step 1/4"):
+        print(f"{label}: 关闭扭矩，进入手动标定。")
+    elif clean.startswith("Calibration step 2/4"):
+        print(f"{label}: 请按提示摆放物理零位。")
+    elif clean.startswith("Zero ticks:"):
+        print(f"{label}: 零位已记录。")
+    elif clean.startswith("Calibration step 3/4"):
+        print(f"{label}: 请按提示扫过安全运动范围。")
+    elif clean.startswith("WARNING:"):
+        print(f"{label}: 警告 - {clean.removeprefix('WARNING:').strip()}")
+    elif clean.startswith("Calibration step 4/4"):
+        print(f"{label}: 配置已保存。")
+
+
+def _print_calibration_summary(result: dict[str, Any], *, verbose: bool) -> None:
+    status = "成功" if result.get("ok") else "失败"
+    print("")
+    print(f"标定结果: {status} ({_role_label(str(result.get('role', 'unknown')))})")
+    for endpoint in result.get("results", []):
+        _print_calibration_endpoint_summary(endpoint, verbose=verbose)
+    if verbose:
+        print("")
+        print("提示: 不带 --verbose 可只显示摘要；--json 可导出完整机器可读结果。")
+    else:
+        print("")
+        print("调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。")
+
+
+def _print_calibration_endpoint_summary(endpoint: dict[str, Any], *, verbose: bool) -> None:
+    role = str(endpoint.get("role", "unknown"))
+    label = _role_label(role)
+    status = "通过" if endpoint.get("ok") else "未通过"
+    report = [str(line) for line in endpoint.get("report") or []]
+    print(f"- {label}: {status}")
+    if endpoint.get("config"):
+        print(f"  配置: {endpoint['config']}")
+    if endpoint.get("error"):
+        print(f"  原因: {endpoint['error']}")
+
+    zero_ticks = _extract_zero_ticks(report)
+    if zero_ticks:
+        print(f"  零位: {zero_ticks}")
+
+    sweep_ranges = _extract_sweep_ranges(report)
+    if sweep_ranges:
+        print("  扫描范围:")
+        for item in sweep_ranges:
+            suffix = "，运动不足" if item["under_excited"] else ""
+            print(
+                "    "
+                f"{item['joint']}: {item['range']} ticks, "
+                f"safe=[{item['safe']}] rad{suffix}"
+            )
+
+    focus = _diagnostic_focus(report)
+    if endpoint.get("ok"):
+        print("  复查: 通过")
+    elif focus:
+        print("  诊断重点:")
+        for line in focus[:6]:
+            print(f"    {line}")
+
+    guidance = _calibration_guidance(endpoint, focus)
+    if guidance:
+        print("  建议:")
+        for line in guidance:
+            print(f"    {line}")
+
+    if verbose and report:
+        print("  完整报告:")
+        for line in report:
+            print(f"    {_clean_report_line(line)}")
+
+
+def _extract_zero_ticks(report: list[str]) -> str | None:
+    for line in report:
+        clean = _clean_report_line(line).strip()
+        if clean.startswith("Zero ticks:"):
+            return clean.removeprefix("Zero ticks:").strip()
+    return None
+
+
+def _extract_sweep_ranges(report: list[str]) -> list[dict[str, Any]]:
+    ranges: list[dict[str, Any]] = []
+    for line in report:
+        clean = _clean_report_line(line)
+        match = _SWEEP_RE.match(clean)
+        if match is None:
+            continue
+        ranges.append(
+            {
+                "joint": match.group("joint"),
+                "range": match.group("range"),
+                "safe": match.group("safe"),
+                "under_excited": "UNDER-EXCITED" in match.group("extra"),
+            }
+        )
+    return ranges
+
+
+def _diagnostic_focus(report: list[str]) -> list[str]:
+    focus: list[str] = []
+    for line in report:
+        clean = _clean_report_line(line).strip()
+        if clean.startswith("summary:"):
+            if not clean.startswith("summary: [PASS]"):
+                focus.append(clean)
+        elif clean.startswith("calibration readiness:"):
+            if "[FAIL]" in clean:
+                focus.append(clean)
+    return _dedupe(focus)
+
+
+def _calibration_guidance(endpoint: dict[str, Any], focus: list[str]) -> list[str]:
+    if endpoint.get("ok"):
+        role = str(endpoint.get("role", "unknown"))
+        if role == "leader":
+            return ["下一步: soarm-studio calibrate --config configs/session.yaml --role follower"]
+        if role == "follower":
+            return ["下一步: soarm-studio check --config configs/session.yaml --overwrite"]
+        return ["下一步: soarm-studio check --config configs/session.yaml --overwrite"]
+
+    text = "\n".join(focus + [str(endpoint.get("error", ""))]).lower()
+    guidance: list[str] = []
+    if "low voltage" in text or "voltage" in text:
+        guidance.append("确认 low_voltage 阈值与实际供电档位匹配；当前共享配置为 7.0V。")
+        guidance.append("如果读数仍低于阈值，检查电源、线材、总线连接和负载压降。")
+    if "missing" in text or "offline" in text or "communication" in text:
+        guidance.append("检查串口选择、电机 ID、总线接线、波特率和电源。")
+    if "invalid raw" in text:
+        guidance.append("检查编码器原始 tick 是否越界，必要时重新上电并重新读取。")
+    if not guidance:
+        guidance.append("用 --verbose 查看完整报告，再按失败项处理。")
+    return guidance
+
+
+def _clean_report_line(line: str) -> str:
+    return _ANSI_RE.sub("", line)
+
+
+def _dedupe(lines: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for line in lines:
+        if line in seen:
+            continue
+        seen.add(line)
+        result.append(line)
+    return result
+
+
+def _role_label(role: str) -> str:
+    return {
+        "leader": "主臂",
+        "follower": "从臂",
+        "both": "主臂+从臂",
+    }.get(role, role)
 
 
 def _compact_serial_port(port: dict[str, Any]) -> dict[str, Any]:
