@@ -56,7 +56,7 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="hardware-setup.html">Step 1 Hardware setup</a>
           <a href="calibration.html">Step 2 Calibration</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
@@ -81,20 +81,27 @@
           </p>
           <div class="code-title">
             <span>End-to-end command outline</span>
-            <span>zsh</span>
+          <span>zsh</span>
           </div>
           <pre><code>soarm-studio scan --include-system
+soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER
-soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
-soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
-soarm-studio check --overwrite
-soarm-studio calibrate --role leader
-soarm-studio calibrate --role follower
-soarm-studio check --overwrite
-soarm-studio teleop --free-test --seconds 5
-soarm-studio record --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite</code></pre>
+soarm-studio scan --preview-cameras \
+  --camera-indices 0,1,2,3 \
+  --backend avfoundation \
+  --output-dir previews/cameras
+soarm-studio setup cameras \
+  --backend avfoundation \
+  --wrist-index 1 \
+  --third-person-index 0
+soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower
+soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
+soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite</code></pre>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">

@@ -43,16 +43,24 @@ The provided environment installs SOARM Studio in editable mode and pulls
 
 ```bash
 soarm-studio scan --include-system
+soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER
-soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
-soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
-soarm-studio check --overwrite
-soarm-studio calibrate --role leader
-soarm-studio calibrate --role follower
-soarm-studio teleop --free-test --seconds 5
-soarm-studio record --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite
+soarm-studio scan --preview-cameras \
+  --camera-indices 0,1,2,3 \
+  --backend avfoundation \
+  --output-dir previews/cameras
+soarm-studio setup cameras \
+  --backend avfoundation \
+  --wrist-index 1 \
+  --third-person-index 0
+soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower
+soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
+soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite
 ```
 
 Generated machine-local files are ignored by git:
