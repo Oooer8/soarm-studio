@@ -57,8 +57,8 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">检查并写入配置</a>
-          <a class="active" aria-current="page" href="calibration.html">标定机械臂</a>
+          <a href="hardware-setup.html">Step 1 Hardware setup</a>
+          <a class="active" aria-current="page" href="calibration.html">Step 2 Calibration</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
         </div>
@@ -90,11 +90,13 @@
             主臂对应 <code class="inline">configs/arms/leader.yaml</code>。
             启动后，CLI 会先做一次状态检查，再关闭扭矩并等待你摆放零位。
           </p>
-          <div class="code-title">
-            <span>标定主臂</span>
-            <span>zsh</span>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>标定主臂</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio calibrate --config configs/session.yaml --role leader</code></pre>
           </div>
-          <pre><code>soarm-studio calibrate --config configs/session.yaml --role leader</code></pre>
 
           <p>
             当终端提示放置零位时，把主臂每个关节摆到物理零位，保持不动后按 Enter。
@@ -116,11 +118,13 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
             主臂完成后，用同样流程标定从臂。两台机械臂要分别完成零位记录和动态范围扫描，
             不要复用另一台机械臂的标定结果。
           </p>
-          <div class="code-title">
-            <span>标定从臂</span>
-            <span>zsh</span>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>标定从臂</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio calibrate --config configs/session.yaml --role follower</code></pre>
           </div>
-          <pre><code>soarm-studio calibrate --config configs/session.yaml --role follower</code></pre>
 
           <p>
             如果某个关节扫动范围不足，输出会标记为 under-excited。重新标定这台机械臂，
@@ -179,7 +183,7 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="hardware-setup.html"><span>Previous</span>检查并写入配置</a>
+          <a href="hardware-setup.html"><span>Previous</span>Step 1 Hardware setup</a>
           <a href="teleoperation.html"><span>Next</span>Teleoperation</a>
         </nav>
       </main>
