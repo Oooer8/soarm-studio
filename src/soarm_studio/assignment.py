@@ -12,7 +12,7 @@ DEFAULT_SESSION_CONFIG = "configs/session.yaml"
 DEFAULT_SESSION_TEMPLATE = "configs/sessions/dual_soarm.example.yaml"
 DEFAULT_LEADER_ARM_CONFIG = "configs/arms/leader.yaml"
 DEFAULT_FOLLOWER_ARM_CONFIG = "configs/arms/follower.yaml"
-DEFAULT_SOARM_BASE_CONFIG = "../soarm-sdk/configs/soarm.yaml"
+DEFAULT_SOARM_BASE_CONFIG = "../soarm-sdk/configs/soarm-sdk.yaml"
 
 
 def assign_arm_roles(
@@ -45,7 +45,7 @@ def assign_arm_roles(
         _write_arm_config(
             path=path,
             port=leader_port,
-            arm_name="soarm-leader",
+            arm_name="soarm-sdk-leader",
             data=data,
             source_path=source_path,
             base_arm_config=base_arm_config,
@@ -68,7 +68,7 @@ def assign_arm_roles(
         _write_arm_config(
             path=path,
             port=follower_port,
-            arm_name="soarm-follower",
+            arm_name="soarm-sdk-follower",
             data=data,
             source_path=source_path,
             base_arm_config=base_arm_config,

@@ -96,12 +96,15 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
                 ok=False,
                 expected_ids=[],
                 online_ids=[],
-                error="soarm-sdk is not importable: No module named 'soarm'",
+                error=(
+                    "Cannot import SDK package 'soarm_sdk' from soarm-sdk: "
+                    "No module named 'soarm_sdk'"
+                ),
             )
         ],
     )
 
-    cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm.yaml"])
+    cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm-sdk.yaml"])
 
     payload = json.loads(capsys.readouterr().out)
     assert set(payload) == {"summary", "arm_ports", "next_steps"}
@@ -113,8 +116,15 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
     assert payload["arm_ports"] == [
         {
             "device": "/dev/cu.usbmodem5A7C1190351",
-            "error": "soarm-sdk is not importable: No module named 'soarm'",
             "ok": False,
+            "error": (
+                "Cannot import SDK package 'soarm_sdk' from soarm-sdk: "
+                "No module named 'soarm_sdk'"
+            ),
         }
     ]
-    assert "soarm-sdk is not importable" in payload["next_steps"][0]
+    assert payload["next_steps"] == [
+        "Install or activate soarm-sdk in this Python environment; "
+        "the SDK imports as package 'soarm_sdk'.",
+        "Then probe again before debugging hardware.",
+    ]

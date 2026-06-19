@@ -93,11 +93,11 @@ class MockArm:
 class SOARMArm:
     def __init__(self, name: str, config_path: str | Path) -> None:
         try:
-            from soarm import SOARM
+            from soarm_sdk import SOARM
         except ModuleNotFoundError as exc:
             raise RuntimeError(
-                "soarm-sdk is not installed. Install with `pip install -e .[hardware]` "
-                "or use a mock session config."
+                "Cannot import SDK package 'soarm_sdk' from soarm-sdk in this Python "
+                "environment. Install or activate soarm-sdk, or use a mock session config."
             ) from exc
 
         self.name = name

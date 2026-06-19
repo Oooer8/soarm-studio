@@ -48,18 +48,18 @@ def test_assign_arm_roles_writes_arm_configs_and_session(tmp_path) -> None:
     assert session["leader"]["config"] == str(leader_path)
     assert session["follower"]["config"] == str(follower_path)
     assert session["follower"]["max_relative_target"] == 0.05
-    assert leader["arm"]["name"] == "soarm-leader"
+    assert leader["arm"]["name"] == "soarm-sdk-leader"
     assert leader["arm"]["port"] == "/dev/cu.leader"
-    assert follower["arm"]["name"] == "soarm-follower"
+    assert follower["arm"]["name"] == "soarm-sdk-follower"
     assert follower["arm"]["port"] == "/dev/cu.follower"
     assert result["warnings"]
 
 
 def test_assign_arm_roles_rewrites_base_include_paths(tmp_path) -> None:
     project = tmp_path / "project"
-    sdk = tmp_path / "soarm"
+    sdk = tmp_path / "soarm-sdk"
     session_path = project / "configs" / "session.yaml"
-    base_path = sdk / "configs" / "soarm.yaml"
+    base_path = sdk / "configs" / "soarm-sdk.yaml"
     runtime_path = sdk / "configs" / "runtime.yaml"
     motor_path = sdk / "configs" / "motors" / "feetech_sts3215.yaml"
     leader_path = project / "configs" / "arms" / "leader.yaml"

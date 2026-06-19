@@ -514,15 +514,22 @@ def _probe_next_steps(arm_ports: list[dict[str, Any]]) -> list[str]:
         return ["No arm ports were probed; run scan first and check USB connections."]
     if all(port.get("ok") for port in arm_ports):
         return ["Use the verified devices in setup arms as leader/follower ports."]
-    if any("No module named 'soarm'" in str(port.get("error")) for port in arm_ports):
-        return ["soarm-sdk is not importable in this environment; activate/install the SDK env, then probe again."]
+    if any("soarm_sdk" in str(port.get("error")) for port in arm_ports):
+        return [
+            "Install or activate soarm-sdk in this Python environment; "
+            "the SDK imports as package 'soarm_sdk'.",
+            "Then probe again before debugging hardware.",
+        ]
     return ["Fix failed ports before setup arms; check power, bus wiring, IDs, and baudrate."]
 
 
 def _camera_preview_next_steps(previews: list[dict[str, Any]]) -> list[str]:
     if any(preview.get("ok") for preview in previews):
         return ["Open the saved preview images, then use the confirmed indexes in setup cameras."]
-    return ["No preview frames were saved; check Camera permission, backend, and whether another app is using the cameras."]
+    return [
+        "No preview frames were saved; check Camera permission, backend, "
+        "and whether another app is using the cameras."
+    ]
 
 
 def _parse_ids(value: str) -> list[int]:
@@ -534,4 +541,3 @@ def _parse_indices(value: str) -> list[int]:
     if not indices:
         raise SystemExit("--indices must include at least one camera index")
     return indices
-

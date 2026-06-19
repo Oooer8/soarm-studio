@@ -43,14 +43,14 @@ def _calibrate_endpoint(role: str, endpoint: ArmEndpointConfig) -> dict:
         }
 
     try:
-        from soarm import SOARM
+        from soarm_sdk import SOARM
     except ModuleNotFoundError as exc:
         return {
             "role": role,
             "ok": False,
             "mock": False,
             "started_at": started_at,
-            "error": f"soarm-sdk is not importable: {exc}",
+            "error": f"Cannot import SDK package 'soarm_sdk' from soarm-sdk: {exc}",
         }
 
     config_path = Path(endpoint.config)

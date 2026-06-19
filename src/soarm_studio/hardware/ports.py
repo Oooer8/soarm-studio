@@ -77,15 +77,15 @@ def probe_soarm_port(
     ids: list[int] | None = None,
 ) -> SOARMPortProbe:
     try:
-        from soarm import SOARMConfig
-        from soarm.hardware import ServoBus
+        from soarm_sdk import SOARMConfig
+        from soarm_sdk.hardware import ServoBus
     except ModuleNotFoundError as exc:
         return SOARMPortProbe(
             device=port,
             ok=False,
             expected_ids=[],
             online_ids=[],
-            error=f"soarm-sdk is not importable: {exc}",
+            error=f"Cannot import SDK package 'soarm_sdk' from soarm-sdk: {exc}",
         )
 
     try:
