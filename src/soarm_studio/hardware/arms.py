@@ -20,11 +20,41 @@ class Arm(Protocol):
 
     def send_joints(self, targets: dict[str, float]) -> None: ...
 
+    def move_joints(self, targets: dict[str, float], *, duration: float | None = None) -> None: ...
+
+    def start_joint_stream(
+        self,
+        *,
+        output_hz: float | None = None,
+        target_timeout_s: float = 0.15,
+        joint_names: list[str] | None = None,
+    ) -> "JointStream": ...
+
     def stop(self) -> None: ...
 
     def emergency_stop(self) -> None: ...
 
     def status(self) -> ArmStatus: ...
+
+
+class JointStream(Protocol):
+    def update_target(self, targets: dict[str, float]) -> None: ...
+
+    def stop(self) -> None: ...
+
+
+class MockJointStream:
+    def __init__(self, arm: "MockArm") -> None:
+        self.arm = arm
+        self.stopped = False
+
+    def update_target(self, targets: dict[str, float]) -> None:
+        if self.stopped:
+            return
+        self.arm.send_joints(targets)
+
+    def stop(self) -> None:
+        self.stopped = True
 
 
 class MockArm:
@@ -69,6 +99,19 @@ class MockArm:
             if name in self._positions:
                 self._positions[name] = float(value)
 
+    def move_joints(self, targets: dict[str, float], *, duration: float | None = None) -> None:
+        self.send_joints(targets)
+
+    def start_joint_stream(
+        self,
+        *,
+        output_hz: float | None = None,
+        target_timeout_s: float = 0.15,
+        joint_names: list[str] | None = None,
+    ) -> JointStream:
+        self._require_connected()
+        return MockJointStream(self)
+
     def stop(self) -> None:
         self.enabled = False
 
@@ -110,10 +153,38 @@ class SOARMArm:
         self._arm.disconnect()
 
     def read_joints(self) -> JointSample:
-        return JointSample({k: float(v) for k, v in self._arm.get_joint_positions("rad").items()})
+        return JointSample({k: float(v) for k, v in self._arm.motion.read_positions_rad().items()})
 
     def send_joints(self, targets: dict[str, float]) -> None:
         self._arm.stream_joints(targets)
+
+    def move_joints(self, targets: dict[str, float], *, duration: float | None = None) -> None:
+        if duration is None:
+            from soarm_sdk.application import recommended_move_duration
+
+            current = self._arm.motion.read_positions_rad()
+            duration = recommended_move_duration(
+                self._arm.config,
+                current=current,
+                target=targets,
+                minimum=0.5,
+            )
+        self._arm.move_joints(targets, duration=duration, wait=True)
+
+    def start_joint_stream(
+        self,
+        *,
+        output_hz: float | None = None,
+        target_timeout_s: float = 0.15,
+        joint_names: list[str] | None = None,
+    ) -> JointStream:
+        return SOARMJointStream(
+            self._arm.start_joint_stream(
+                output_hz=output_hz,
+                target_timeout_s=target_timeout_s,
+                joint_names=joint_names,
+            )
+        )
 
     def stop(self) -> None:
         self._arm.stop()
@@ -135,6 +206,17 @@ class SOARMArm:
             emergency_stopped=state.emergency_stopped,
             joints=joints,
         )
+
+
+class SOARMJointStream:
+    def __init__(self, stream) -> None:
+        self._stream = stream
+
+    def update_target(self, targets: dict[str, float]) -> None:
+        self._stream.update_target(targets)
+
+    def stop(self) -> None:
+        self._stream.stop()
 
 
 def create_arm(config: ArmEndpointConfig, joint_names: list[str], *, role: str) -> Arm:

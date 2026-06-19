@@ -11,8 +11,8 @@ recording.
 The runtime path stays direct:
 
 ```text
-leader arm -> teleop loop -> safety clipping -> follower arm
-                         -> recorder -> LeRobot-v3-compatible files
+leader arm -> teleop loop -> SDK joint stream -> follower arm
+                         -> synchronized samples -> LeRobot-v3-compatible files
 ```
 
 ## Documentation

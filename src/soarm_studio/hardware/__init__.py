@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .arms import Arm, MockArm, SOARMArm, create_arm
+from .arms import Arm, JointStream, MockArm, SOARMArm, create_arm
 from .cameras import (
     Camera,
     CameraDeviceInfo,
@@ -24,6 +24,7 @@ __all__ = [
     "Camera",
     "CameraDeviceInfo",
     "CameraPreviewInfo",
+    "JointStream",
     "MockArm",
     "MockCamera",
     "OpenCVCamera",
