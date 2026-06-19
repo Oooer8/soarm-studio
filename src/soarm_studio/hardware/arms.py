@@ -28,7 +28,7 @@ class Arm(Protocol):
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "arrival",
+        mode: str = "direct",
         tracking_kp: float = 8.0,
         tracking_feedforward: float = 1.0,
     ) -> "JointStream": ...
@@ -112,7 +112,7 @@ class MockArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "arrival",
+        mode: str = "direct",
         tracking_kp: float = 8.0,
         tracking_feedforward: float = 1.0,
     ) -> JointStream:
@@ -192,7 +192,7 @@ class SOARMArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "arrival",
+        mode: str = "direct",
         tracking_kp: float = 8.0,
         tracking_feedforward: float = 1.0,
     ) -> JointStream:

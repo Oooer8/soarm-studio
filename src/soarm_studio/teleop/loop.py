@@ -24,7 +24,7 @@ class TeleopLoop:
         sync_start: bool = True,
         stream_output_hz: float | None = None,
         stream_target_timeout_s: float | None = None,
-        stream_mode: str = "tracking",
+        stream_mode: str = "direct",
         stream_tracking_kp: float = 8.0,
         stream_tracking_feedforward: float = 1.0,
     ) -> None:
