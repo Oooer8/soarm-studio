@@ -36,8 +36,8 @@ conda env create -f environment.yml
 conda activate soarm-studio
 ```
 
-The provided environment installs the local package and the sibling
-`../soarm-sdk` SDK checkout in editable mode.
+The provided environment installs SOARM Studio in editable mode and pulls
+`soarm-sdk` from the GitHub dependency declared by the `hardware` extra.
 
 ## Recommended Flow
 
@@ -45,8 +45,7 @@ The provided environment installs the local package and the sibling
 soarm-studio scan --include-system
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
-  --follower-port /dev/cu.usbmodemFOLLOWER \
-  --base-arm-config ../soarm-sdk/configs/soarm-sdk.yaml
+  --follower-port /dev/cu.usbmodemFOLLOWER
 soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
 soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
 soarm-studio check --overwrite

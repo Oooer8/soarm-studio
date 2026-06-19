@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from soarm_studio import assignment
 from soarm_studio.assignment import assign_arm_roles, assign_camera_roles
 from soarm_studio.config import load_config_mapping
 
@@ -99,6 +100,43 @@ def test_assign_arm_roles_rewrites_base_include_paths(tmp_path) -> None:
     motor_ref = leader["includes"]["motor_profile"]
     assert (leader_path.parent / runtime_ref).resolve() == runtime_path
     assert (leader_path.parent / motor_ref).resolve() == motor_path
+
+
+def test_assign_arm_roles_uses_packaged_default_without_local_sdk(tmp_path, monkeypatch) -> None:
+    session_path = tmp_path / "session.yaml"
+    leader_path = tmp_path / "configs" / "arms" / "leader.yaml"
+    packaged_default = tmp_path / "site-packages" / "soarm_sdk" / "configs" / "soarm-sdk.yaml"
+    session_path.write_text(json.dumps({"leader": {"name": "leader", "mock": True}}))
+    packaged_default.parent.mkdir(parents=True)
+    packaged_default.write_text("{}")
+    monkeypatch.setattr(assignment, "_sdk_default_config_path", lambda: packaged_default)
+    monkeypatch.setattr(
+        assignment,
+        "_load_packaged_soarm_config",
+        lambda path: {"arm": {"baudrate": 1000000}, "joints": {}, "poses": {}},
+    )
+
+    result = assign_arm_roles(
+        session_config=session_path,
+        leader_port="/dev/cu.leader",
+        follower_port=None,
+        leader_arm_config=leader_path,
+    )
+
+    leader = load_config_mapping(leader_path)
+    assert result["arm_configs"] == {"leader": str(leader_path)}
+    assert leader["arm"]["name"] == "soarm-sdk-leader"
+    assert leader["arm"]["port"] == "/dev/cu.leader"
+    assert "includes" not in leader
+
+
+def test_default_base_arm_config_uses_installed_sdk(tmp_path, monkeypatch) -> None:
+    packaged_default = tmp_path / "site-packages" / "soarm_sdk" / "configs" / "soarm-sdk.yaml"
+    packaged_default.parent.mkdir(parents=True)
+    packaged_default.write_text("{}")
+    monkeypatch.setattr(assignment, "_sdk_default_config_path", lambda: packaged_default)
+
+    assert assignment.default_base_arm_config_path() == packaged_default
 
 
 def test_assign_arm_roles_rejects_duplicate_ports(tmp_path) -> None:

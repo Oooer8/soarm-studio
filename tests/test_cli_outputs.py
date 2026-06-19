@@ -89,8 +89,14 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
     monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
     monkeypatch.setattr(
         cli,
-        "probe_soarm_ports",
-        lambda *args, **kwargs: [
+        "default_base_arm_config_path",
+        lambda: "/site-packages/soarm_sdk/configs/soarm-sdk.yaml",
+    )
+    captured = {}
+
+    def fake_probe_soarm_ports(*args, **kwargs):
+        captured["arm_config"] = kwargs["arm_config"]
+        return [
             SOARMPortProbe(
                 device="/dev/cu.usbmodem5A7C1190351",
                 ok=False,
@@ -101,10 +107,15 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
                     "No module named 'soarm_sdk'"
                 ),
             )
-        ],
+        ]
+
+    monkeypatch.setattr(
+        cli,
+        "probe_soarm_ports",
+        fake_probe_soarm_ports,
     )
 
-    cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm-sdk.yaml"])
+    cli.main(["scan", "--probe-arms"])
 
     payload = json.loads(capsys.readouterr().out)
     assert set(payload) == {"summary", "arm_ports", "next_steps"}
@@ -123,8 +134,88 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
             ),
         }
     ]
+    assert captured["arm_config"] == "/site-packages/soarm_sdk/configs/soarm-sdk.yaml"
     assert payload["next_steps"] == [
         "Install or activate soarm-sdk in this Python environment; "
         "the SDK imports as package 'soarm_sdk'.",
         "Then probe again before debugging hardware.",
+    ]
+
+
+def test_probe_arms_output_guides_legacy_config_path(monkeypatch, capsys) -> None:
+    ports = [
+        _build_info(
+            {
+                "device": "/dev/cu.usbmodem5A7C1190351",
+                "name": "cu.usbmodem5A7C1190351",
+            },
+            {"/dev/cu.usbmodem5A7C1190351"},
+        )
+    ]
+    monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
+    monkeypatch.setattr(
+        cli,
+        "probe_soarm_ports",
+        lambda *args, **kwargs: [
+            SOARMPortProbe(
+                device="/dev/cu.usbmodem5A7C1190351",
+                ok=False,
+                expected_ids=[],
+                online_ids=[],
+                error=(
+                    "Failed to read config file ../soarm-sdk/configs/soarm.yaml: "
+                    "[Errno 2] No such file or directory"
+                ),
+            )
+        ],
+    )
+
+    cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm.yaml"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["next_steps"] == [
+        "The arm config path is from the old SDK layout. Omit --arm-config to use "
+        "the packaged soarm-sdk default, or pass a custom soarm-sdk.yaml.",
+    ]
+
+
+def test_probe_arms_output_guides_serial_permission_error(monkeypatch, capsys) -> None:
+    ports = [
+        _build_info(
+            {
+                "device": "/dev/cu.usbmodem5A7C1190351",
+                "name": "cu.usbmodem5A7C1190351",
+            },
+            {"/dev/cu.usbmodem5A7C1190351"},
+        )
+    ]
+    monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
+    monkeypatch.setattr(
+        cli,
+        "default_base_arm_config_path",
+        lambda: "/site-packages/soarm_sdk/configs/soarm-sdk.yaml",
+    )
+    monkeypatch.setattr(
+        cli,
+        "probe_soarm_ports",
+        lambda *args, **kwargs: [
+            SOARMPortProbe(
+                device="/dev/cu.usbmodem5A7C1190351",
+                ok=False,
+                expected_ids=[],
+                online_ids=[],
+                error=(
+                    "[Errno 1] could not open port /dev/cu.usbmodem5A7C1190351: "
+                    "[Errno 1] Operation not permitted"
+                ),
+            )
+        ],
+    )
+
+    cli.main(["scan", "--probe-arms"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["next_steps"] == [
+        "This process cannot open the serial port. Run from your normal Terminal in the "
+        "soarm-studio conda env, close apps using the port, and check macOS permissions.",
     ]

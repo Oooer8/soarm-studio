@@ -152,35 +152,36 @@
                       <span>CLI</span>
                       <button class="copy-button" type="button">Copy</button>
                     </div>
-                    <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm-sdk.yaml</code></pre>
+                    <pre><code>soarm-studio scan --probe-arms</code></pre>
                   </div>
                   <details class="cli-result">
                     <summary>查看精简结果</summary>
                     <pre><code>{
   "summary": {
-    "ok": false,
+    "ok": true,
     "probed_ports": 2,
-    "online_ports": 0
+    "online_ports": 2
   },
   "arm_ports": [
     {
       "device": "/dev/cu.usbmodem5A7C1190351",
-      "ok": false,
-      "error": "Cannot import SDK package 'soarm_sdk' from soarm-sdk: No module named 'soarm_sdk'"
+      "ok": true,
+      "expected_ids": [1, 2, 3, 4, 5, 6],
+      "online_ids": [1, 2, 3, 4, 5, 6]
     },
     {
       "device": "/dev/cu.usbmodem5A7C1219051",
-      "ok": false,
-      "error": "Cannot import SDK package 'soarm_sdk' from soarm-sdk: No module named 'soarm_sdk'"
+      "ok": true,
+      "expected_ids": [1, 2, 3, 4, 5, 6],
+      "online_ids": [1, 2, 3, 4, 5, 6]
     }
   ],
   "next_steps": [
-    "Install or activate soarm-sdk in this Python environment; the SDK imports as package 'soarm_sdk'.",
-    "Then probe again before debugging hardware."
+    "Use the verified devices in setup arms as leader/follower ports."
   ]
 }</code></pre>
                   </details>
-                  <p>如果看到上面的 import 报错，优先处理当前 Python 环境里的 soarm-sdk 安装或激活；Python 包名应为 soarm_sdk，这不是机械臂端口或电机编号的硬件报错。</p>
+                  <p>默认会使用已安装 soarm-sdk 内置的 arm config；只有需要指定自定义或已校准配置时才传 <code class="inline">--arm-config</code>。</p>
                 </li>
                 <li>
                   <h3 id="setup-arm-roles">Setup arm roles</h3>
@@ -192,8 +193,7 @@
                     </div>
                     <pre><code>soarm-studio setup arms \
   --leader-port /dev/cu.usbmodem5A7C1219051 \
-  --follower-port /dev/cu.usbmodem5A7C1190351 \
-  --base-arm-config ../soarm-sdk/configs/soarm-sdk.yaml</code></pre>
+  --follower-port /dev/cu.usbmodem5A7C1190351</code></pre>
                   </div>
                   <details class="cli-result">
                     <summary>查看精简结果</summary>

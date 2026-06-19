@@ -11,6 +11,7 @@ from .assignment import (
     DEFAULT_SESSION_CONFIG,
     assign_arm_roles,
     assign_camera_roles,
+    default_base_arm_config_path,
 )
 from .config import SessionConfig, load_session_config
 from .datasets.tools import export_rerun_dataset, inspect_dataset, validate_dataset
@@ -165,15 +166,18 @@ def _add_camera_setup_args(parser: argparse.ArgumentParser) -> None:
 def _handle_scan(args) -> None:
     ports = detect_serial_ports(include_system=args.include_system)
     if args.probe_arms:
-        if not args.arm_config:
-            raise SystemExit("--probe-arms requires --arm-config")
+        arm_config = Path(args.arm_config) if args.arm_config else default_base_arm_config_path()
+        if arm_config is None:
+            raise SystemExit(
+                "soarm-sdk is not installed; install soarm-studio[hardware] or pass --arm-config"
+            )
         ids = _parse_ids(args.ids) if args.ids else None
         candidates = [port.device for port in ports if port.soarm_candidate]
         if not candidates:
             candidates = [port.device for port in ports if port.preferred_for_connection]
         arm_ports = [
             _compact_arm_probe(result.to_dict())
-            for result in probe_soarm_ports(candidates, arm_config=args.arm_config, ids=ids)
+            for result in probe_soarm_ports(candidates, arm_config=arm_config, ids=ids)
         ]
         _print_json(
             {
@@ -519,6 +523,25 @@ def _probe_next_steps(arm_ports: list[dict[str, Any]]) -> list[str]:
             "Install or activate soarm-sdk in this Python environment; "
             "the SDK imports as package 'soarm_sdk'.",
             "Then probe again before debugging hardware.",
+        ]
+    if any("configs/soarm.yaml" in str(port.get("error")) for port in arm_ports):
+        return [
+            "The arm config path is from the old SDK layout. Omit --arm-config to use "
+            "the packaged soarm-sdk default, or pass a custom soarm-sdk.yaml.",
+        ]
+    if any("Failed to read config file" in str(port.get("error")) for port in arm_ports):
+        return [
+            "The arm config file could not be read. Check --arm-config, or omit it to use "
+            "the packaged soarm-sdk default.",
+        ]
+    if any(
+        "Operation not permitted" in str(port.get("error"))
+        or "Permission denied" in str(port.get("error"))
+        for port in arm_ports
+    ):
+        return [
+            "This process cannot open the serial port. Run from your normal Terminal in the "
+            "soarm-studio conda env, close apps using the port, and check macOS permissions.",
         ]
     return ["Fix failed ports before setup arms; check power, bus wiring, IDs, and baudrate."]
 

@@ -12,7 +12,6 @@ DEFAULT_SESSION_CONFIG = "configs/session.yaml"
 DEFAULT_SESSION_TEMPLATE = "configs/sessions/dual_soarm.example.yaml"
 DEFAULT_LEADER_ARM_CONFIG = "configs/arms/leader.yaml"
 DEFAULT_FOLLOWER_ARM_CONFIG = "configs/arms/follower.yaml"
-DEFAULT_SOARM_BASE_CONFIG = "../soarm-sdk/configs/soarm-sdk.yaml"
 
 
 def assign_arm_roles(
@@ -195,16 +194,36 @@ def _load_arm_template(
             f"{path} does not exist; pass --base-arm-config to create it from a calibrated "
             "or template SOARM config"
         )
+    if base_arm_config is None:
+        return _load_packaged_soarm_config(base), True, base
     return load_config_mapping(base), True, base
 
 
 def _resolve_base_arm_config(base_arm_config: str | Path | None) -> Path | None:
     if base_arm_config is not None:
         return Path(base_arm_config)
-    default = Path(DEFAULT_SOARM_BASE_CONFIG)
-    if default.exists():
-        return default
-    return None
+    return _sdk_default_config_path()
+
+
+def default_base_arm_config_path() -> Path | None:
+    return _resolve_base_arm_config(None)
+
+
+def _sdk_default_config_path() -> Path | None:
+    try:
+        from soarm_sdk import default_config_path
+    except ModuleNotFoundError:
+        return None
+    path = default_config_path()
+    return path if path.exists() else None
+
+
+def _load_packaged_soarm_config(path: Path) -> dict[str, Any]:
+    try:
+        from soarm_sdk import SOARMConfig
+    except ModuleNotFoundError:
+        return load_config_mapping(path)
+    return SOARMConfig.from_file(path).to_dict()
 
 
 def _rewrite_soarm_include_paths(
