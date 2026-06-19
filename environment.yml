@@ -1,0 +1,9 @@
+name: soarm-studio
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - -e .[config,dataset,ports,dev]
+      - -e ../soarm

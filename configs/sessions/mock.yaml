@@ -1,0 +1,44 @@
+{
+  "name": "mock-dual-soarm",
+  "loop_hz": 30,
+  "joints": [
+    "shoulder_pan",
+    "shoulder_lift",
+    "elbow_flex",
+    "wrist_flex",
+    "wrist_roll",
+    "gripper"
+  ],
+  "leader": {
+    "name": "leader",
+    "mock": true,
+    "scripted": true
+  },
+  "follower": {
+    "name": "follower",
+    "mock": true,
+    "max_relative_target": 0.08
+  },
+  "cameras": {
+    "third_person": {
+      "enabled": true,
+      "kind": "mock",
+      "width": 320,
+      "height": 240,
+      "fps": 30
+    },
+    "wrist": {
+      "enabled": true,
+      "kind": "mock",
+      "width": 160,
+      "height": 120,
+      "fps": 30
+    }
+  },
+  "dataset": {
+    "root": "datasets/mock-dual-soarm",
+    "repo_id": "oooer/mock-dual-soarm",
+    "fps": 30,
+    "robot_type": "soarm"
+  }
+}

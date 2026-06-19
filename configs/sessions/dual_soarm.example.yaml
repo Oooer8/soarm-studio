@@ -1,0 +1,47 @@
+{
+  "name": "dual-soarm",
+  "loop_hz": 30,
+  "joints": [
+    "shoulder_pan",
+    "shoulder_lift",
+    "elbow_flex",
+    "wrist_flex",
+    "wrist_roll",
+    "gripper"
+  ],
+  "leader": {
+    "name": "leader",
+    "config": "configs/arms/leader.yaml",
+    "mock": false
+  },
+  "follower": {
+    "name": "follower",
+    "config": "configs/arms/follower.yaml",
+    "mock": false,
+    "max_relative_target": 0.08
+  },
+  "cameras": {
+    "third_person": {
+      "enabled": true,
+      "kind": "opencv",
+      "device": 0,
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    },
+    "wrist": {
+      "enabled": true,
+      "kind": "opencv",
+      "device": 1,
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    }
+  },
+  "dataset": {
+    "root": "datasets/dual-soarm",
+    "repo_id": "oooer/dual-soarm",
+    "fps": 30,
+    "robot_type": "soarm"
+  }
+}
