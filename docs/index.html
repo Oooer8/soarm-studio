@@ -8,6 +8,19 @@
       name="description"
       content="SOARM Studio installation, architecture, hardware setup, calibration, teleoperation, recording, and troubleshooting documentation."
     />
+    <meta property="og:title" content="SOARM Studio Docs" />
+    <meta
+      property="og:description"
+      content="SOARM Studio installation, architecture, hardware setup, calibration, teleoperation, recording, and troubleshooting documentation."
+    />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
     <style>
       :root {
         --bg: #ffffff;
@@ -77,16 +90,11 @@
         letter-spacing: 0;
       }
 
-      .mark {
-        display: grid;
-        place-items: center;
-        width: 26px;
-        height: 26px;
-        border-radius: 7px;
-        background: var(--fg);
-        color: var(--bg);
-        font-size: 13px;
-        font-weight: 800;
+      .brand-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        border-radius: 6px;
       }
 
       .topnav {
@@ -572,7 +580,12 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <span class="mark">S</span>
+        <img
+          class="brand-logo"
+          src="assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
         <span>SOARM Studio</span>
       </div>
       <nav class="topnav" aria-label="Primary">

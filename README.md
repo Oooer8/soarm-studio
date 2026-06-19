@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/brand/soarm-studio-logo-wordmark.png" alt="SOARM Studio" width="720">
+</p>
+
 # SOARM Studio
 
 SOARM Studio is a thin application layer above `soarm-sdk` for dual-arm

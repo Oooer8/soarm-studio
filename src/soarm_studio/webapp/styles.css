@@ -66,11 +66,12 @@ button:hover {
   margin-bottom: 28px;
 }
 
-.mark {
-  width: 22px;
-  height: 22px;
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
   border-radius: 6px;
-  background: linear-gradient(135deg, #172025 0%, #11866f 100%);
+  flex: 0 0 auto;
 }
 
 .step {

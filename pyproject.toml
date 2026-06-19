@@ -28,7 +28,7 @@ soarm-studio = "soarm_studio.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-soarm_studio = ["webapp/*"]
+soarm_studio = ["webapp/*", "webapp/assets/brand/*"]
 
 [tool.ruff]
 line-length = 100
