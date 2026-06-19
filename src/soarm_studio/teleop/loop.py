@@ -24,13 +24,11 @@ class TeleopLoop:
         sync_start: bool = True,
         stream_output_hz: float | None = None,
         stream_target_timeout_s: float | None = None,
-        stream_mode: str = "direct",
-        stream_tracking_kp: float = 8.0,
-        stream_tracking_feedforward: float = 1.0,
     ) -> None:
         self.leader = leader
         self.follower = follower
         self.joint_names = joint_names
+        self.follower_limits = dict(follower.joint_limits())
         self.hz = hz
         self.dt = 1.0 / hz
         self.max_relative_target = max_relative_target
@@ -45,9 +43,6 @@ class TeleopLoop:
             if stream_target_timeout_s is None
             else float(stream_target_timeout_s)
         )
-        self.stream_mode = str(stream_mode)
-        self.stream_tracking_kp = float(stream_tracking_kp)
-        self.stream_tracking_feedforward = float(stream_tracking_feedforward)
         self.paused = False
         self.metrics = LoopMetrics(target_hz=hz)
         self._stream: JointStream | None = None
@@ -87,6 +82,7 @@ class TeleopLoop:
         self._require_joint_keys("leader", leader_sample.positions)
         self._require_joint_keys("follower", follower_before.positions)
         action = self._clip_relative(follower_before.positions, leader_sample.positions)
+        action = self._clip_joint_limits(action)
 
         if not self.paused:
             self._ensure_stream().update_target(action)
@@ -182,9 +178,7 @@ class TeleopLoop:
                 output_hz=self.stream_output_hz,
                 target_timeout_s=self.stream_target_timeout_s,
                 joint_names=self.joint_names,
-                mode=self.stream_mode,
-                tracking_kp=self.stream_tracking_kp,
-                tracking_feedforward=self.stream_tracking_feedforward,
+                mode="direct",
             )
         return self._stream
 
@@ -200,6 +194,7 @@ class TeleopLoop:
         self._require_joint_keys("leader", leader_sample.positions)
         self._require_joint_keys("follower", follower_sample.positions)
         target = {name: float(leader_sample.positions[name]) for name in self.joint_names}
+        target = self._clip_joint_limits(target)
         max_delta = max(
             abs(float(target[name]) - float(follower_sample.positions[name]))
             for name in self.joint_names
@@ -227,4 +222,15 @@ class TeleopLoop:
             wanted = float(target[name])
             delta = max(-self.max_relative_target, min(self.max_relative_target, wanted - now))
             clipped[name] = now + delta
+        return clipped
+
+    def _clip_joint_limits(self, target: dict[str, float]) -> dict[str, float]:
+        clipped: dict[str, float] = {}
+        for name in self.joint_names:
+            position = float(target[name])
+            limits = self.follower_limits.get(name)
+            if limits is not None:
+                lower, upper = limits
+                position = max(lower, min(upper, position))
+            clipped[name] = position
         return clipped

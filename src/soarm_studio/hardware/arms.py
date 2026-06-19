@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import time
 from pathlib import Path
-from typing import Protocol
+from typing import Mapping, Protocol
 
 from soarm_studio.config import ArmEndpointConfig
 from soarm_studio.types import ArmStatus, JointSample
@@ -29,8 +29,6 @@ class Arm(Protocol):
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
         mode: str = "direct",
-        tracking_kp: float = 8.0,
-        tracking_feedforward: float = 1.0,
     ) -> "JointStream": ...
 
     def stop(self) -> None: ...
@@ -38,6 +36,8 @@ class Arm(Protocol):
     def emergency_stop(self) -> None: ...
 
     def status(self) -> ArmStatus: ...
+
+    def joint_limits(self) -> Mapping[str, tuple[float, float]]: ...
 
 
 class JointStream(Protocol):
@@ -67,10 +67,15 @@ class MockArm:
         joint_names: list[str],
         *,
         scripted: bool = False,
+        joint_limits: Mapping[str, tuple[float, float]] | None = None,
     ) -> None:
         self.name = name
         self.joint_names = joint_names
         self.scripted = scripted
+        self._joint_limits = {
+            name: (float(limits[0]), float(limits[1]))
+            for name, limits in (joint_limits or {}).items()
+        }
         self.connected = False
         self.enabled = False
         self.emergency_stopped = False
@@ -113,8 +118,6 @@ class MockArm:
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
         mode: str = "direct",
-        tracking_kp: float = 8.0,
-        tracking_feedforward: float = 1.0,
     ) -> JointStream:
         self._require_connected()
         self.last_stream_options = {
@@ -122,8 +125,6 @@ class MockArm:
             "target_timeout_s": target_timeout_s,
             "joint_names": joint_names,
             "mode": mode,
-            "tracking_kp": tracking_kp,
-            "tracking_feedforward": tracking_feedforward,
         }
         return MockJointStream(self)
 
@@ -142,6 +143,9 @@ class MockArm:
             emergency_stopped=self.emergency_stopped,
             joints=dict(self._positions),
         )
+
+    def joint_limits(self) -> Mapping[str, tuple[float, float]]:
+        return dict(self._joint_limits)
 
     def _require_connected(self) -> None:
         if not self.connected:
@@ -193,8 +197,6 @@ class SOARMArm:
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
         mode: str = "direct",
-        tracking_kp: float = 8.0,
-        tracking_feedforward: float = 1.0,
     ) -> JointStream:
         return SOARMJointStream(
             self._arm.start_joint_stream(
@@ -202,8 +204,6 @@ class SOARMArm:
                 target_timeout_s=target_timeout_s,
                 joint_names=joint_names,
                 mode=mode,
-                tracking_kp=tracking_kp,
-                tracking_feedforward=tracking_feedforward,
             )
         )
 
@@ -227,6 +227,12 @@ class SOARMArm:
             emergency_stopped=state.emergency_stopped,
             joints=joints,
         )
+
+    def joint_limits(self) -> Mapping[str, tuple[float, float]]:
+        return {
+            name: (float(joint.min_rad), float(joint.max_rad))
+            for name, joint in self._arm.config.joints.items()
+        }
 
 
 class SOARMJointStream:

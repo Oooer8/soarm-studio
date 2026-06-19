@@ -26,6 +26,55 @@ def test_teleop_loop_clips_relative_targets() -> None:
     assert positions == {"a": 0.1, "b": -0.1}
 
 
+def test_teleop_loop_clips_targets_to_follower_joint_limits() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm(
+        "follower",
+        joints,
+        joint_limits={"a": (-0.25, 0.5), "b": (-0.5, 0.25)},
+    )
+    leader.connect()
+    follower.connect()
+    leader.send_joints({"a": 1.0, "b": -1.0})
+    follower.send_joints({"a": 0.0, "b": 0.0})
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+    )
+    sample = loop.step()
+
+    assert sample.action == {"a": 0.5, "b": -0.5}
+    assert follower.read_joints().positions == {"a": 0.5, "b": -0.5}
+
+
+def test_teleop_run_sync_start_clips_to_follower_joint_limits() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm(
+        "follower",
+        joints,
+        joint_limits={"a": (-0.25, 0.5), "b": (-0.5, 0.25)},
+    )
+    leader.connect()
+    follower.connect()
+    leader.send_joints({"a": 1.0, "b": -1.0})
+    follower.send_joints({"a": 0.0, "b": 0.0})
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+    )
+    loop.run(steps=0, sleep=False)
+
+    assert follower.read_joints().positions == {"a": 0.5, "b": -0.5}
+
+
 def test_teleop_step_returns_control_sample_with_pre_action_state() -> None:
     joints = ["a", "b"]
     leader = MockArm("leader", joints)
