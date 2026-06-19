@@ -17,7 +17,9 @@ The README is intentionally short. Detailed installation, architecture,
 hardware setup, calibration, recording, and troubleshooting live in the docs
 site:
 
-- [SOARM Studio Docs](docs/index.html)
+- [SOARM Studio Docs](https://oooer8.github.io/soarm-studio/)
+
+For local development, the same page lives at `docs/index.html`.
 
 The docs site is designed for GitHub Pages and can later host images, videos,
 code blocks, diagrams, and hardware walkthrough media under `docs/assets/`.
