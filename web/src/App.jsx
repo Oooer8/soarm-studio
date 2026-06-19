@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const views = ["Bind", "Status", "Teleop", "Record", "Review"];
+const views = ["Setup", "Check", "Teleop", "Record", "Review"];
 
 function App() {
-  const [view, setView] = useState("Bind");
+  const [view, setView] = useState("Setup");
   const [output, setOutput] = useState({});
 
   async function call(path, options) {
@@ -38,9 +38,9 @@ function App() {
         </header>
         <section className="panel">
           <div className="actions">
-            <button onClick={() => call("/api/bindings")}>Bindings</button>
-            <button onClick={() => call("/api/status")}>Status</button>
-            <button onClick={() => call("/api/preflight?overwrite=true")}>Preflight</button>
+            <button onClick={() => call("/api/bindings")}>Saved roles</button>
+            <button onClick={() => call("/api/status")}>Live status</button>
+            <button onClick={() => call("/api/preflight?overwrite=true")}>Check</button>
             <button
               onClick={() =>
                 call("/api/calibrate", {

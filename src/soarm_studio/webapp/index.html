@@ -13,8 +13,8 @@
           <span class="mark"></span>
           <strong>SOARM Studio</strong>
         </div>
-        <button class="step active" data-view="bind">1 Bind</button>
-        <button class="step" data-view="status">2 Status</button>
+        <button class="step active" data-view="setup">1 Setup</button>
+        <button class="step" data-view="check">2 Check</button>
         <button class="step" data-view="teleop">3 Teleop</button>
         <button class="step" data-view="record">4 Record</button>
         <button class="step" data-view="review">5 Review</button>
@@ -23,27 +23,27 @@
       <section class="workspace">
         <header class="topbar">
           <div>
-            <h1 id="viewTitle">Bind</h1>
+            <h1 id="viewTitle">Setup</h1>
             <span id="sessionLabel">Session</span>
           </div>
           <button id="refreshBtn" class="icon-button" title="Refresh">Refresh</button>
         </header>
 
-        <section class="view active" data-panel="bind">
+        <section class="view active" data-panel="setup">
           <div class="panel">
             <div class="panel-head">
-              <h2>Bindings</h2>
-              <button id="verifyBtn">Verify</button>
+              <h2>Saved Roles</h2>
+              <button id="verifyBtn">Check</button>
             </div>
             <pre id="bindingsOut" class="log"></pre>
           </div>
         </section>
 
-        <section class="view" data-panel="status">
+        <section class="view" data-panel="check">
           <div class="split">
             <div class="panel">
               <div class="panel-head">
-                <h2>Preflight</h2>
+                <h2>Readiness</h2>
                 <div class="button-row">
                   <button id="preflightBtn">Run</button>
                   <button id="calibrateBtn">Calibrate</button>
@@ -53,7 +53,7 @@
             </div>
             <div class="panel">
               <div class="panel-head">
-                <h2>Status</h2>
+                <h2>Live Status</h2>
                 <button id="statusBtn">Read</button>
               </div>
               <pre id="statusOut" class="log"></pre>

@@ -11,6 +11,7 @@ venv/
 build/
 dist/
 /configs/sessions/local*.yaml
+/configs/session.yaml
 /configs/arms/*.yaml
 !configs/arms/*.example.yaml
 /datasets/

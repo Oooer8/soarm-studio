@@ -20,8 +20,8 @@ Implemented:
 - USB camera detection through macOS USB metadata without importing OpenCV.
 - Camera preview through explicit OpenCV backends (`auto`, `avfoundation`,
   `default`, `any`).
-- Leader/follower and wrist/third-person assignment into a local session config.
-- Runtime-owned mock status, preflight, teleop, recording, and local dataset
+- Leader/follower and wrist/third-person setup into one generated runtime config.
+- Runtime-owned mock check, teleop, recording, and local dataset
   inspect/validate commands.
 - A lightweight LeRobot v3-compatible local writer using Parquet plus MP4.
 - Per-episode and dataset-level state/action stats for locally written datasets.
@@ -53,13 +53,11 @@ Not implemented yet:
 
 | Workflow | Command | Owning modules | Status |
 | --- | --- | --- | --- |
-| Serial discovery | `detect ports` | `hardware.ports` | Implemented |
-| SOARM bus probe | `detect ports --probe-soarm` | `hardware.ports` | Implemented, requires `soarm-sdk` |
-| USB camera discovery | `detect cameras` | `hardware.cameras` | Implemented, macOS USB metadata first |
-| Camera preview | `preview cameras` | `hardware.cameras` | Implemented, requires OpenCV |
-| Role assignment | `assign arms`, `assign cameras` | `assignment`, `config` | Implemented |
-| Runtime bindings | `bind ...`, `verify bindings` | `assignment`, `hardware.bindings` | Implemented |
-| Status/preflight | `status`, `preflight` | `hardware.runtime`, `hardware.preflight` | Mock path tested; hardware path depends on local configs |
+| Hardware scan | `scan` | `hardware.ports`, `hardware.cameras` | Implemented |
+| SOARM bus probe | `scan --probe-arms` | `hardware.ports` | Implemented, requires `soarm-sdk` |
+| Camera preview | `scan --preview-cameras` | `hardware.cameras` | Implemented, requires OpenCV |
+| Role setup | `setup arms`, `setup cameras` | `assignment`, `config` | Implemented |
+| Readiness check | `check` | `hardware.bindings`, `hardware.runtime`, `hardware.preflight` | Mock path tested; hardware path depends on generated configs |
 | Calibration | `calibrate --role ...` | `hardware.calibration`, `soarm-sdk` | Mock path tested; hardware path delegates to SDK |
 | Teleoperation | `teleop --free-test` | `teleop.loop`, `hardware.runtime` | Mock path tested; hardware path needs validation |
 | Recording | `record` | `recording.session`, `teleop.loop`, `datasets.lerobot_v3` | Mock path tested; camera/video path requires OpenCV |
@@ -89,9 +87,10 @@ Not implemented yet:
 - `soarm_studio.cli`: command routing only; hardware and dataset behavior should
   live in the modules above.
 
-Generated local outputs such as `datasets/`, `previews/`, `configs/arms/*.yaml`,
-and `configs/sessions/local*.yaml` are ignored by git. They are machine and
-hardware specific.
+Generated outputs such as `datasets/`, `previews/`, `configs/session.yaml`, and
+`configs/arms/*.yaml` are ignored by git. They are machine and hardware
+specific. `configs/sessions/*.example.yaml` are templates; `configs/session.yaml`
+is the one real runtime config created by setup.
 
 ## Development Notes
 
@@ -120,8 +119,7 @@ conda activate soarm-studio
 Run the mock path first:
 
 ```bash
-soarm-studio status --config configs/sessions/mock.yaml
-soarm-studio preflight --config configs/sessions/mock.yaml --overwrite
+soarm-studio check --config configs/sessions/mock.yaml --overwrite
 soarm-studio teleop --config configs/sessions/mock.yaml --seconds 2
 soarm-studio record --config configs/sessions/mock.yaml --seconds 2 --task "mock pick" --overwrite
 soarm-studio dataset inspect datasets/mock-dual-soarm
@@ -133,43 +131,50 @@ The config files are JSON-compatible YAML, so they still load without `PyYAML`.
 
 ## Pipeline Step 1: Hardware Bring-Up
 
-Step 1 discovers the local hardware, assigns stable roles, and writes the local
-binding files. It stops before calibration, motion, teleoperation, or recording.
-When the arms and cameras are connected through a dock, keep the arm pass and
-camera pass separate. Arms appear as USB serial devices. USB cameras usually do
-not appear under `/dev/cu.*`.
+Step 1 discovers the local hardware, assigns stable roles, and writes the
+runtime config. It stops before calibration, motion, teleoperation, or
+recording. The CLI path is intentionally short:
+
+```text
+scan -> setup arms -> scan --preview-cameras -> setup cameras -> check
+```
+
+`configs/session.yaml` is the generated runtime config for this machine. It is
+ignored by git because arm ports, camera indexes, and USB layout are local to
+your hardware setup. The example files under `configs/sessions/` are templates,
+not a second runtime path.
 
 Step 1 is complete when:
 
-- `configs/sessions/local.yaml` contains `leader`, `follower`, `wrist`, and
-  `third_person` roles.
+- `configs/session.yaml` contains `leader`, `follower`, `wrist`, and
+  `third_person`.
 - `configs/arms/leader.yaml` and `configs/arms/follower.yaml` were generated
   from the same base SOARM arm config.
 - The wrist and third-person camera indexes were chosen from saved preview
   images, not from USB metadata alone.
-- `soarm-studio verify bindings --config configs/sessions/local.yaml` reports
-  that the saved bindings still match the currently detected hardware.
+- `soarm-studio check --config configs/session.yaml --overwrite` passes.
 
-### 1. List Candidate Arm Ports
+### 1. Scan Hardware
 
-Start by listing all visible serial ports:
+Start with a single inventory command. Arms appear as USB serial devices. USB
+cameras usually do not appear under `/dev/cu.*`.
 
 ```bash
-soarm-studio detect ports --include-system
+soarm-studio scan --include-system
 ```
 
 On macOS, save `/dev/cu.*` ports for SOARM. The matching `/dev/tty.*` device is
 usually the dial-in side of the same USB serial interface and should not be
 stored in the arm config.
 
-### 2. Probe The SOARM Buses
+### 2. Probe Arm Buses
 
 Probe one arm bus at a time so it is clear which physical arm is attached to
 which serial port:
 
 ```bash
-soarm-studio detect ports \
-  --probe-soarm \
+soarm-studio scan \
+  --probe-arms \
   --arm-config ../soarm/configs/soarm.yaml
 ```
 
@@ -177,50 +182,31 @@ Use the probe output to decide which port is the leader arm and which port is
 the follower arm. If two ports look identical, unplug one arm, probe again, then
 label the cable or hub slot before moving on.
 
-### 3. Assign Arm Roles
+### 3. Setup Arm Roles
 
-Write the local session config and per-arm config files:
+Write the runtime config and per-arm config files:
 
 ```bash
-soarm-studio assign arms \
+soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER \
   --base-arm-config ../soarm/configs/soarm.yaml
 ```
 
-`assign arms` writes:
+`setup arms` writes:
 
-- `configs/sessions/local.yaml`
+- `configs/session.yaml`
 - `configs/arms/leader.yaml`
 - `configs/arms/follower.yaml`
 
-`bind arms` is an alias for the same role-assignment workflow:
-
-```bash
-soarm-studio bind arms \
-  --leader-port /dev/cu.usbmodemLEADER \
-  --follower-port /dev/cu.usbmodemFOLLOWER \
-  --base-arm-config ../soarm/configs/soarm.yaml
-```
-
-### 4. Detect Camera Candidates
-
-Camera detection reads USB metadata by default and does not import OpenCV:
-
-```bash
-soarm-studio detect cameras
-```
-
-Treat this as inventory only. USB metadata may identify a device, but it does
-not prove which OpenCV index is the wrist view.
-
-### 5. Preview Camera Indexes
+### 4. Preview Camera Indexes
 
 Capture preview frames through the backend that will be used for recording:
 
 ```bash
-soarm-studio preview cameras \
-  --indices 0,1,2,3 \
+soarm-studio scan \
+  --preview-cameras \
+  --camera-indices 0,1,2,3 \
   --backend avfoundation \
   --output-dir previews/cameras
 ```
@@ -228,13 +214,15 @@ soarm-studio preview cameras \
 Open the saved images in `previews/cameras/` and identify the actual role for
 each index. Preview is the source of truth for multi-camera mapping because
 OpenCV indexes can change after unplugging devices, changing hubs, or rebooting.
+USB metadata is useful inventory, but it does not prove which OpenCV index is
+the wrist view.
 
-### 6. Assign Camera Roles
+### 5. Setup Camera Roles
 
 Save the confirmed preview indexes:
 
 ```bash
-soarm-studio assign cameras \
+soarm-studio setup cameras \
   --backend avfoundation \
   --wrist-index 1 \
   --third-person-index 0
@@ -244,35 +232,26 @@ The indexes above match a tested local setup where preview showed index `1` as
 the wrist camera and index `0` as the third-person camera. Reuse different
 indexes when your preview images show a different layout.
 
-`bind cameras` is an alias for the same role-assignment workflow.
+### 6. Check Readiness
 
-### 7. Verify Saved Bindings
-
-After assigning arms and cameras, compare the saved session config against the
-currently detected hardware:
+After assigning arms and cameras, run the one readiness gate:
 
 ```bash
-soarm-studio verify bindings --config configs/sessions/local.yaml
+soarm-studio check --config configs/session.yaml --overwrite
 ```
 
-If verification fails, repeat only the affected pass. For example, if the arm
-ports still match but the camera roles are wrong, rerun `preview cameras` and
-`assign cameras` instead of rewriting the arm configs.
-
-After Step 1, use preflight as the gate before calibration, motion, or
-recording:
-
-```bash
-soarm-studio preflight --config configs/sessions/local.yaml --overwrite
-```
+`check` verifies saved bindings and runs live readiness checks. If it fails,
+repeat only the affected pass. For example, if the arm ports still match but the
+camera roles are wrong, rerun camera preview and `setup cameras` instead of
+rewriting the arm configs.
 
 Then continue with the later workflow stages:
 
 ```bash
-soarm-studio calibrate --config configs/sessions/local.yaml --role both
-soarm-studio teleop --config configs/sessions/local.yaml --free-test --seconds 5
+soarm-studio calibrate --config configs/session.yaml --role both
+soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
 soarm-studio record \
-  --config configs/sessions/local.yaml \
+  --config configs/session.yaml \
   --episodes 1 \
   --warmup 1 \
   --seconds 10 \

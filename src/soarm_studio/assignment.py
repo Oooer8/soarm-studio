@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,7 @@ from .config import load_config_mapping, save_config_mapping
 from .hardware.cameras import CameraDeviceInfo, detect_camera_devices
 
 
-DEFAULT_SESSION_CONFIG = "configs/sessions/local.yaml"
+DEFAULT_SESSION_CONFIG = "configs/session.yaml"
 DEFAULT_SESSION_TEMPLATE = "configs/sessions/dual_soarm.example.yaml"
 DEFAULT_LEADER_ARM_CONFIG = "configs/arms/leader.yaml"
 DEFAULT_FOLLOWER_ARM_CONFIG = "configs/arms/follower.yaml"
@@ -37,12 +38,17 @@ def assign_arm_roles(
 
     if leader_port is not None:
         path = Path(leader_arm_config)
-        data, used_base = _load_arm_template(path=path, base_arm_config=base_arm_config)
+        data, used_base, source_path = _load_arm_template(
+            path=path,
+            base_arm_config=base_arm_config,
+        )
         _write_arm_config(
             path=path,
             port=leader_port,
             arm_name="soarm-leader",
             data=data,
+            source_path=source_path,
+            base_arm_config=base_arm_config,
         )
         copied_from_base = copied_from_base or used_base
         session["leader"] = {
@@ -55,12 +61,17 @@ def assign_arm_roles(
 
     if follower_port is not None:
         path = Path(follower_arm_config)
-        data, used_base = _load_arm_template(path=path, base_arm_config=base_arm_config)
+        data, used_base, source_path = _load_arm_template(
+            path=path,
+            base_arm_config=base_arm_config,
+        )
         _write_arm_config(
             path=path,
             port=follower_port,
             arm_name="soarm-follower",
             data=data,
+            source_path=source_path,
+            base_arm_config=base_arm_config,
         )
         copied_from_base = copied_from_base or used_base
         follower = {
@@ -155,7 +166,15 @@ def _write_arm_config(
     port: str,
     arm_name: str,
     data: dict[str, Any],
+    source_path: Path,
+    base_arm_config: str | Path | None,
 ) -> None:
+    _rewrite_soarm_include_paths(
+        data,
+        target_path=path,
+        source_path=source_path,
+        fallback_base=_resolve_base_arm_config(base_arm_config),
+    )
     arm = dict(data.get("arm") or {})
     arm["name"] = arm_name
     arm["port"] = port
@@ -167,16 +186,16 @@ def _load_arm_template(
     *,
     path: Path,
     base_arm_config: str | Path | None,
-) -> tuple[dict[str, Any], bool]:
+) -> tuple[dict[str, Any], bool, Path]:
     if path.exists():
-        return load_config_mapping(path), False
+        return load_config_mapping(path), False, path
     base = _resolve_base_arm_config(base_arm_config)
     if base is None:
         raise ValueError(
             f"{path} does not exist; pass --base-arm-config to create it from a calibrated "
             "or template SOARM config"
         )
-    return load_config_mapping(base), True
+    return load_config_mapping(base), True, base
 
 
 def _resolve_base_arm_config(base_arm_config: str | Path | None) -> Path | None:
@@ -186,6 +205,54 @@ def _resolve_base_arm_config(base_arm_config: str | Path | None) -> Path | None:
     if default.exists():
         return default
     return None
+
+
+def _rewrite_soarm_include_paths(
+    data: dict[str, Any],
+    *,
+    target_path: Path,
+    source_path: Path,
+    fallback_base: Path | None,
+) -> None:
+    includes = data.get("includes")
+    if not isinstance(includes, dict):
+        return
+    rewritten: dict[str, Any] = {}
+    for name, ref in includes.items():
+        if not isinstance(ref, str) or not ref:
+            rewritten[name] = ref
+            continue
+        resolved = _resolve_include_path(
+            ref,
+            source_dir=source_path.parent,
+            target_dir=target_path.parent,
+            fallback_dir=None if fallback_base is None else fallback_base.parent,
+        )
+        rewritten[name] = _relative_path(resolved, start=target_path.parent) if resolved else ref
+    data["includes"] = rewritten
+
+
+def _resolve_include_path(
+    ref: str,
+    *,
+    source_dir: Path,
+    target_dir: Path,
+    fallback_dir: Path | None,
+) -> Path | None:
+    ref_path = Path(ref)
+    if ref_path.is_absolute():
+        return ref_path if ref_path.exists() else None
+    candidates = [target_dir / ref, source_dir / ref]
+    if fallback_dir is not None:
+        candidates.append(fallback_dir / ref)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _relative_path(path: Path, *, start: Path) -> str:
+    return os.path.relpath(path.resolve(), start=start.resolve())
 
 
 def _camera_role_config(

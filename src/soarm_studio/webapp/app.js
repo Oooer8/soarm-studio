@@ -1,10 +1,10 @@
 const state = {
-  view: "bind",
+  view: "setup",
 };
 
 const views = {
-  bind: "Bind",
-  status: "Status",
+  setup: "Setup",
+  check: "Check",
   teleop: "Teleop",
   record: "Record",
   review: "Review",
@@ -62,9 +62,9 @@ function renderPreflight(report) {
 }
 
 async function refresh() {
-  if (state.view === "bind") {
+  if (state.view === "setup") {
     print("#bindingsOut", await api("/api/bindings"));
-  } else if (state.view === "status") {
+  } else if (state.view === "check") {
     renderPreflight(await api("/api/preflight?overwrite=true"));
   } else if (state.view === "review") {
     print("#inspectOut", await api("/api/dataset/inspect"));
