@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs: Calibration principles</title>
+    <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta property="og:title" content="SOARM Studio Docs: Calibration principles" />
+    <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/calibration-principles.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/docs.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a href="index.html" aria-current="page">Docs</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="search" aria-label="Search placeholder">
+        <span>Search documentation...</span>
+        <kbd>/</kbd>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a href="index.html">Introduction</a>
+          <a href="installation.html">Installation</a>
+          <a href="quickstart.html">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="architecture.html">Architecture</a>
+          <a href="configuration.html">Configuration</a>
+          <a class="active" aria-current="page" href="calibration-principles.html">Calibration principles</a>
+          <a href="images-and-video.html">Images and video</a>
+          <a href="publishing.html">Publishing</a>
+        </div>
+        <div class="side-section">
+          <h2>TUTORIALS</h2>
+          <a href="hardware-setup.html">Step 1 Hardware setup</a>
+          <a href="calibration.html">Step 2 Calibration</a>
+          <a href="teleoperation.html">Teleoperation</a>
+          <a href="recording.html">Recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a href="cli-reference.html">CLI reference</a>
+          <a href="generated-files.html">Generated files</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> Calibration principles</div>
+
+        <section id="calibration-principles" class="doc-page">
+          <h1>Calibration principles</h1>
+          <p class="lead">
+            SOARM calibration turns raw servo encoder ticks into meaningful
+            joint angles, safe software limits, and repeatable data. The Studio
+            command only routes the workflow; the physical sampling and config
+            writeback stay in <code class="inline">soarm-sdk</code>.
+          </p>
+
+          <h2 id="why-calibration-exists">Why calibration exists</h2>
+          <p>
+            Every assembled arm has small mechanical differences: horn mounting
+            offsets, mirrored joint direction, cable routing, and usable travel
+            that may not match the nominal model. A servo can report a raw tick,
+            but that tick is not yet a stable joint angle until the software
+            knows which physical pose should be zero and which direction is
+            positive.
+          </p>
+          <p>
+            Calibration stores that relationship in each arm config so later
+            commands can reason in radians instead of raw hardware ticks.
+          </p>
+
+          <div class="code-title">
+            <span>Calibration data model</span>
+            <span>text</span>
+          </div>
+          <pre><code>raw servo tick
+  -> zero_tick + direction
+  -> joint radians
+  -> min_rad / max_rad safety envelope
+  -> check, teleop, record, replay, diagnostics</code></pre>
+
+          <h2 id="what-is-recorded">What is recorded</h2>
+          <div class="cards">
+            <article class="card">
+              <h3 id="zero-tick">Zero tick</h3>
+              <p>
+                The current encoder reading at the known physical zero pose.
+                It is the reference offset for converting present position into
+                joint radians.
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="joint-direction">Joint direction</h3>
+              <p>
+                The sign convention that keeps positive joint motion consistent
+                with the model, even when two arms or joints are mirrored.
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="min-max-limits">Min and max limits</h3>
+              <p>
+                The observed safe travel range from the manual sweep, saved as
+                joint-space limits for checks and clipping.
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="diagnostics">Diagnostics</h3>
+              <p>
+                Pre- and post-calibration status reports help confirm the arm
+                was reachable and that the saved limits are plausible.
+              </p>
+            </article>
+          </div>
+
+          <h2 id="how-the-live-flow-works">How the live flow works</h2>
+          <ol>
+            <li>Run <code class="inline">check</code> first to confirm the role config and bus are reachable.</li>
+            <li>Place the selected arm in the known zero pose when prompted.</li>
+            <li>The SDK captures the present raw encoder ticks as <code class="inline">zero_tick</code>.</li>
+            <li>Torque is disabled so you can sweep each joint by hand.</li>
+            <li>The SDK samples joint readings continuously and tracks observed min/max values.</li>
+            <li>The updated calibration is written back to that arm config.</li>
+            <li>Run <code class="inline">check</code> again before teleop or recording.</li>
+          </ol>
+
+          <h2 id="why-it-matters">Why it matters</h2>
+          <p>
+            Teleoperation depends on leader and follower readings using the
+            same joint convention. Recording depends on observations being
+            reproducible across sessions. Safety depends on software limits
+            matching the arm that is actually on the table. Bad calibration can
+            make an arm look connected while its angles, limits, or mirrored
+            signs are wrong.
+          </p>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>Calibration is read-first</strong>
+              <p>
+                The live flow reads encoder positions while you move the arm by
+                hand. It should not command motion during the zero capture or
+                range sweep.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="configuration.html"><span>Previous</span>Configuration</a>
+          <a href="images-and-video.html"><span>Next</span>Images and video</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="This section">
+        <h2>This section</h2>
+        <p class="toc-current">Calibration principles</p>
+        <a href="#calibration-principles">Overview</a>
+        <a href="#why-calibration-exists">Why calibration exists</a>
+        <a href="#what-is-recorded">What is recorded</a>
+        <a href="#how-the-live-flow-works">How the live flow works</a>
+        <a href="#why-it-matters">Why it matters</a>
+      </aside>
+    </div>
+  </body>
+</html>

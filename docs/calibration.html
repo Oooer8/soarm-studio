@@ -51,6 +51,7 @@
           <h2>Core Concepts</h2>
           <a href="architecture.html">Architecture</a>
           <a href="configuration.html">Configuration</a>
+          <a href="calibration-principles.html">Calibration principles</a>
           <a href="images-and-video.html">Images and video</a>
           <a href="publishing.html">Publishing</a>
         </div>
@@ -79,26 +80,121 @@
             joint min/max while you move the arm by hand. The program disables
             torque and reads encoders; it does not command motion.
           </p>
+          <p>
+            For the underlying model, see
+            <a href="calibration-principles.html">Calibration principles</a>.
+          </p>
+
+          <h3 id="before-you-calibrate">Before you calibrate</h3>
+          <p>
+            Run readiness check after Step 1 hardware setup. Treat this as
+            pre-work for calibration, not as one of the interactive calibration
+            commands.
+          </p>
           <div class="code-title">
-            <span>Recommended calibration sequence</span>
+            <span>Prerequisite readiness check</span>
             <span>zsh</span>
           </div>
-          <pre><code>soarm-studio check --config configs/session.yaml --overwrite
-soarm-studio calibrate --config configs/session.yaml --role leader
-soarm-studio calibrate --config configs/session.yaml --role follower
-soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+          <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
 
-          <h3 id="what-happens-internally">What happens internally</h3>
-          <ol>
-            <li>The Studio wrapper opens the selected role config.</li>
-            <li>The SDK records pre-calibration diagnostics.</li>
-            <li>Servo torque is disabled for manual movement.</li>
-            <li>You place the arm at physical zero and press Enter.</li>
-            <li>The SDK captures raw encoder ticks as <code class="inline">zero_tick</code>.</li>
-            <li>You sweep all joints through safe motion by hand.</li>
-            <li>The SDK samples at about 50 Hz and tracks raw min/max ticks.</li>
-            <li>The SDK writes updated <code class="inline">zero_tick</code>, <code class="inline">direction</code>, <code class="inline">min_rad</code>, and <code class="inline">max_rad</code>.</li>
-          </ol>
+          <h3 id="calibration-commands">Calibration commands</h3>
+          <p>
+            Calibrate one arm at a time. Start with the leader, finish the
+            prompt-driven flow, then repeat the same process for the follower.
+          </p>
+          <div class="code-title">
+            <span>Interactive calibration</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower</code></pre>
+
+          <h3 id="leader-terminal-walkthrough">Leader terminal walkthrough</h3>
+          <p>
+            After you start leader calibration, the command opens
+            <code class="inline">configs/arms/leader.yaml</code>, records
+            pre-calibration diagnostics, disables torque, and pauses at the
+            first prompt.
+          </p>
+          <div class="code-title">
+            <span>Start leader calibration</span>
+            <span>terminal</span>
+          </div>
+          <pre><code>$ soarm-studio calibrate --config configs/session.yaml --role leader
+Place every joint in the physical zero pose, then press Enter to record zero ticks: </code></pre>
+
+          <p>
+            At this prompt, move the leader arm by hand into the physical zero
+            pose. Align every joint deliberately, keep the arm still, then press
+            Enter once. The SDK reads the raw encoder ticks and saves them as
+            temporary <code class="inline">zero_tick</code> values for the sweep.
+          </p>
+
+          <div class="code-title">
+            <span>Range sweep prompt</span>
+            <span>terminal</span>
+          </div>
+          <pre><code>Freely sweep the full range of motion for each joint. Press Enter when done: </code></pre>
+
+          <p>
+            Now slowly move all leader joints through their safe usable range by
+            hand. Cover shoulder, elbow, wrist, and gripper travel without
+            forcing mechanical stops. When every joint has been exercised, stop
+            moving the arm and press Enter. The SDK computes the observed
+            min/max range for each joint and writes the calibrated values back
+            to <code class="inline">configs/arms/leader.yaml</code>.
+          </p>
+
+          <h3 id="completion-report">Completion report</h3>
+          <p>
+            When calibration finishes, SOARM Studio prints a JSON result. The
+            exact diagnostics depend on your hardware, but a successful run has
+            <code class="inline">ok: true</code>, the role, the config path, and
+            a report with zero ticks, sweep ranges, soft limits, and post-check
+            diagnostics.
+          </p>
+          <div class="code-title">
+            <span>Representative completed output</span>
+            <span>json</span>
+          </div>
+          <pre><code>{
+  "ok": true,
+  "role": "leader",
+  "results": [
+    {
+      "role": "leader",
+      "ok": true,
+      "config": "configs/arms/leader.yaml",
+      "report": [
+        "Pre-calibration status:",
+        "...",
+        "Calibration step 1/4: disabling servo torque for manual movement.",
+        "Calibration step 2/4: recording the physical zero pose.",
+        "  Zero ticks: shoulder_pan=2092, shoulder_lift=2053, ...",
+        "Calibration step 3/4: dynamic sweep of all joints.",
+        "  Noise filter: median window=3 | Limit margin: 0 ticks | Motion threshold: 100 ticks",
+        "  shoulder_pan: direction=+1 | raw=[770, 3410] ticks (range=2640) | safe=[-2.0325, 2.0586] rad",
+        "...",
+        "Calibration step 4/4: saved calibrated config to configs/arms/leader.yaml.",
+        "Post-calibration status:",
+        "..."
+      ]
+    }
+  ]
+}</code></pre>
+
+          <h3 id="repeat-and-verify">Repeat and verify</h3>
+          <p>
+            Repeat the same terminal flow with
+            <code class="inline">--role follower</code>. After both arms are
+            calibrated, run readiness check again as the handoff into
+            teleoperation.
+          </p>
+          <div class="code-title">
+            <span>Post-calibration verification</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
 
           <div class="callout warn">
             <span class="icon">!</span>
@@ -123,7 +219,11 @@ soarm-studio check --config configs/session.yaml --overwrite</code></pre>
         <h2>This section</h2>
         <p class="toc-current">Step 2 Calibration</p>
         <a href="#step-2">Overview</a>
-        <a href="#what-happens-internally">What happens internally</a>
+        <a href="#before-you-calibrate">Before you calibrate</a>
+        <a href="#calibration-commands">Calibration commands</a>
+        <a href="#leader-terminal-walkthrough">Leader terminal walkthrough</a>
+        <a href="#completion-report">Completion report</a>
+        <a href="#repeat-and-verify">Repeat and verify</a>
       </aside>
     </div>
   </body>
