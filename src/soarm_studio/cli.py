@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from .assignment import (
     DEFAULT_FOLLOWER_ARM_CONFIG,
@@ -163,16 +164,8 @@ def _add_camera_setup_args(parser: argparse.ArgumentParser) -> None:
 
 def _handle_scan(args) -> None:
     ports = detect_serial_ports(include_system=args.include_system)
-    payload: dict[str, object] = {
-        "ports": [port.to_dict() for port in ports],
-        "preferred_ports": [port.device for port in ports if port.preferred_for_connection],
-        "soarm_candidate_ports": [port.device for port in ports if port.soarm_candidate],
-        "cameras": [
-            camera.to_dict()
-            for camera in detect_camera_devices(max_devices=args.max_cameras, probe_opencv=False)
-        ],
-        "notes": _scan_notes(ports),
-    }
+    payload: dict[str, object] = {}
+    notes = _scan_notes(ports)
     if args.probe_arms:
         if not args.arm_config:
             raise SystemExit("--probe-arms requires --arm-config")
@@ -181,8 +174,11 @@ def _handle_scan(args) -> None:
         if not candidates:
             candidates = [port.device for port in ports if port.preferred_for_connection]
         payload["arm_probe"] = [
-            result.to_dict()
+            _compact_arm_probe(result.to_dict())
             for result in probe_soarm_ports(candidates, arm_config=args.arm_config, ids=ids)
+        ]
+        payload["preferred_ports"] = [
+            port.device for port in ports if port.preferred_for_connection
         ]
     if args.preview_cameras:
         try:
@@ -196,10 +192,35 @@ def _handle_scan(args) -> None:
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc)) from exc
-        payload["camera_previews"] = [preview.to_dict() for preview in previews]
-        notes = list(payload["notes"])
+        payload["camera_previews"] = [
+            _compact_camera_preview(preview.to_dict()) for preview in previews
+        ]
         notes.extend(_camera_preview_notes(previews))
-        payload["notes"] = notes
+    if not args.probe_arms and not args.preview_cameras:
+        payload.update(
+            {
+                "ports": [
+                    _compact_serial_port(port.to_dict())
+                    for port in ports
+                    if port.role_hint != "system"
+                ],
+                "ignored_ports": [
+                    _compact_ignored_port(port.to_dict())
+                    for port in ports
+                    if port.role_hint == "system"
+                ],
+                "preferred_ports": [port.device for port in ports if port.preferred_for_connection],
+                "soarm_candidate_ports": [port.device for port in ports if port.soarm_candidate],
+                "cameras": [
+                    _compact_camera(camera.to_dict())
+                    for camera in detect_camera_devices(
+                        max_devices=args.max_cameras,
+                        probe_opencv=False,
+                    )
+                ],
+            }
+        )
+    payload["notes"] = notes
     _print_json(payload)
 
 
@@ -219,8 +240,7 @@ def _handle_check(
     verification = hardware.verify_bindings()
     payload: dict[str, object] = {
         "bindings_ok": verification["ok"],
-        "verified_at": verification["verified_at"],
-        "bindings": verification["bindings"],
+        "bindings": _compact_bindings(verification["bindings"]),
     }
     if bindings_only:
         _print_json(payload)
@@ -228,7 +248,7 @@ def _handle_check(
 
     try:
         report = hardware.preflight(dataset_overwrite=overwrite)
-        payload["preflight"] = preflight_report_to_dict(report)
+        payload["preflight"] = _compact_preflight(preflight_report_to_dict(report))
         if include_status and report.ok:
             payload["status"] = hardware.read_status()
     finally:
@@ -239,30 +259,28 @@ def _handle_check(
 def _handle_assign(args) -> None:
     try:
         if args.assign_target == "arms":
-            _print_json(
-                assign_arm_roles(
-                    session_config=args.config,
-                    leader_port=args.leader_port,
-                    follower_port=args.follower_port,
-                    base_arm_config=args.base_arm_config,
-                    leader_arm_config=args.leader_arm_config,
-                    follower_arm_config=args.follower_arm_config,
-                    max_relative_target=args.max_relative_target,
-                )
+            result = assign_arm_roles(
+                session_config=args.config,
+                leader_port=args.leader_port,
+                follower_port=args.follower_port,
+                base_arm_config=args.base_arm_config,
+                leader_arm_config=args.leader_arm_config,
+                follower_arm_config=args.follower_arm_config,
+                max_relative_target=args.max_relative_target,
             )
+            _print_json(_compact_arm_assignment(result))
         elif args.assign_target == "cameras":
-            _print_json(
-                assign_camera_roles(
-                    session_config=args.config,
-                    wrist_index=args.wrist_index,
-                    third_person_index=args.third_person_index,
-                    width=args.width,
-                    height=args.height,
-                    fps=args.fps,
-                    backend=args.backend,
-                    use_detected_match=not args.no_detected_match,
-                )
+            result = assign_camera_roles(
+                session_config=args.config,
+                wrist_index=args.wrist_index,
+                third_person_index=args.third_person_index,
+                width=args.width,
+                height=args.height,
+                fps=args.fps,
+                backend=args.backend,
+                use_detected_match=not args.no_detected_match,
             )
+            _print_json(_compact_camera_assignment(result))
         else:
             raise AssertionError(args.assign_target)
     except (RuntimeError, ValueError) as exc:
@@ -328,6 +346,148 @@ def _handle_web(config: SessionConfig, *, host: str, port: int) -> None:
 
 def _print_json(data: dict) -> None:
     print(json.dumps(data, indent=2, sort_keys=True))
+
+
+def _compact_serial_port(port: dict[str, Any]) -> dict[str, Any]:
+    return _without_none(
+        {
+            "device": port.get("device"),
+            "serial_number": port.get("serial_number"),
+            "location": port.get("location"),
+            "vid": port.get("vid"),
+            "pid": port.get("pid"),
+            "product": port.get("product") or port.get("description"),
+            "preferred_for_connection": port.get("preferred_for_connection"),
+            "soarm_candidate": port.get("soarm_candidate"),
+            "notes": _non_empty(port.get("notes")),
+        }
+    )
+
+
+def _compact_ignored_port(port: dict[str, Any]) -> dict[str, Any]:
+    return _without_none(
+        {
+            "device": port.get("device"),
+            "role_hint": port.get("role_hint"),
+            "notes": _non_empty(port.get("notes")),
+        }
+    )
+
+
+def _compact_camera(camera: dict[str, Any]) -> dict[str, Any]:
+    return _without_none(
+        {
+            "name": camera.get("name"),
+            "location_id": camera.get("location_id"),
+            "usb_address": camera.get("usb_address"),
+            "vid": camera.get("vid"),
+            "pid": camera.get("pid"),
+            "opencv_index": camera.get("opencv_index"),
+            "notes": _non_empty(camera.get("notes")),
+        }
+    )
+
+
+def _compact_arm_probe(probe: dict[str, Any]) -> dict[str, Any]:
+    return _without_none(
+        {
+            "device": probe.get("device"),
+            "ok": probe.get("ok"),
+            "expected_ids": _non_empty(probe.get("expected_ids")),
+            "online_ids": _non_empty(probe.get("online_ids")),
+            "error": probe.get("error"),
+        }
+    )
+
+
+def _compact_camera_preview(preview: dict[str, Any]) -> dict[str, Any]:
+    return _without_none(
+        {
+            "index": preview.get("index"),
+            "ok": preview.get("ok"),
+            "backend": preview.get("backend"),
+            "path": preview.get("path"),
+            "width": preview.get("width"),
+            "height": preview.get("height"),
+            "error": preview.get("error"),
+        }
+    )
+
+
+def _compact_arm_assignment(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "session_config": result.get("session_config"),
+        "arm_configs": result.get("arm_configs", {}),
+        "warnings": result.get("warnings", []),
+    }
+
+
+def _compact_camera_assignment(result: dict[str, Any]) -> dict[str, Any]:
+    assigned = {}
+    for role, camera in dict(result.get("assigned") or {}).items():
+        assigned[role] = _without_none(
+            {
+                "device": camera.get("device"),
+                "backend": camera.get("backend"),
+                "width": camera.get("width"),
+                "height": camera.get("height"),
+                "fps": camera.get("fps"),
+                "match": camera.get("match") or None,
+            }
+        )
+    return {
+        "session_config": result.get("session_config"),
+        "assigned": assigned,
+        "warnings": result.get("warnings", []),
+    }
+
+
+def _compact_bindings(bindings: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    compact = {}
+    for key, binding in bindings.items():
+        compact[key] = _without_none(
+            {
+                "kind": binding.get("kind"),
+                "device": binding.get("device"),
+                "config": binding.get("config"),
+                "ok": binding.get("ok"),
+                "expected_ids": _non_empty(binding.get("expected_ids")),
+                "notes": _non_empty(binding.get("notes")),
+            }
+        )
+    return compact
+
+
+def _compact_preflight(report: dict[str, Any]) -> dict[str, Any]:
+    checks = list(report.get("checks") or [])
+    failed_checks = [
+        _without_none(
+            {
+                "name": check.get("name"),
+                "severity": check.get("severity"),
+                "detail": check.get("detail"),
+            }
+        )
+        for check in checks
+        if not check.get("ok")
+    ]
+    return {
+        "ok": report.get("ok"),
+        "state": report.get("state"),
+        "failed_checks": failed_checks,
+        "errors": report.get("errors", []),
+        "warnings": report.get("warnings", []),
+    }
+
+
+def _without_none(data: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if value is not None}
+
+
+def _non_empty(value):
+    if value in (None, (), [], {}):
+        return None
+    return value
 
 
 def _parse_ids(value: str) -> list[int]:
