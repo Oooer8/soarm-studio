@@ -186,6 +186,27 @@ main {
   font-size: 14px;
 }
 
+.toc a.toc-level-1 {
+  margin-top: 2px;
+}
+
+.toc a.toc-level-2 {
+  position: relative;
+  margin-left: 10px;
+  padding-left: 12px;
+  font-size: 13px;
+}
+
+.toc a.toc-level-2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 1px;
+  background: var(--border-strong);
+}
+
 .toc a:hover {
   color: var(--fg);
 }
