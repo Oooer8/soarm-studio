@@ -245,10 +245,111 @@ repeat only the affected pass. For example, if the arm ports still match but the
 camera roles are wrong, rerun camera preview and `setup cameras` instead of
 rewriting the arm configs.
 
-Then continue with the later workflow stages:
+After Step 1, continue to Step 2 calibration.
+
+## Pipeline Step 2: Calibration
+
+Step 2 calibrates each arm's physical zero pose and joint soft limits. It is an
+interactive read-only capture flow until the final config save: the program
+disables torque, you move the arm by hand, and the SDK records encoder ticks. It
+does not command the arm to move.
+
+Run calibration one arm at a time so the physical prompt is unambiguous:
 
 ```bash
-soarm-studio calibrate --config configs/session.yaml --role both
+soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower
+soarm-studio check --config configs/session.yaml --overwrite
+```
+
+`--role both` is available, but it simply runs leader then follower in one
+command. Separate commands are easier to operate and easier to recover from if
+one arm needs another sweep.
+
+Step 2 is complete when:
+
+- Both arm config files were updated:
+  - `configs/arms/leader.yaml`
+  - `configs/arms/follower.yaml`
+- Each joint has current `zero_tick`, `direction`, `min_rad`, and `max_rad`
+  values.
+- The command report has no unexpected errors. Under-excited joints are warnings
+  that mean the sweep did not move that joint far enough.
+- `soarm-studio check --config configs/session.yaml --overwrite` passes after
+  calibration.
+
+### 1. Pre-Check
+
+Always run `check` first. It verifies that the saved leader/follower ports still
+match detected hardware and that the runtime can read the arms and cameras.
+Calibration should not be used to diagnose wiring, port, or camera setup
+failures.
+
+```bash
+soarm-studio check --config configs/session.yaml --overwrite
+```
+
+### 2. Calibrate One Arm
+
+Start with one role:
+
+```bash
+soarm-studio calibrate --config configs/session.yaml --role leader
+```
+
+SOARM Studio loads the role from `configs/session.yaml`, opens that arm config,
+records pre-calibration diagnostics, and delegates to `soarm-sdk`
+`SOARM.calibrate()`. The calibrated values are written back to that same arm
+config file.
+
+### 3. Physical Zero Capture
+
+The SDK disables servo torque so the arm can be back-driven freely. Move every
+joint to the physical zero pose, then press Enter. The SDK reads the raw encoder
+position for every configured joint and saves those raw ticks as `zero_tick`.
+
+This is a capture step only. It does not infer the full joint range and it does
+not move the hardware.
+
+### 4. Continuous Range Sweep
+
+After zero capture, the SDK starts a background recorder for all joints at the
+same time. Freely move the arm through the safe range you want available during
+operation, then press Enter to stop.
+
+During this sweep:
+
+- All joints are tracked concurrently.
+- Raw encoder ticks are sampled at about 50 Hz.
+- A median filter with window `3` reduces single-sample glitches.
+- The existing configured joint `direction` is preserved.
+- The observed raw min/max ticks are converted into calibrated `min_rad` and
+  `max_rad`.
+- A joint is marked under-excited when its observed range is below `100` ticks.
+
+If a joint is under-excited, rerun calibration for that arm and deliberately
+move that joint through more of its safe range.
+
+### 5. Save And Re-Check
+
+At the end, the SDK rebuilds the calibrated config, refreshes safety and motion
+objects, and saves the result back to:
+
+- `configs/arms/leader.yaml` for `--role leader`
+- `configs/arms/follower.yaml` for `--role follower`
+
+Then run:
+
+```bash
+soarm-studio check --config configs/session.yaml --overwrite
+```
+
+Only continue to teleop or recording after this check passes.
+
+After calibration, continue with the later workflow stages:
+
+```bash
 soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
 soarm-studio record \
   --config configs/session.yaml \
