@@ -28,6 +28,9 @@ class Arm(Protocol):
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
+        mode: str = "arrival",
+        tracking_kp: float = 8.0,
+        tracking_feedforward: float = 1.0,
     ) -> "JointStream": ...
 
     def stop(self) -> None: ...
@@ -73,6 +76,7 @@ class MockArm:
         self.emergency_stopped = False
         self._started_at = time.monotonic()
         self._positions = {name: 0.0 for name in joint_names}
+        self.last_stream_options: dict[str, object] | None = None
 
     def connect(self) -> None:
         self.connected = True
@@ -108,8 +112,19 @@ class MockArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
+        mode: str = "arrival",
+        tracking_kp: float = 8.0,
+        tracking_feedforward: float = 1.0,
     ) -> JointStream:
         self._require_connected()
+        self.last_stream_options = {
+            "output_hz": output_hz,
+            "target_timeout_s": target_timeout_s,
+            "joint_names": joint_names,
+            "mode": mode,
+            "tracking_kp": tracking_kp,
+            "tracking_feedforward": tracking_feedforward,
+        }
         return MockJointStream(self)
 
     def stop(self) -> None:
@@ -177,12 +192,18 @@ class SOARMArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
+        mode: str = "arrival",
+        tracking_kp: float = 8.0,
+        tracking_feedforward: float = 1.0,
     ) -> JointStream:
         return SOARMJointStream(
             self._arm.start_joint_stream(
                 output_hz=output_hz,
                 target_timeout_s=target_timeout_s,
                 joint_names=joint_names,
+                mode=mode,
+                tracking_kp=tracking_kp,
+                tracking_feedforward=tracking_feedforward,
             )
         )
 

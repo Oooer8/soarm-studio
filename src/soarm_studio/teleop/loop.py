@@ -24,6 +24,9 @@ class TeleopLoop:
         sync_start: bool = True,
         stream_output_hz: float | None = None,
         stream_target_timeout_s: float | None = None,
+        stream_mode: str = "tracking",
+        stream_tracking_kp: float = 8.0,
+        stream_tracking_feedforward: float = 1.0,
     ) -> None:
         self.leader = leader
         self.follower = follower
@@ -42,6 +45,9 @@ class TeleopLoop:
             if stream_target_timeout_s is None
             else float(stream_target_timeout_s)
         )
+        self.stream_mode = str(stream_mode)
+        self.stream_tracking_kp = float(stream_tracking_kp)
+        self.stream_tracking_feedforward = float(stream_tracking_feedforward)
         self.paused = False
         self.metrics = LoopMetrics(target_hz=hz)
         self._stream: JointStream | None = None
@@ -176,6 +182,9 @@ class TeleopLoop:
                 output_hz=self.stream_output_hz,
                 target_timeout_s=self.stream_target_timeout_s,
                 joint_names=self.joint_names,
+                mode=self.stream_mode,
+                tracking_kp=self.stream_tracking_kp,
+                tracking_feedforward=self.stream_tracking_feedforward,
             )
         return self._stream
 

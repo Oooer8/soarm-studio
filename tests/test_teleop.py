@@ -72,3 +72,23 @@ def test_teleop_run_syncs_start_and_stops_stream() -> None:
     assert metrics.iterations == 1
     assert follower.read_joints().positions == {"a": 1.0, "b": -1.0}
     assert loop._stream is None
+
+
+def test_teleop_loop_uses_tracking_stream_by_default() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+    )
+    loop.step()
+
+    assert follower.last_stream_options is not None
+    assert follower.last_stream_options["mode"] == "tracking"
+    assert follower.last_stream_options["tracking_kp"] == 8.0
