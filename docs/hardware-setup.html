@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs: Step 1 Hardware setup</title>
+    <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta property="og:title" content="SOARM Studio Docs: Step 1 Hardware setup" />
+    <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/hardware-setup.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/docs.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a href="index.html" aria-current="page">Docs</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="search" aria-label="Search placeholder">
+        <span>Search documentation...</span>
+        <kbd>/</kbd>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a href="index.html">Introduction</a>
+          <a href="installation.html">Installation</a>
+          <a href="quickstart.html">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="architecture.html">Architecture</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="images-and-video.html">Images and video</a>
+          <a href="publishing.html">Publishing</a>
+        </div>
+        <div class="side-section">
+          <h2>Setup Guide</h2>
+          <a class="active" aria-current="page" href="hardware-setup.html">Step 1 Hardware setup</a>
+          <a href="calibration.html">Step 2 Calibration</a>
+          <a href="teleoperation.html">Teleoperation</a>
+          <a href="recording.html">Recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a href="cli-reference.html">CLI reference</a>
+          <a href="generated-files.html">Generated files</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> Step 1 Hardware setup</div>
+
+        <section id="step-1" class="doc-page">
+          <h1>Step 1 Hardware setup</h1>
+          <p>
+            Step 1 discovers local hardware, assigns roles, and writes the
+            runtime config. It stops before calibration or motion.
+          </p>
+          <div class="step-list">
+            <article class="step">
+              <div>
+                <h3 id="scan-hardware">Scan hardware</h3>
+                <p>List serial ports and USB camera inventory.</p>
+                <pre><code>soarm-studio scan --include-system</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3 id="probe-arms">Probe arms</h3>
+                <p>Probe one bus at a time when ports are ambiguous.</p>
+                <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3 id="setup-arm-roles">Setup arm roles</h3>
+                <p>Save explicit leader and follower ports.</p>
+                <pre><code>soarm-studio setup arms \
+  --leader-port /dev/cu.usbmodemLEADER \
+  --follower-port /dev/cu.usbmodemFOLLOWER \
+  --base-arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3 id="preview-cameras">Preview cameras</h3>
+                <p>Inspect saved frames before assigning wrist and third-person.</p>
+                <pre><code>soarm-studio scan --preview-cameras \
+  --camera-indices 0,1,2,3 \
+  --backend avfoundation \
+  --output-dir previews/cameras</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3 id="setup-camera-roles">Setup camera roles</h3>
+                <p>Save indexes confirmed from preview images.</p>
+                <pre><code>soarm-studio setup cameras \
+  --backend avfoundation \
+  --wrist-index 1 \
+  --third-person-index 0</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3 id="check-readiness">Check readiness</h3>
+                <p>Verify bindings and run live readiness checks.</p>
+                <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="publishing.html"><span>Previous</span>Publishing</a>
+          <a href="calibration.html"><span>Next</span>Step 2 Calibration</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="This section">
+        <h2>This section</h2>
+        <p class="toc-current">Step 1 Hardware setup</p>
+        <a href="#step-1">Overview</a>
+        <a href="#scan-hardware">Scan hardware</a>
+        <a href="#probe-arms">Probe arms</a>
+        <a href="#setup-arm-roles">Setup arm roles</a>
+        <a href="#preview-cameras">Preview cameras</a>
+        <a href="#setup-camera-roles">Setup camera roles</a>
+        <a href="#check-readiness">Check readiness</a>
+      </aside>
+    </div>
+  </body>
+</html>

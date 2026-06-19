@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs</title>
+    <title>SOARM Studio Docs: Step 2 Calibration</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs" />
+    <meta property="og:title" content="SOARM Studio Docs: Step 2 Calibration" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/index.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/calibration.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="assets/docs.css" />
@@ -43,7 +43,7 @@
       <aside class="sidebar" aria-label="Documentation">
         <div class="side-section">
           <h2>Getting Started</h2>
-          <a class="active" aria-current="page" href="index.html">Introduction</a>
+          <a href="index.html">Introduction</a>
           <a href="installation.html">Installation</a>
           <a href="quickstart.html">Quickstart</a>
         </div>
@@ -57,7 +57,7 @@
         <div class="side-section">
           <h2>Setup Guide</h2>
           <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
+          <a class="active" aria-current="page" href="calibration.html">Step 2 Calibration</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
         </div>
@@ -70,66 +70,60 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Introduction</div>
+        <div class="crumbs">Docs <span>/</span> Step 2 Calibration</div>
 
-        <section id="introduction" class="doc-page">
-          <h1>SOARM Studio documentation</h1>
-          <p class="lead">
-            SOARM Studio is the application layer for dual SOARM bring-up,
-            calibration, teleoperation, and local data collection. It keeps the
-            user workflow clear while delegating low-level arm behavior to
-            <code class="inline">soarm-sdk</code>.
+        <section id="step-2" class="doc-page">
+          <h1>Step 2 Calibration</h1>
+          <p>
+            Calibration captures physical zero first, then continuously records
+            joint min/max while you move the arm by hand. The program disables
+            torque and reads encoders; it does not command motion.
           </p>
+          <div class="code-title">
+            <span>Recommended calibration sequence</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower
+soarm-studio check --config configs/session.yaml --overwrite</code></pre>
 
-          <div class="callout">
-            <span class="icon">i</span>
+          <h3 id="what-happens-internally">What happens internally</h3>
+          <ol>
+            <li>The Studio wrapper opens the selected role config.</li>
+            <li>The SDK records pre-calibration diagnostics.</li>
+            <li>Servo torque is disabled for manual movement.</li>
+            <li>You place the arm at physical zero and press Enter.</li>
+            <li>The SDK captures raw encoder ticks as <code class="inline">zero_tick</code>.</li>
+            <li>You sweep all joints through safe motion by hand.</li>
+            <li>The SDK samples at about 50 Hz and tracks raw min/max ticks.</li>
+            <li>The SDK writes updated <code class="inline">zero_tick</code>, <code class="inline">direction</code>, <code class="inline">min_rad</code>, and <code class="inline">max_rad</code>.</li>
+          </ol>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
             <div>
-              <strong>README vs docs</strong>
+              <strong>Under-excited joints</strong>
               <p>
-                The README is a short project entry point. These docs are the
-                detailed operating manual for installation, concepts, hardware
-                setup, calibration, recording, media examples, and
-                troubleshooting.
+                A joint with less than 100 ticks of observed motion is reported
+                as under-excited. Re-run calibration for that arm and move that
+                joint through more of its safe range.
               </p>
             </div>
-          </div>
-
-          <div class="cards">
-            <article class="card">
-              <h3 id="recommended-command-path">Recommended command path</h3>
-              <p>
-                Use <code class="inline">scan</code>,
-                <code class="inline">setup</code>,
-                <code class="inline">check</code>,
-                <code class="inline">calibrate</code>,
-                <code class="inline">teleop</code>, and
-                <code class="inline">record</code>. Older duplicate command
-                shapes were removed from the public CLI.
-              </p>
-            </article>
-            <article class="card">
-              <h3 id="one-generated-runtime-config">One generated runtime config</h3>
-              <p>
-                <code class="inline">configs/session.yaml</code> is the local
-                runtime config for one machine. Example configs remain templates
-                under <code class="inline">configs/sessions/</code>.
-              </p>
-            </article>
           </div>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="https://github.com/Oooer8/soarm-studio#readme"><span>Project</span>README</a>
-          <a href="installation.html"><span>Next</span>Installation</a>
+          <a href="hardware-setup.html"><span>Previous</span>Step 1 Hardware setup</a>
+          <a href="teleoperation.html"><span>Next</span>Teleoperation</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Introduction</p>
-        <a href="#introduction">Overview</a>
-        <a href="#recommended-command-path">Recommended command path</a>
-        <a href="#one-generated-runtime-config">One generated runtime config</a>
+        <p class="toc-current">Step 2 Calibration</p>
+        <a href="#step-2">Overview</a>
+        <a href="#what-happens-internally">What happens internally</a>
       </aside>
     </div>
   </body>

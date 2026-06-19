@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs</title>
+    <title>SOARM Studio Docs: Quickstart</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs" />
+    <meta property="og:title" content="SOARM Studio Docs: Quickstart" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/index.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/quickstart.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="assets/docs.css" />
@@ -43,9 +43,9 @@
       <aside class="sidebar" aria-label="Documentation">
         <div class="side-section">
           <h2>Getting Started</h2>
-          <a class="active" aria-current="page" href="index.html">Introduction</a>
+          <a href="index.html">Introduction</a>
           <a href="installation.html">Installation</a>
-          <a href="quickstart.html">Quickstart</a>
+          <a class="active" aria-current="page" href="quickstart.html">Quickstart</a>
         </div>
         <div class="side-section">
           <h2>Core Concepts</h2>
@@ -70,66 +70,44 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Introduction</div>
+        <div class="crumbs">Docs <span>/</span> Quickstart</div>
 
-        <section id="introduction" class="doc-page">
-          <h1>SOARM Studio documentation</h1>
-          <p class="lead">
-            SOARM Studio is the application layer for dual SOARM bring-up,
-            calibration, teleoperation, and local data collection. It keeps the
-            user workflow clear while delegating low-level arm behavior to
-            <code class="inline">soarm-sdk</code>.
+        <section id="quickstart" class="doc-page">
+          <h1>Quickstart</h1>
+          <p>
+            The full hardware path is staged. Do not skip directly to teleop or
+            recording. Bring up hardware first, calibrate next, then do free
+            motion tests and dataset capture.
           </p>
-
-          <div class="callout">
-            <span class="icon">i</span>
-            <div>
-              <strong>README vs docs</strong>
-              <p>
-                The README is a short project entry point. These docs are the
-                detailed operating manual for installation, concepts, hardware
-                setup, calibration, recording, media examples, and
-                troubleshooting.
-              </p>
-            </div>
+          <div class="code-title">
+            <span>End-to-end command outline</span>
+            <span>zsh</span>
           </div>
-
-          <div class="cards">
-            <article class="card">
-              <h3 id="recommended-command-path">Recommended command path</h3>
-              <p>
-                Use <code class="inline">scan</code>,
-                <code class="inline">setup</code>,
-                <code class="inline">check</code>,
-                <code class="inline">calibrate</code>,
-                <code class="inline">teleop</code>, and
-                <code class="inline">record</code>. Older duplicate command
-                shapes were removed from the public CLI.
-              </p>
-            </article>
-            <article class="card">
-              <h3 id="one-generated-runtime-config">One generated runtime config</h3>
-              <p>
-                <code class="inline">configs/session.yaml</code> is the local
-                runtime config for one machine. Example configs remain templates
-                under <code class="inline">configs/sessions/</code>.
-              </p>
-            </article>
-          </div>
+          <pre><code>soarm-studio scan --include-system
+soarm-studio setup arms \
+  --leader-port /dev/cu.usbmodemLEADER \
+  --follower-port /dev/cu.usbmodemFOLLOWER \
+  --base-arm-config ../soarm-sdk/configs/soarm.yaml
+soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
+soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
+soarm-studio check --overwrite
+soarm-studio calibrate --role leader
+soarm-studio calibrate --role follower
+soarm-studio check --overwrite
+soarm-studio teleop --free-test --seconds 5
+soarm-studio record --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite</code></pre>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="https://github.com/Oooer8/soarm-studio#readme"><span>Project</span>README</a>
-          <a href="installation.html"><span>Next</span>Installation</a>
+          <a href="installation.html"><span>Previous</span>Installation</a>
+          <a href="architecture.html"><span>Next</span>Architecture</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Introduction</p>
-        <a href="#introduction">Overview</a>
-        <a href="#recommended-command-path">Recommended command path</a>
-        <a href="#one-generated-runtime-config">One generated runtime config</a>
+        <p class="toc-current">Quickstart</p>
+        <a href="#quickstart">Overview</a>
       </aside>
     </div>
   </body>

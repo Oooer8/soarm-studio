@@ -23,7 +23,8 @@ site:
 
 - [SOARM Studio Docs](https://oooer8.github.io/soarm-studio/)
 
-For local development, the same page lives at `docs/index.html`.
+For local development, the static docs site starts at `docs/index.html`, with
+each documentation section published as its own HTML page.
 
 The docs site is designed for GitHub Pages and can later host images, videos,
 code blocks, diagrams, and hardware walkthrough media under `docs/assets/`.

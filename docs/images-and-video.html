@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs</title>
+    <title>SOARM Studio Docs: Images and video</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs" />
+    <meta property="og:title" content="SOARM Studio Docs: Images and video" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/index.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/images-and-video.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="assets/docs.css" />
@@ -43,7 +43,7 @@
       <aside class="sidebar" aria-label="Documentation">
         <div class="side-section">
           <h2>Getting Started</h2>
-          <a class="active" aria-current="page" href="index.html">Introduction</a>
+          <a href="index.html">Introduction</a>
           <a href="installation.html">Installation</a>
           <a href="quickstart.html">Quickstart</a>
         </div>
@@ -51,7 +51,7 @@
           <h2>Core Concepts</h2>
           <a href="architecture.html">Architecture</a>
           <a href="configuration.html">Configuration</a>
-          <a href="images-and-video.html">Images and video</a>
+          <a class="active" aria-current="page" href="images-and-video.html">Images and video</a>
           <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
@@ -70,66 +70,56 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Introduction</div>
+        <div class="crumbs">Docs <span>/</span> Images and video</div>
 
-        <section id="introduction" class="doc-page">
-          <h1>SOARM Studio documentation</h1>
-          <p class="lead">
-            SOARM Studio is the application layer for dual SOARM bring-up,
-            calibration, teleoperation, and local data collection. It keeps the
-            user workflow clear while delegating low-level arm behavior to
-            <code class="inline">soarm-sdk</code>.
+        <section id="media" class="doc-page">
+          <h1>Images, video, and code examples</h1>
+          <p>
+            The docs site is ready for future hardware photos, camera previews,
+            calibration videos, dataset screenshots, and longer code examples.
+            Keep media under <code class="inline">docs/assets/</code>.
           </p>
-
-          <div class="callout">
-            <span class="icon">i</span>
-            <div>
-              <strong>README vs docs</strong>
-              <p>
-                The README is a short project entry point. These docs are the
-                detailed operating manual for installation, concepts, hardware
-                setup, calibration, recording, media examples, and
-                troubleshooting.
-              </p>
+          <div class="media-grid">
+            <div class="media-slot">
+              <div>
+                <strong>Image slot</strong>
+                <p>Use for camera previews, cable labels, and setup photos.</p>
+                <code>docs/assets/images/step-1-preview.jpg</code>
+              </div>
+            </div>
+            <div class="media-slot">
+              <div>
+                <strong>Video slot</strong>
+                <p>Use for calibration zero pose and continuous sweep demos.</p>
+                <code>docs/assets/videos/calibration-sweep.mp4</code>
+              </div>
             </div>
           </div>
-
-          <div class="cards">
-            <article class="card">
-              <h3 id="recommended-command-path">Recommended command path</h3>
-              <p>
-                Use <code class="inline">scan</code>,
-                <code class="inline">setup</code>,
-                <code class="inline">check</code>,
-                <code class="inline">calibrate</code>,
-                <code class="inline">teleop</code>, and
-                <code class="inline">record</code>. Older duplicate command
-                shapes were removed from the public CLI.
-              </p>
-            </article>
-            <article class="card">
-              <h3 id="one-generated-runtime-config">One generated runtime config</h3>
-              <p>
-                <code class="inline">configs/session.yaml</code> is the local
-                runtime config for one machine. Example configs remain templates
-                under <code class="inline">configs/sessions/</code>.
-              </p>
-            </article>
+          <div class="code-title">
+            <span>Media markup template</span>
+            <span>html</span>
           </div>
+          <pre><code>&lt;figure&gt;
+  &lt;img src="assets/images/step-1-preview.jpg" alt="Camera preview showing wrist and third-person views" /&gt;
+  &lt;figcaption&gt;Preview images are the source of truth for camera roles.&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;figure&gt;
+  &lt;video controls src="assets/videos/calibration-sweep.mp4"&gt;&lt;/video&gt;
+  &lt;figcaption&gt;Move the arm by hand while the SDK records min/max ticks.&lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="https://github.com/Oooer8/soarm-studio#readme"><span>Project</span>README</a>
-          <a href="installation.html"><span>Next</span>Installation</a>
+          <a href="configuration.html"><span>Previous</span>Configuration</a>
+          <a href="publishing.html"><span>Next</span>Publishing</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Introduction</p>
-        <a href="#introduction">Overview</a>
-        <a href="#recommended-command-path">Recommended command path</a>
-        <a href="#one-generated-runtime-config">One generated runtime config</a>
+        <p class="toc-current">Images and video</p>
+        <a href="#media">Overview</a>
       </aside>
     </div>
   </body>
