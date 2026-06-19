@@ -136,41 +136,79 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
 
           <h3 id="completion-report">输出与排查</h3>
           <p>
-            成功时，结果中会包含 <code class="inline">ok: true</code>、角色、
-            配置路径、零位 tick、扫描范围和保存路径。失败时先看
-            <code class="inline">error</code> 和报告里的 failed summary：
+            默认输出面向现场操作：先提示当前角色和交互步骤，完成后汇总配置路径、
+            零位 tick、扫描范围、复查结果和下一步命令。下面是一组成功标定示例；
+            端口、tick 和 safe 范围会随本机硬件和机械臂姿态变化。
+          </p>
+          <details class="cli-result">
+            <summary>查看主臂成功输出</summary>
+            <pre><code>标定机械臂: 主臂
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+主臂: 关闭扭矩，进入手动标定。
+主臂: 请按提示摆放物理零位。
+Place every joint in the physical zero pose, then press Enter to record zero ticks:
+主臂: 零位已记录。
+主臂: 请按提示扫过安全运动范围。
+Freely sweep the full range of motion for each joint. Press Enter when done:
+主臂: 配置已保存。
+hardware: disconnecting; closing the Feetech servo port.
+
+标定结果: 成功 (主臂)
+- 主臂: 通过
+  配置: configs/arms/leader.yaml
+  零位: shoulder_pan=2050, shoulder_lift=2139, elbow_flex=2039, wrist_flex=1938, wrist_roll=1977, gripper=2046
+  扫描范围:
+    shoulder_pan: 2653 ticks, safe=[-1.9328, 2.1368] rad
+    shoulder_lift: 2381 ticks, safe=[-1.6843, 1.9681] rad
+    elbow_flex: 2196 ticks, safe=[-1.8592, 1.5094] rad
+    wrist_flex: 2327 ticks, safe=[-1.9512, 1.6183] rad
+    wrist_roll: 3792 ticks, safe=[-3.0097, 2.8072] rad
+    gripper: 1263 ticks, safe=[-0.0015, 1.9359] rad
+  复查: 通过
+  建议:
+    下一步: soarm-studio calibrate --config configs/session.yaml --role follower
+
+调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+          </details>
+
+          <details class="cli-result">
+            <summary>查看从臂成功输出</summary>
+            <pre><code>标定机械臂: 从臂
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+从臂: 关闭扭矩，进入手动标定。
+从臂: 请按提示摆放物理零位。
+Place every joint in the physical zero pose, then press Enter to record zero ticks:
+从臂: 零位已记录。
+从臂: 请按提示扫过安全运动范围。
+Freely sweep the full range of motion for each joint. Press Enter when done:
+从臂: 配置已保存。
+hardware: disconnecting; closing the Feetech servo port.
+
+标定结果: 成功 (从臂)
+- 从臂: 通过
+  配置: configs/arms/follower.yaml
+  零位: shoulder_pan=2089, shoulder_lift=2134, elbow_flex=1998, wrist_flex=1972, wrist_roll=2069, gripper=2048
+  扫描范围:
+    shoulder_pan: 2667 ticks, safe=[-2.0233, 2.0678] rad
+    shoulder_lift: 2386 ticks, safe=[-1.7073, 1.9528] rad
+    elbow_flex: 2211 ticks, safe=[-1.7242, 1.6674] rad
+    wrist_flex: 2409 ticks, safe=[-1.8285, 1.8669] rad
+    wrist_roll: 3882 ticks, safe=[-2.9606, 2.9943] rad
+    gripper: 1494 ticks, safe=[-0.0169, 2.2749] rad
+  复查: 通过
+  建议:
+    下一步: soarm-studio check --config configs/session.yaml --overwrite
+
+调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+          </details>
+
+          <p>
+            失败时先看摘要里的“复查”和“建议”；需要专业诊断时再加
+            <code class="inline">--verbose</code> 查看完整报告，或加
+            <code class="inline">--json</code> 导出机器可读结果。
             通信失败通常检查串口、电源、总线和 ID；电压失败先确认该机械臂的实际供电档位和
             <code class="inline">low_voltage</code> 阈值是否匹配。
           </p>
-          <div class="code-title">
-            <span>代表性完成输出</span>
-            <span>json</span>
-          </div>
-          <pre><code>{
-  "ok": true,
-  "role": "leader",
-  "results": [
-    {
-      "role": "leader",
-      "ok": true,
-      "config": "configs/arms/leader.yaml",
-      "report": [
-        "Pre-calibration status:",
-        "...",
-        "Calibration step 1/4: disabling servo torque for manual movement.",
-        "Calibration step 2/4: recording the physical zero pose.",
-        "  Zero ticks: shoulder_pan=2092, shoulder_lift=2053, ...",
-        "Calibration step 3/4: dynamic sweep of all joints.",
-        "  Noise filter: median window=3 | Limit margin: 0 ticks | Motion threshold: 100 ticks",
-        "  shoulder_pan: direction=+1 | raw=[770, 3410] ticks (range=2640) | safe=[-2.0325, 2.0586] rad",
-        "...",
-        "Calibration step 4/4: saved calibrated config to configs/arms/leader.yaml.",
-        "Post-calibration status:",
-        "..."
-      ]
-    }
-  ]
-}</code></pre>
 
           <div class="callout warn">
             <span class="icon">!</span>
@@ -183,6 +221,56 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
               </p>
             </div>
           </div>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+          </div>
+          <details class="cli-result">
+            <summary>查看复查成功输出</summary>
+            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.
+{
+  "bindings_ok": true,
+  "bindings": {
+    "leader": {
+      "kind": "arm",
+      "device": "/dev/cu.usbmodem5A7C1219051",
+      "config": "configs/arms/leader.yaml",
+      "ok": true,
+      "expected_ids": [1, 2, 3, 4, 5, 6]
+    },
+    "follower": {
+      "kind": "arm",
+      "device": "/dev/cu.usbmodem5A7C1190351",
+      "config": "configs/arms/follower.yaml",
+      "ok": true,
+      "expected_ids": [1, 2, 3, 4, 5, 6]
+    },
+    "camera:third_person": {
+      "kind": "camera",
+      "device": 0,
+      "ok": true
+    },
+    "camera:wrist": {
+      "kind": "camera",
+      "device": 1,
+      "ok": true
+    }
+  },
+  "preflight": {
+    "ok": true,
+    "state": "STATUS_OK",
+    "failed_checks": [],
+    "errors": [],
+    "warnings": []
+  }
+}</code></pre>
+          </details>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
