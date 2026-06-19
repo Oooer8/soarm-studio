@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Step 1 Hardware setup</title>
+    <title>SOARM Studio Docs: Hardware setup</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Step 1 Hardware setup" />
+    <meta property="og:title" content="SOARM Studio Docs: Hardware setup" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -55,8 +55,8 @@
           <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
-          <h2>Setup Guide</h2>
-          <a class="active" aria-current="page" href="hardware-setup.html">Step 1 Hardware setup</a>
+          <h2>TUTORIALS</h2>
+          <a class="active" aria-current="page" href="hardware-setup.html">Hardware setup</a>
           <a href="calibration.html">Step 2 Calibration</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="recording.html">Recording</a>
@@ -70,66 +70,269 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Step 1 Hardware setup</div>
+        <div class="crumbs">Docs <span>/</span> Hardware setup</div>
 
-        <section id="step-1" class="doc-page">
-          <h1>Step 1 Hardware setup</h1>
+        <section id="hardware-setup" class="doc-page">
+          <h1>Hardware setup</h1>
           <p>
-            Step 1 discovers local hardware, assigns roles, and writes the
-            runtime config. It stops before calibration or motion.
+            在开始标定前，我们需要先查找好机械臂和相机的串口，绑定并且设置好配置。
           </p>
-          <div class="step-list">
-            <article class="step">
-              <div>
-                <h3 id="scan-hardware">Scan hardware</h3>
-                <p>List serial ports and USB camera inventory.</p>
+
+          <p>这一步前置工作：</p>
+          <ul>
+            <li>机械臂所有电机编好号</li>
+            <li>组装好机械臂，并且连接好电源和信号线</li>
+            <li>连接好摄像头信号线</li>
+            <li>布置好操作场景</li>
+          </ul>
+
+          <div class="tutorial-steps">
+            <section class="tutorial-step">
+              <h2 id="scan-hardware">扫描硬件</h2>
+              <p>扫描当前机器可见的机械臂串口和 USB 摄像头，只保留后续绑定需要关注的字段。</p>
+              <div class="cli-block">
+                <div class="cli-toolbar">
+                  <span>CLI</span>
+                  <button class="copy-button" type="button">Copy</button>
+                </div>
                 <pre><code>soarm-studio scan --include-system</code></pre>
               </div>
-            </article>
-            <article class="step">
-              <div>
-                <h3 id="probe-arms">Probe arms</h3>
-                <p>Probe one bus at a time when ports are ambiguous.</p>
-                <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
-              </div>
-            </article>
-            <article class="step">
-              <div>
-                <h3 id="setup-arm-roles">Setup arm roles</h3>
-                <p>Save explicit leader and follower ports.</p>
-                <pre><code>soarm-studio setup arms \
+              <details class="cli-result">
+                <summary>查看精简结果</summary>
+                <pre><code>{
+  "cameras": [
+    {
+      "name": "DSJ-2062-309",
+      "location_id": "0x00110000",
+      "usb_address": 3,
+      "vid": "0x0c45",
+      "pid": "0x64ab"
+    },
+    {
+      "name": "DSJ-2062-309",
+      "location_id": "0x00120000",
+      "usb_address": 4,
+      "vid": "0x0c45",
+      "pid": "0x64ab"
+    }
+  ],
+  "ports": [
+    {
+      "device": "/dev/cu.usbmodem5A7C1190351",
+      "serial_number": "5A7C119035",
+      "location": "0-1.4",
+      "preferred_for_connection": true,
+      "soarm_candidate": true
+    },
+    {
+      "device": "/dev/cu.usbmodem5A7C1219051",
+      "serial_number": "5A7C121905",
+      "location": "0-1.3",
+      "preferred_for_connection": true,
+      "soarm_candidate": true
+    }
+  ],
+  "preferred_ports": [
+    "/dev/cu.usbmodem5A7C1190351",
+    "/dev/cu.usbmodem5A7C1219051"
+  ],
+  "notes": [
+    "Use /dev/cu.* on macOS for SOARM arm ports.",
+    "Multiple serial ports were found; label the hub ports or cables before saving roles."
+  ]
+}</code></pre>
+              </details>
+            </section>
+
+            <section class="tutorial-step">
+              <h2 id="arm-setup">机械臂 setup</h2>
+              <ol class="command-steps">
+                <li>
+                  <h3 id="probe-arms">Probe arms</h3>
+                  <p>两个串口都出现时，先确认每个端口是否能读到机械臂电机。</p>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">Copy</button>
+                    </div>
+                    <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
+                  </div>
+                  <details class="cli-result">
+                    <summary>查看精简结果</summary>
+                    <pre><code>{
+  "arm_probe": [
+    {
+      "device": "/dev/cu.usbmodem5A7C1190351",
+      "ok": false,
+      "online_ids": [],
+      "error": "soarm-sdk is not importable: No module named 'soarm'"
+    },
+    {
+      "device": "/dev/cu.usbmodem5A7C1219051",
+      "ok": false,
+      "online_ids": [],
+      "error": "soarm-sdk is not importable: No module named 'soarm'"
+    }
+  ],
+  "preferred_ports": [
+    "/dev/cu.usbmodem5A7C1190351",
+    "/dev/cu.usbmodem5A7C1219051"
+  ]
+}</code></pre>
+                  </details>
+                </li>
+                <li>
+                  <h3 id="setup-arm-roles">Setup arm roles</h3>
+                  <p>将确认过的 leader/follower 串口写入本机运行配置。</p>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">Copy</button>
+                    </div>
+                    <pre><code>soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
   --follower-port /dev/cu.usbmodemFOLLOWER \
   --base-arm-config ../soarm-sdk/configs/soarm.yaml</code></pre>
-              </div>
-            </article>
-            <article class="step">
-              <div>
-                <h3 id="preview-cameras">Preview cameras</h3>
-                <p>Inspect saved frames before assigning wrist and third-person.</p>
-                <pre><code>soarm-studio scan --preview-cameras \
+                  </div>
+                  <details class="cli-result">
+                    <summary>查看精简结果</summary>
+                    <pre><code>{
+  "session_config": "configs/session.yaml",
+  "arm_configs": {
+    "leader": "configs/arms/leader.yaml",
+    "follower": "configs/arms/follower.yaml"
+  },
+  "warnings": [
+    "Arm configs were copied from a base config; calibrate leader and follower separately before real motion."
+  ]
+}</code></pre>
+                  </details>
+                </li>
+              </ol>
+            </section>
+
+            <section class="tutorial-step">
+              <h2 id="camera-setup">摄像头 setup</h2>
+              <ol class="command-steps">
+                <li>
+                  <h3 id="preview-cameras">Preview cameras</h3>
+                  <p>保存预览图，用图片内容确认 OpenCV index 和物理摄像头位置。</p>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">Copy</button>
+                    </div>
+                    <pre><code>soarm-studio scan --preview-cameras \
   --camera-indices 0,1,2,3 \
   --backend avfoundation \
   --output-dir previews/cameras</code></pre>
-              </div>
-            </article>
-            <article class="step">
-              <div>
-                <h3 id="setup-camera-roles">Setup camera roles</h3>
-                <p>Save indexes confirmed from preview images.</p>
-                <pre><code>soarm-studio setup cameras \
+                  </div>
+                  <details class="cli-result">
+                    <summary>查看精简结果</summary>
+                    <pre><code>{
+  "camera_previews": [
+    {
+      "index": 0,
+      "ok": true,
+      "backend": "avfoundation",
+      "path": "previews/cameras/camera_0.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "index": 1,
+      "ok": true,
+      "backend": "avfoundation",
+      "path": "previews/cameras/camera_1.jpg",
+      "width": 640,
+      "height": 480
+    }
+  ],
+  "notes": [
+    "Inspect the saved preview images, then run `setup cameras` with the confirmed wrist and third-person indexes."
+  ]
+}</code></pre>
+                  </details>
+                </li>
+                <li>
+                  <h3 id="setup-camera-roles">Setup camera roles</h3>
+                  <p>将确认过的 wrist 和 third-person 摄像头 index 写入配置。</p>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">Copy</button>
+                    </div>
+                    <pre><code>soarm-studio setup cameras \
   --backend avfoundation \
   --wrist-index 1 \
   --third-person-index 0</code></pre>
-              </div>
-            </article>
-            <article class="step">
-              <div>
-                <h3 id="check-readiness">Check readiness</h3>
-                <p>Verify bindings and run live readiness checks.</p>
+                  </div>
+                  <details class="cli-result">
+                    <summary>查看精简结果</summary>
+                    <pre><code>{
+  "session_config": "configs/session.yaml",
+  "assigned": {
+    "wrist": {
+      "device": 1,
+      "backend": "avfoundation",
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    },
+    "third_person": {
+      "device": 0,
+      "backend": "avfoundation",
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    }
+  }
+}</code></pre>
+                  </details>
+                </li>
+              </ol>
+            </section>
+
+            <section class="tutorial-step">
+              <h2 id="check-readiness">检查配置</h2>
+              <p>验证机械臂和摄像头绑定是否能被当前配置识别，并运行上线前检查。</p>
+              <div class="cli-block">
+                <div class="cli-toolbar">
+                  <span>CLI</span>
+                  <button class="copy-button" type="button">Copy</button>
+                </div>
                 <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
               </div>
-            </article>
+              <details class="cli-result">
+                <summary>查看精简结果</summary>
+                <pre><code>{
+  "bindings_ok": true,
+  "bindings": {
+    "leader": {
+      "device": "/dev/cu.usbmodem5A7C1190351",
+      "ok": true
+    },
+    "follower": {
+      "device": "/dev/cu.usbmodem5A7C1219051",
+      "ok": true
+    },
+    "camera:wrist": {
+      "device": 1,
+      "ok": true
+    },
+    "camera:third_person": {
+      "device": 0,
+      "ok": true
+    }
+  },
+  "preflight": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  }
+}</code></pre>
+              </details>
+            </section>
           </div>
         </section>
 
@@ -141,15 +344,18 @@
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Step 1 Hardware setup</p>
-        <a href="#step-1">Overview</a>
-        <a href="#scan-hardware">Scan hardware</a>
+        <p class="toc-current">Hardware setup</p>
+        <a href="#hardware-setup">Overview</a>
+        <a href="#scan-hardware">扫描硬件</a>
+        <a href="#arm-setup">机械臂 setup</a>
         <a href="#probe-arms">Probe arms</a>
         <a href="#setup-arm-roles">Setup arm roles</a>
+        <a href="#camera-setup">摄像头 setup</a>
         <a href="#preview-cameras">Preview cameras</a>
         <a href="#setup-camera-roles">Setup camera roles</a>
-        <a href="#check-readiness">Check readiness</a>
+        <a href="#check-readiness">检查配置</a>
       </aside>
     </div>
+    <script src="assets/docs.js"></script>
   </body>
 </html>

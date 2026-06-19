@@ -310,52 +310,130 @@ li {
   font-size: 14px;
 }
 
-.step-list {
-  counter-reset: steps;
+.tutorial-steps {
   display: grid;
-  gap: 12px;
-  margin: 20px 0;
-}
-
-.step {
-  counter-increment: steps;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-
-.step > div {
+  gap: 30px;
+  margin: 30px 0;
   min-width: 0;
 }
 
-.step::before {
-  content: counter(steps);
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--fg);
-  color: var(--bg);
+.tutorial-step {
+  padding-top: 2px;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.tutorial-step:first-child {
+  border-top: 0;
+}
+
+.tutorial-step h2 {
+  margin-top: 0;
+}
+
+.tutorial-step h3 {
+  margin-top: 0;
+}
+
+.tutorial-step p {
+  color: var(--muted);
+}
+
+.command-steps {
+  margin: 14px 0 0;
+  padding-left: 24px;
+  min-width: 0;
+}
+
+.command-steps > li {
+  padding-left: 4px;
+  min-width: 0;
+}
+
+.command-steps > li + li {
+  margin-top: 28px;
+}
+
+.command-steps > li::marker {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.cli-block {
+  margin: 14px 0;
+  min-width: 0;
+}
+
+.cli-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 8px 10px 8px 12px;
+  background: var(--subtle);
+  color: var(--muted);
   font-size: 13px;
-  font-weight: 700;
 }
 
-.step h3 {
-  margin: 0 0 4px;
-  font-size: 16px;
+.copy-button {
+  min-height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 3px 10px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
 }
 
-.step p {
+.copy-button:hover {
+  border-color: var(--fg);
+}
+
+.copy-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.cli-block pre {
+  margin: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.cli-result {
+  margin: 12px 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.cli-result summary {
+  cursor: pointer;
+  padding: 10px 12px;
   color: var(--muted);
   font-size: 14px;
+  user-select: none;
+}
+
+.cli-result summary:hover {
+  color: var(--fg);
+}
+
+.cli-result pre {
+  margin: 0;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: #fff;
 }
 
 pre {
   position: relative;
+  max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
