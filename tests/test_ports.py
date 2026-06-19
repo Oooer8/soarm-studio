@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import sys
+import types
+
 from soarm_studio.hardware import detect_serial_ports
-from soarm_studio.hardware.ports import _build_info
+from soarm_studio.hardware.ports import DEFAULT_PROBE_SERVO_IDS, _build_info, probe_soarm_port
 
 
 def test_public_detect_serial_ports_returns_port_info() -> None:
@@ -35,3 +38,49 @@ def test_port_info_filters_system_hint() -> None:
 
     assert info.role_hint == "system"
     assert info.preferred_for_connection is False
+
+
+def test_probe_soarm_port_uses_default_probe_ids_without_config(monkeypatch) -> None:
+    captured = {}
+
+    class FakeServoBus:
+        def __init__(self, *, servo_ids, port, baudrate, auto_disable):
+            captured["servo_ids"] = servo_ids
+            captured["port"] = port
+            captured["baudrate"] = baudrate
+            captured["auto_disable"] = auto_disable
+
+        def connect(self):
+            captured["connected"] = True
+
+        def scan(self, ids):
+            captured["scan_ids"] = ids
+            return {servo_id: True for servo_id in ids}
+
+        def disconnect(self):
+            captured["disconnected"] = True
+
+    package = types.ModuleType("soarm_sdk")
+    package.__path__ = []
+    constants = types.ModuleType("soarm_sdk.constants")
+    constants.DEFAULT_BAUDRATE = 123456
+    hardware = types.ModuleType("soarm_sdk.hardware")
+    hardware.ServoBus = FakeServoBus
+    monkeypatch.setitem(sys.modules, "soarm_sdk", package)
+    monkeypatch.setitem(sys.modules, "soarm_sdk.constants", constants)
+    monkeypatch.setitem(sys.modules, "soarm_sdk.hardware", hardware)
+
+    result = probe_soarm_port("/dev/cu.usbmodem123")
+
+    assert result.ok is True
+    assert result.expected_ids == DEFAULT_PROBE_SERVO_IDS
+    assert result.online_ids == DEFAULT_PROBE_SERVO_IDS
+    assert captured == {
+        "auto_disable": False,
+        "baudrate": 123456,
+        "connected": True,
+        "disconnected": True,
+        "port": "/dev/cu.usbmodem123",
+        "scan_ids": DEFAULT_PROBE_SERVO_IDS,
+        "servo_ids": DEFAULT_PROBE_SERVO_IDS,
+    }

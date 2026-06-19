@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import glob
 import contextlib
+import glob
 import io
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+DEFAULT_PROBE_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 
 
 @dataclass(frozen=True)
@@ -64,20 +66,20 @@ def detect_serial_port_paths(*, include_system: bool = False) -> list[str]:
 def probe_soarm_ports(
     ports: list[str],
     *,
-    arm_config: str | Path,
     ids: list[int] | None = None,
+    baudrate: int | None = None,
 ) -> list[SOARMPortProbe]:
-    return [probe_soarm_port(port, arm_config=arm_config, ids=ids) for port in ports]
+    return [probe_soarm_port(port, ids=ids, baudrate=baudrate) for port in ports]
 
 
 def probe_soarm_port(
     port: str,
     *,
-    arm_config: str | Path,
     ids: list[int] | None = None,
+    baudrate: int | None = None,
 ) -> SOARMPortProbe:
     try:
-        from soarm_sdk import SOARMConfig
+        from soarm_sdk.constants import DEFAULT_BAUDRATE
         from soarm_sdk.hardware import ServoBus
     except ModuleNotFoundError as exc:
         return SOARMPortProbe(
@@ -89,12 +91,11 @@ def probe_soarm_port(
         )
 
     try:
-        config = SOARMConfig.from_file(arm_config).replace_arm_port(port)
-        expected_ids = ids or [joint.id for joint in config.joints.values()]
+        expected_ids = list(ids or DEFAULT_PROBE_SERVO_IDS)
         bus = ServoBus(
             servo_ids=expected_ids,
             port=port,
-            baudrate=config.arm.baudrate,
+            baudrate=DEFAULT_BAUDRATE if baudrate is None else baudrate,
             auto_disable=False,
         )
         try:

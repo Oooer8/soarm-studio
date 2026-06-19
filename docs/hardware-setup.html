@@ -181,7 +181,7 @@
   ]
 }</code></pre>
                   </details>
-                  <p>默认会使用已安装 soarm-sdk 内置的 arm config；只有需要指定自定义或已校准配置时才传 <code class="inline">--arm-config</code>。</p>
+                  <p>Probe 阶段只确认端口上是否能读到标准 SOARM 电机，默认使用电机 ID 1-6 和 SDK 默认波特率；如果你改过电机编号，用 <code class="inline">--ids</code> 指定。</p>
                 </li>
                 <li>
                   <h3 id="setup-arm-roles">Setup arm roles</h3>

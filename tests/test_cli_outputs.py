@@ -87,15 +87,10 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
         )
     ]
     monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
-    monkeypatch.setattr(
-        cli,
-        "default_base_arm_config_path",
-        lambda: "/site-packages/soarm_sdk/configs/soarm-sdk.yaml",
-    )
     captured = {}
 
     def fake_probe_soarm_ports(*args, **kwargs):
-        captured["arm_config"] = kwargs["arm_config"]
+        captured["kwargs"] = kwargs
         return [
             SOARMPortProbe(
                 device="/dev/cu.usbmodem5A7C1190351",
@@ -134,7 +129,7 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
             ),
         }
     ]
-    assert captured["arm_config"] == "/site-packages/soarm_sdk/configs/soarm-sdk.yaml"
+    assert captured["kwargs"] == {"ids": None}
     assert payload["next_steps"] == [
         "Install or activate soarm-sdk in this Python environment; "
         "the SDK imports as package 'soarm_sdk'.",
@@ -142,7 +137,7 @@ def test_probe_arms_output_omits_repeated_scan_inventory(monkeypatch, capsys) ->
     ]
 
 
-def test_probe_arms_output_guides_legacy_config_path(monkeypatch, capsys) -> None:
+def test_probe_arms_output_passes_custom_ids(monkeypatch, capsys) -> None:
     ports = [
         _build_info(
             {
@@ -153,29 +148,27 @@ def test_probe_arms_output_guides_legacy_config_path(monkeypatch, capsys) -> Non
         )
     ]
     monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
-    monkeypatch.setattr(
-        cli,
-        "probe_soarm_ports",
-        lambda *args, **kwargs: [
+    captured = {}
+
+    def fake_probe_soarm_ports(*args, **kwargs):
+        captured["kwargs"] = kwargs
+        return [
             SOARMPortProbe(
                 device="/dev/cu.usbmodem5A7C1190351",
-                ok=False,
-                expected_ids=[],
-                online_ids=[],
-                error=(
-                    "Failed to read config file ../soarm-sdk/configs/soarm.yaml: "
-                    "[Errno 2] No such file or directory"
-                ),
+                ok=True,
+                expected_ids=[1, 2, 3],
+                online_ids=[1, 2, 3],
             )
-        ],
-    )
+        ]
 
-    cli.main(["scan", "--probe-arms", "--arm-config", "../soarm-sdk/configs/soarm.yaml"])
+    monkeypatch.setattr(cli, "probe_soarm_ports", fake_probe_soarm_ports)
 
+    cli.main(["scan", "--probe-arms", "--ids", "1,2,3"])
+
+    assert captured["kwargs"] == {"ids": [1, 2, 3]}
     payload = json.loads(capsys.readouterr().out)
     assert payload["next_steps"] == [
-        "The arm config path is from the old SDK layout. Omit --arm-config to use "
-        "the packaged soarm-sdk default, or pass a custom soarm-sdk.yaml.",
+        "Use the verified devices in setup arms as leader/follower ports.",
     ]
 
 
@@ -190,11 +183,6 @@ def test_probe_arms_output_guides_serial_permission_error(monkeypatch, capsys) -
         )
     ]
     monkeypatch.setattr(cli, "detect_serial_ports", lambda *, include_system: ports)
-    monkeypatch.setattr(
-        cli,
-        "default_base_arm_config_path",
-        lambda: "/site-packages/soarm_sdk/configs/soarm-sdk.yaml",
-    )
     monkeypatch.setattr(
         cli,
         "probe_soarm_ports",
