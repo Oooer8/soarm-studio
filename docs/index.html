@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs</title>
+    <meta
+      name="description"
+      content="SOARM Studio installation, architecture, hardware setup, calibration, teleoperation, recording, and troubleshooting documentation."
+    />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #09090b;
+        --muted: #71717a;
+        --subtle: #f6f6f7;
+        --surface: #ffffff;
+        --border: #e4e4e7;
+        --border-strong: #d4d4d8;
+        --code: #18181b;
+        --accent: #111111;
+        --good: #166534;
+        --warn: #92400e;
+        --radius: 8px;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      a {
+        color: inherit;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      code,
+      pre,
+      kbd {
+        font-family: var(--mono);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr) 280px;
+        align-items: center;
+        min-height: 62px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(10px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 24px;
+        font-weight: 650;
+        letter-spacing: 0;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: var(--fg);
+        color: var(--bg);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .topnav {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 0 24px;
+      }
+
+      .topnav a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .topnav a[aria-current="page"] {
+        color: var(--fg);
+        font-weight: 550;
+      }
+
+      .search {
+        margin-right: 24px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 10px 0 12px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .search kbd {
+        border: 1px solid var(--border);
+        border-bottom-color: var(--border-strong);
+        border-radius: 6px;
+        padding: 1px 6px;
+        color: var(--muted);
+        background: var(--subtle);
+        font-size: 12px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 880px) 280px;
+        align-items: start;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 63px;
+        height: calc(100vh - 63px);
+        overflow: auto;
+        border-right: 1px solid var(--border);
+        padding: 24px 18px;
+      }
+
+      .side-section {
+        margin-bottom: 26px;
+      }
+
+      .side-section h2 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .side-section a {
+        display: block;
+        border-radius: 6px;
+        padding: 5px 8px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .side-section a:hover,
+      .side-section a.active {
+        background: var(--subtle);
+        color: var(--fg);
+      }
+
+      main {
+        min-width: 0;
+        padding: 36px 48px 96px;
+      }
+
+      .toc {
+        position: sticky;
+        top: 63px;
+        height: calc(100vh - 63px);
+        overflow: auto;
+        border-left: 1px solid var(--border);
+        padding: 26px 24px;
+      }
+
+      .toc h2 {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .toc a {
+        display: block;
+        padding: 5px 0;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .toc a:hover {
+        color: var(--fg);
+      }
+
+      .crumbs {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 42px;
+        line-height: 1.12;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 54px 0 14px;
+        padding-top: 8px;
+        font-size: 28px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 32px 0 10px;
+        font-size: 20px;
+        line-height: 1.3;
+      }
+
+      p {
+        margin: 0 0 16px;
+      }
+
+      .lead {
+        max-width: 760px;
+        color: #27272a;
+        font-size: 17px;
+      }
+
+      section {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 42px;
+      }
+
+      section:last-child {
+        border-bottom: 0;
+      }
+
+      ul,
+      ol {
+        padding-left: 22px;
+      }
+
+      li {
+        margin: 6px 0;
+      }
+
+      .callout {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin: 20px 0;
+        background: #fff;
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .callout .icon {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid var(--border-strong);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .callout.warn {
+        border-color: #f1d4a5;
+        background: #fffaf0;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 18px 0;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        background: var(--surface);
+      }
+
+      .card h3 {
+        margin-top: 0;
+        font-size: 16px;
+      }
+
+      .card p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .step-list {
+        counter-reset: steps;
+        display: grid;
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .step {
+        counter-increment: steps;
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+      }
+
+      .step > div {
+        min-width: 0;
+      }
+
+      .step::before {
+        content: counter(steps);
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--fg);
+        color: var(--bg);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .step h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+      }
+
+      .step p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      pre {
+        position: relative;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        background: #fafafa;
+        color: var(--code);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      code.inline {
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 1px 5px;
+        background: var(--subtle);
+        font-size: 13px;
+      }
+
+      .code-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid var(--border);
+        border-bottom: 0;
+        border-radius: var(--radius) var(--radius) 0 0;
+        padding: 9px 12px;
+        background: var(--subtle);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .code-title + pre {
+        margin-top: 0;
+        border-radius: 0 0 var(--radius) var(--radius);
+      }
+
+      .media-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 18px 0;
+      }
+
+      figure,
+      .media-slot {
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--surface);
+      }
+
+      .media-slot {
+        display: grid;
+        place-items: center;
+        min-height: 190px;
+        padding: 20px;
+        color: var(--muted);
+        text-align: center;
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+          linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+        background-size: 24px 24px;
+      }
+
+      figure img,
+      figure video {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: #000;
+      }
+
+      figcaption {
+        padding: 10px 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin: 18px 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--subtle);
+        font-weight: 600;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .footer-nav {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 42px;
+      }
+
+      .footer-nav a {
+        display: block;
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        text-decoration: none;
+      }
+
+      .footer-nav span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 1180px) {
+        .topbar,
+        .layout {
+          grid-template-columns: 220px minmax(0, 1fr);
+        }
+
+        .search,
+        .toc {
+          display: none;
+        }
+      }
+
+      @media (max-width: 820px) {
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+
+        .brand {
+          min-height: 56px;
+        }
+
+        .topnav {
+          overflow-x: auto;
+          border-top: 1px solid var(--border);
+          padding: 10px 18px;
+        }
+
+        .layout {
+          display: block;
+        }
+
+        .sidebar {
+          position: static;
+          height: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+          padding: 18px;
+        }
+
+        .side-section {
+          margin-bottom: 14px;
+        }
+
+        main {
+          padding: 28px 20px 72px;
+        }
+
+        h1 {
+          font-size: 34px;
+        }
+
+        h2 {
+          font-size: 24px;
+        }
+
+        .cards,
+        .media-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark">S</span>
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#introduction" aria-current="page">Docs</a>
+        <a href="../README.md">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="search" aria-label="Search placeholder">
+        <span>Search documentation...</span>
+        <kbd>/</kbd>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a class="active" href="#introduction">Introduction</a>
+          <a href="#installation">Installation</a>
+          <a href="#quickstart">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="#architecture">Architecture</a>
+          <a href="#configuration">Configuration</a>
+          <a href="#media">Images and video</a>
+          <a href="#publishing">Publishing</a>
+        </div>
+        <div class="side-section">
+          <h2>Setup Guide</h2>
+          <a href="#step-1">Step 1 Hardware setup</a>
+          <a href="#step-2">Step 2 Calibration</a>
+          <a href="#teleop">Teleoperation</a>
+          <a href="#recording">Recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a href="#cli">CLI reference</a>
+          <a href="#outputs">Generated files</a>
+          <a href="#troubleshooting">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> Introduction</div>
+
+        <section id="introduction">
+          <h1>SOARM Studio documentation</h1>
+          <p class="lead">
+            SOARM Studio is the application layer for dual SOARM bring-up,
+            calibration, teleoperation, and local data collection. It keeps the
+            user workflow clear while delegating low-level arm behavior to
+            <code class="inline">soarm-sdk</code>.
+          </p>
+
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
+              <strong>README vs docs</strong>
+              <p>
+                The README is a short project entry point. This page is the
+                detailed operating manual for installation, concepts, hardware
+                setup, calibration, recording, media examples, and
+                troubleshooting.
+              </p>
+            </div>
+          </div>
+
+          <div class="cards">
+            <article class="card">
+              <h3>Recommended command path</h3>
+              <p>
+                Use <code class="inline">scan</code>,
+                <code class="inline">setup</code>,
+                <code class="inline">check</code>,
+                <code class="inline">calibrate</code>,
+                <code class="inline">teleop</code>, and
+                <code class="inline">record</code>. Older duplicate command
+                shapes were removed from the public CLI.
+              </p>
+            </article>
+            <article class="card">
+              <h3>One generated runtime config</h3>
+              <p>
+                <code class="inline">configs/session.yaml</code> is the local
+                runtime config for one machine. Example configs remain templates
+                under <code class="inline">configs/sessions/</code>.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="installation">
+          <h2>Installation</h2>
+          <p>
+            The project expects a sibling <code class="inline">../soarm</code>
+            checkout for the SDK. The conda environment installs both packages
+            editable so CLI changes are immediately available.
+          </p>
+          <div class="code-title">
+            <span>Install the environment</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>conda env create -f environment.yml
+conda activate soarm-studio</code></pre>
+
+          <div class="code-title">
+            <span>Validate the local install</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio --help
+soarm-studio check --config configs/sessions/mock.yaml --overwrite</code></pre>
+        </section>
+
+        <section id="quickstart">
+          <h2>Quickstart</h2>
+          <p>
+            The full hardware path is staged. Do not skip directly to teleop or
+            recording. Bring up hardware first, calibrate next, then do free
+            motion tests and dataset capture.
+          </p>
+          <div class="code-title">
+            <span>End-to-end command outline</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio scan --include-system
+soarm-studio setup arms \
+  --leader-port /dev/cu.usbmodemLEADER \
+  --follower-port /dev/cu.usbmodemFOLLOWER \
+  --base-arm-config ../soarm/configs/soarm.yaml
+soarm-studio scan --preview-cameras --camera-indices 0,1,2,3 --backend avfoundation
+soarm-studio setup cameras --backend avfoundation --wrist-index 1 --third-person-index 0
+soarm-studio check --overwrite
+soarm-studio calibrate --role leader
+soarm-studio calibrate --role follower
+soarm-studio check --overwrite
+soarm-studio teleop --free-test --seconds 5
+soarm-studio record --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite</code></pre>
+        </section>
+
+        <section id="architecture">
+          <h2>Architecture</h2>
+          <p>
+            SOARM Studio is intentionally thin. It owns workflow composition,
+            local role assignment, camera preview, recording sidecars, and a
+            small web surface. Motor I/O, motion, safety, and calibration stay
+            in <code class="inline">soarm-sdk</code>.
+          </p>
+          <div class="code-title">
+            <span>Runtime path</span>
+            <span>text</span>
+          </div>
+          <pre><code>leader arm -> teleop loop -> safety clipping -> follower arm
+                         -> recorder -> LeRobot-v3-compatible files</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Responsibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>hardware.ports</code></td>
+                  <td>Serial discovery and SOARM bus probing.</td>
+                </tr>
+                <tr>
+                  <td><code>hardware.cameras</code></td>
+                  <td>USB camera inventory, OpenCV preview, and capture adapters.</td>
+                </tr>
+                <tr>
+                  <td><code>assignment</code></td>
+                  <td>Writes local leader/follower and wrist/third-person roles.</td>
+                </tr>
+                <tr>
+                  <td><code>hardware.runtime</code></td>
+                  <td>Owns connected arms and cameras for check, teleop, and record.</td>
+                </tr>
+                <tr>
+                  <td><code>recording</code></td>
+                  <td>Runs episodes and writes local dataset sidecars.</td>
+                </tr>
+                <tr>
+                  <td><code>datasets</code></td>
+                  <td>LeRobot-v3-compatible local writer and inspection tools.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="configuration">
+          <h2>Configuration</h2>
+          <p>
+            Setup writes one runtime config and two per-arm configs. These files
+            are ignored because they depend on your USB ports, camera indexes,
+            and calibrated limits.
+          </p>
+          <div class="code-title">
+            <span>Generated files</span>
+            <span>text</span>
+          </div>
+          <pre><code>configs/session.yaml
+configs/arms/leader.yaml
+configs/arms/follower.yaml</code></pre>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>Do not treat examples as runtime state</strong>
+              <p>
+                Files under <code class="inline">configs/sessions/</code> are
+                templates. Use <code class="inline">configs/session.yaml</code>
+                for real runs after <code class="inline">setup</code>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="media">
+          <h2>Images, video, and code examples</h2>
+          <p>
+            The docs site is ready for future hardware photos, camera previews,
+            calibration videos, dataset screenshots, and longer code examples.
+            Keep media under <code class="inline">docs/assets/</code>.
+          </p>
+          <div class="media-grid">
+            <div class="media-slot">
+              <div>
+                <strong>Image slot</strong>
+                <p>Use for camera previews, cable labels, and setup photos.</p>
+                <code>docs/assets/images/step-1-preview.jpg</code>
+              </div>
+            </div>
+            <div class="media-slot">
+              <div>
+                <strong>Video slot</strong>
+                <p>Use for calibration zero pose and continuous sweep demos.</p>
+                <code>docs/assets/videos/calibration-sweep.mp4</code>
+              </div>
+            </div>
+          </div>
+          <div class="code-title">
+            <span>Media markup template</span>
+            <span>html</span>
+          </div>
+          <pre><code>&lt;figure&gt;
+  &lt;img src="assets/images/step-1-preview.jpg" alt="Camera preview showing wrist and third-person views" /&gt;
+  &lt;figcaption&gt;Preview images are the source of truth for camera roles.&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;figure&gt;
+  &lt;video controls src="assets/videos/calibration-sweep.mp4"&gt;&lt;/video&gt;
+  &lt;figcaption&gt;Move the arm by hand while the SDK records min/max ticks.&lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
+        </section>
+
+        <section id="publishing">
+          <h2>Publishing on GitHub Pages</h2>
+          <p>
+            This documentation site is static and can be served directly from
+            the repository's <code class="inline">docs/</code> directory.
+          </p>
+          <ol>
+            <li>Open the GitHub repository settings for <code class="inline">Oooer8/soarm-studio</code>.</li>
+            <li>In Pages, choose <code class="inline">Deploy from a branch</code>.</li>
+            <li>Set the branch to <code class="inline">main</code> and the folder to <code class="inline">/docs</code>.</li>
+            <li>Keep <code class="inline">docs/.nojekyll</code> so nested assets are served without Jekyll processing.</li>
+          </ol>
+          <p>
+            Future photos, screenshots, and videos should stay under
+            <code class="inline">docs/assets/</code>. Runtime outputs such as
+            camera previews, datasets, and calibration captures remain outside
+            the docs tree unless a curated copy is intentionally added.
+          </p>
+        </section>
+
+        <section id="step-1">
+          <h2>Step 1 Hardware setup</h2>
+          <p>
+            Step 1 discovers local hardware, assigns roles, and writes the
+            runtime config. It stops before calibration or motion.
+          </p>
+          <div class="step-list">
+            <article class="step">
+              <div>
+                <h3>Scan hardware</h3>
+                <p>List serial ports and USB camera inventory.</p>
+                <pre><code>soarm-studio scan --include-system</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3>Probe arms</h3>
+                <p>Probe one bus at a time when ports are ambiguous.</p>
+                <pre><code>soarm-studio scan --probe-arms --arm-config ../soarm/configs/soarm.yaml</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3>Setup arm roles</h3>
+                <p>Save explicit leader and follower ports.</p>
+                <pre><code>soarm-studio setup arms \
+  --leader-port /dev/cu.usbmodemLEADER \
+  --follower-port /dev/cu.usbmodemFOLLOWER \
+  --base-arm-config ../soarm/configs/soarm.yaml</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3>Preview cameras</h3>
+                <p>Inspect saved frames before assigning wrist and third-person.</p>
+                <pre><code>soarm-studio scan --preview-cameras \
+  --camera-indices 0,1,2,3 \
+  --backend avfoundation \
+  --output-dir previews/cameras</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3>Setup camera roles</h3>
+                <p>Save indexes confirmed from preview images.</p>
+                <pre><code>soarm-studio setup cameras \
+  --backend avfoundation \
+  --wrist-index 1 \
+  --third-person-index 0</code></pre>
+              </div>
+            </article>
+            <article class="step">
+              <div>
+                <h3>Check readiness</h3>
+                <p>Verify bindings and run live readiness checks.</p>
+                <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="step-2">
+          <h2>Step 2 Calibration</h2>
+          <p>
+            Calibration captures physical zero first, then continuously records
+            joint min/max while you move the arm by hand. The program disables
+            torque and reads encoders; it does not command motion.
+          </p>
+          <div class="code-title">
+            <span>Recommended calibration sequence</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio check --config configs/session.yaml --overwrite
+soarm-studio calibrate --config configs/session.yaml --role leader
+soarm-studio calibrate --config configs/session.yaml --role follower
+soarm-studio check --config configs/session.yaml --overwrite</code></pre>
+
+          <h3>What happens internally</h3>
+          <ol>
+            <li>The Studio wrapper opens the selected role config.</li>
+            <li>The SDK records pre-calibration diagnostics.</li>
+            <li>Servo torque is disabled for manual movement.</li>
+            <li>You place the arm at physical zero and press Enter.</li>
+            <li>The SDK captures raw encoder ticks as <code class="inline">zero_tick</code>.</li>
+            <li>You sweep all joints through safe motion by hand.</li>
+            <li>The SDK samples at about 50 Hz and tracks raw min/max ticks.</li>
+            <li>The SDK writes updated <code class="inline">zero_tick</code>, <code class="inline">direction</code>, <code class="inline">min_rad</code>, and <code class="inline">max_rad</code>.</li>
+          </ol>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>Under-excited joints</strong>
+              <p>
+                A joint with less than 100 ticks of observed motion is reported
+                as under-excited. Re-run calibration for that arm and move that
+                joint through more of its safe range.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="teleop">
+          <h2>Teleoperation</h2>
+          <p>
+            Teleop reads the leader arm, clips follower targets through safety,
+            streams commands to the follower, and can emit control samples for
+            recording.
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
+          <p>
+            Use <code class="inline">--free-test</code> after calibration. It
+            runs readiness checks before starting the loop.
+          </p>
+        </section>
+
+        <section id="recording">
+          <h2>Recording</h2>
+          <p>
+            Recording writes LeRobot-v3-compatible local data plus SOARM Studio
+            sidecars that describe the hardware session and sync quality.
+          </p>
+          <pre><code>soarm-studio record \
+  --config configs/session.yaml \
+  --episodes 1 \
+  --warmup 1 \
+  --seconds 10 \
+  --task "pick object" \
+  --overwrite</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Output</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>meta/soarm_session.json</code></td>
+                  <td>Session, config, and hardware binding snapshot.</td>
+                </tr>
+                <tr>
+                  <td><code>meta/sync_quality.json</code></td>
+                  <td>Dataset-level timing and capture quality summary.</td>
+                </tr>
+                <tr>
+                  <td><code>episodes/episode_000000/quality.json</code></td>
+                  <td>Per-episode timing and frame quality metrics.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="cli">
+          <h2>CLI reference</h2>
+          <p>The public CLI is intentionally small.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>scan</code></td>
+                  <td>Find ports, cameras, and optional previews.</td>
+                </tr>
+                <tr>
+                  <td><code>setup</code></td>
+                  <td>Save arm and camera roles into runtime config.</td>
+                </tr>
+                <tr>
+                  <td><code>check</code></td>
+                  <td>Verify bindings and readiness.</td>
+                </tr>
+                <tr>
+                  <td><code>calibrate</code></td>
+                  <td>Run interactive zero and continuous range capture.</td>
+                </tr>
+                <tr>
+                  <td><code>teleop</code></td>
+                  <td>Run leader-to-follower control.</td>
+                </tr>
+                <tr>
+                  <td><code>record</code></td>
+                  <td>Record local episodes and sidecars.</td>
+                </tr>
+                <tr>
+                  <td><code>dataset</code></td>
+                  <td>Inspect, validate, or export local datasets.</td>
+                </tr>
+                <tr>
+                  <td><code>web</code></td>
+                  <td>Run the local browser UI.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="outputs">
+          <h2>Generated files</h2>
+          <p>
+            Generated hardware and dataset outputs are useful locally but should
+            not be committed.
+          </p>
+          <pre><code>configs/session.yaml
+configs/arms/*.yaml
+previews/
+datasets/
+recordings/
+captures/</code></pre>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>Troubleshooting</h2>
+          <div class="cards">
+            <article class="card">
+              <h3>Camera preview fails</h3>
+              <p>
+                On macOS, grant Camera permission to the terminal application.
+                Then re-run <code class="inline">scan --preview-cameras</code>.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Wrong camera role</h3>
+              <p>
+                OpenCV indexes can change. Re-capture previews and re-run
+                <code class="inline">setup cameras</code>.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Serial port denied</h3>
+              <p>
+                Verify the terminal has permission to open
+                <code class="inline">/dev/cu.*</code> and no other process owns
+                the same port.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Calibration feels wrong</h3>
+              <p>
+                Re-run one arm at a time. Capture zero carefully, then sweep
+                every joint through the safe range you want available.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="#introduction"><span>Back to</span>Introduction</a>
+          <a href="../README.md"><span>Project</span>README</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="On this page">
+        <h2>On this page</h2>
+        <a href="#introduction">Introduction</a>
+        <a href="#installation">Installation</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#configuration">Configuration</a>
+        <a href="#media">Images and video</a>
+        <a href="#publishing">Publishing</a>
+        <a href="#step-1">Step 1 Hardware setup</a>
+        <a href="#step-2">Step 2 Calibration</a>
+        <a href="#teleop">Teleoperation</a>
+        <a href="#recording">Recording</a>
+        <a href="#cli">CLI reference</a>
+        <a href="#outputs">Generated files</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+      </aside>
+    </div>
+  </body>
+</html>
