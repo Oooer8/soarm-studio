@@ -5,5 +5,5 @@ dependencies:
   - python=3.12
   - pip
   - pip:
-      - -e .[config,dataset,ports,dev]
+      - -e .[config,dataset,ports,dev,rerun]
       - -e ../soarm

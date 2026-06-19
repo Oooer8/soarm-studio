@@ -35,11 +35,12 @@ class EpisodeWriter:
         state: Mapping[str, float] | Sequence[float],
         action: Mapping[str, float] | Sequence[float],
         images: dict[str, CameraFrame] | None = None,
+        timestamp: float | None = None,
     ) -> None:
-        self.writer.add_frame(state=state, action=action, images=images)
+        self.writer.add_frame(state=state, action=action, images=images, timestamp=timestamp)
 
-    def save(self) -> None:
-        self.writer.save_episode(self.task)
+    def save(self) -> int:
+        return self.writer.save_episode(self.task)
 
     def discard(self) -> None:
         self.writer.discard_episode()
@@ -104,13 +105,14 @@ class LeRobotV3Writer:
         state: Mapping[str, float] | Sequence[float],
         action: Mapping[str, float] | Sequence[float],
         images: dict[str, CameraFrame] | None = None,
+        timestamp: float | None = None,
     ) -> None:
         frame_index = len(self._episode_buffer)
         episode_index = self.info.total_episodes
         row = {
             "observation.state": self._ordered_vector(state),
             "action": self._ordered_vector(action),
-            "timestamp": frame_index / self.fps,
+            "timestamp": float(frame_index / self.fps if timestamp is None else timestamp),
             "frame_index": frame_index,
             "episode_index": episode_index,
             "index": self.info.total_frames + frame_index,
@@ -124,7 +126,7 @@ class LeRobotV3Writer:
                 raise ValueError(f"Missing frame for camera {name!r}")
             self._episode_video_frames[name].append(frame)
 
-    def save_episode(self, task: str) -> None:
+    def save_episode(self, task: str) -> int:
         if not self._episode_buffer:
             raise RuntimeError("Cannot save an empty episode")
         task_index = self._register_task(task)
@@ -134,7 +136,11 @@ class LeRobotV3Writer:
         episode_index = self.info.total_episodes
         episode_length = len(self._episode_buffer)
         data_metadata = self._write_episode_data(self._episode_buffer)
-        video_metadata = self._write_episode_videos(episode_index, episode_length)
+        video_metadata = self._write_episode_videos(
+            episode_index,
+            episode_length,
+            self._episode_buffer,
+        )
         episode_stats = _compute_stats(self._episode_buffer, ["observation.state", "action"])
 
         episode_row = {
@@ -158,6 +164,7 @@ class LeRobotV3Writer:
 
         self._episode_buffer = []
         self._episode_video_frames = {}
+        return episode_index
 
     def discard_episode(self) -> None:
         self._episode_buffer = []
@@ -221,8 +228,15 @@ class LeRobotV3Writer:
             "dataset_to_index": rows[-1]["index"] + 1,
         }
 
-    def _write_episode_videos(self, episode_index: int, episode_length: int) -> dict:
+    def _write_episode_videos(
+        self,
+        episode_index: int,
+        episode_length: int,
+        rows: list[dict],
+    ) -> dict:
         metadata: dict[str, int | float] = {}
+        from_timestamp = float(rows[0]["timestamp"]) if rows else 0.0
+        to_timestamp = float(rows[-1]["timestamp"]) + (1.0 / self.fps) if rows else 0.0
         for camera_name, frames in self._episode_video_frames.items():
             video_key = f"observation.images.{camera_name}"
             path = self.root / VIDEO_PATH.format(
@@ -239,8 +253,8 @@ class LeRobotV3Writer:
             }
             metadata[f"videos/{video_key}/chunk_index"] = 0
             metadata[f"videos/{video_key}/file_index"] = episode_index
-            metadata[f"videos/{video_key}/from_timestamp"] = 0.0
-            metadata[f"videos/{video_key}/to_timestamp"] = episode_length / self.fps
+            metadata[f"videos/{video_key}/from_timestamp"] = from_timestamp
+            metadata[f"videos/{video_key}/to_timestamp"] = to_timestamp
         return metadata
 
     def _write_tasks(self) -> None:
@@ -270,6 +284,16 @@ class LeRobotV3Writer:
     def _write_stats(self) -> None:
         stats = _compute_stats_from_episodes(self._episodes)
         write_json(stats, self.root / STATS_PATH)
+
+    def write_session_metadata(self, metadata: dict) -> None:
+        write_json(metadata, self.root / "meta" / "soarm_session.json")
+
+    def write_sync_quality(self, quality: dict) -> None:
+        write_json(quality, self.root / "meta" / "sync_quality.json")
+
+    def write_episode_quality(self, episode_index: int, quality: dict) -> None:
+        path = self.root / "episodes" / f"episode_{episode_index:06d}" / "quality.json"
+        write_json(quality, path)
 
 
 def _write_video(path: Path, frames: list[CameraFrame], *, fps: int) -> None:
@@ -413,4 +437,3 @@ def _pandas_task_index_metadata() -> dict[bytes, bytes]:
         "pandas_version": "2.0.0",
     }
     return {b"pandas": json.dumps(metadata).encode("utf-8")}
-

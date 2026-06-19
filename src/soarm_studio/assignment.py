@@ -26,6 +26,8 @@ def assign_arm_roles(
 ) -> dict[str, Any]:
     if leader_port is None and follower_port is None:
         raise ValueError("At least one of leader_port or follower_port is required")
+    if leader_port is not None and follower_port is not None and leader_port == follower_port:
+        raise ValueError("Leader and follower ports must be different")
 
     session_path = Path(session_config)
     session = _load_session_for_assignment(session_path)

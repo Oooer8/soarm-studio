@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .inspect import inspect_dataset, validate_dataset
+from .inspect import export_rerun_dataset, inspect_dataset, validate_dataset
 
-__all__ = ["inspect_dataset", "validate_dataset"]
+__all__ = ["export_rerun_dataset", "inspect_dataset", "validate_dataset"]

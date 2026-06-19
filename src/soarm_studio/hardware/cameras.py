@@ -84,7 +84,14 @@ class MockCamera:
         tick = self._frame_index % 256
         pixel = bytes((tick, (tick * 3) % 256, (tick * 7) % 256))
         rgb = pixel * self.width * self.height
-        return CameraFrame(self.name, self.width, self.height, rgb, time.time())
+        return CameraFrame(
+            self.name,
+            self.width,
+            self.height,
+            rgb,
+            time.time(),
+            time.monotonic_ns(),
+        )
 
 
 class OpenCVCamera:
@@ -144,7 +151,14 @@ class OpenCVCamera:
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         height, width = rgb.shape[:2]
-        return CameraFrame(self.name, int(width), int(height), rgb.tobytes(), time.time())
+        return CameraFrame(
+            self.name,
+            int(width),
+            int(height),
+            rgb.tobytes(),
+            time.time(),
+            time.monotonic_ns(),
+        )
 
 
 def create_cameras(configs: dict[str, CameraConfig]) -> dict[str, Camera]:

@@ -77,6 +77,56 @@ class DatasetConfig:
 
 
 @dataclass(frozen=True)
+class RuntimeConfig:
+    preflight_required: bool = True
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "RuntimeConfig":
+        data = data or {}
+        return cls(preflight_required=bool(data.get("preflight_required", True)))
+
+
+@dataclass(frozen=True)
+class RecordingConfig:
+    default_seconds: float = 2.0
+    warmup: float = 0.0
+    episodes: int = 1
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "RecordingConfig":
+        data = data or {}
+        return cls(
+            default_seconds=float(data.get("default_seconds", 2.0)),
+            warmup=float(data.get("warmup", 0.0)),
+            episodes=int(data.get("episodes", 1)),
+        )
+
+
+@dataclass(frozen=True)
+class SyncConfig:
+    slow_camera_ms: float = 100.0
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "SyncConfig":
+        data = data or {}
+        return cls(slow_camera_ms=float(data.get("slow_camera_ms", 100.0)))
+
+
+@dataclass(frozen=True)
+class WebConfig:
+    host: str = "127.0.0.1"
+    port: int = 8000
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "WebConfig":
+        data = data or {}
+        return cls(
+            host=str(data.get("host", "127.0.0.1")),
+            port=int(data.get("port", 8000)),
+        )
+
+
+@dataclass(frozen=True)
 class SessionConfig:
     name: str
     loop_hz: int
@@ -85,6 +135,10 @@ class SessionConfig:
     follower: ArmEndpointConfig
     cameras: dict[str, CameraConfig] = field(default_factory=dict)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    recording: RecordingConfig = field(default_factory=RecordingConfig)
+    sync: SyncConfig = field(default_factory=SyncConfig)
+    web: WebConfig = field(default_factory=WebConfig)
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> "SessionConfig":
@@ -103,6 +157,10 @@ class SessionConfig:
             ),
             cameras=cameras,
             dataset=DatasetConfig.from_mapping(data.get("dataset")),
+            runtime=RuntimeConfig.from_mapping(data.get("runtime")),
+            recording=RecordingConfig.from_mapping(data.get("recording")),
+            sync=SyncConfig.from_mapping(data.get("sync")),
+            web=WebConfig.from_mapping(data.get("web")),
         )
 
 
@@ -132,7 +190,16 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     if yaml is not None:
         loaded = yaml.safe_load(text) or {}
     else:
-        loaded = json.loads(text)
+        try:
+            loaded = json.loads(text)
+        except json.JSONDecodeError as exc:
+            if path.suffix.lower() in {".yaml", ".yml"}:
+                raise RuntimeError(
+                    f"{path} is not JSON-compatible YAML, and PyYAML is not installed. "
+                    "Install config support with `python -m pip install -e \".[config]\"` "
+                    "or use the `soarm-studio` conda environment."
+                ) from exc
+            raise
 
     if not isinstance(loaded, Mapping):
         raise ValueError(f"{path} must contain a mapping")

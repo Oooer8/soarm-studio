@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from .assignment import (
@@ -13,16 +12,15 @@ from .assignment import (
     assign_camera_roles,
 )
 from .config import SessionConfig, load_session_config
-from .datasets.tools import inspect_dataset, validate_dataset
+from .datasets.tools import export_rerun_dataset, inspect_dataset, validate_dataset
 from .hardware import (
-    create_arm,
-    create_cameras,
     detect_camera_devices,
     preview_camera_devices,
 )
+from .hardware.calibration import calibrate_session
 from .hardware.ports import detect_serial_ports, probe_soarm_ports
-from .recording import create_lerobot_writer
-from .teleop import TeleopLoop
+from .hardware.runtime import HardwareSession, preflight_report_to_dict
+from .recording import record_lerobot_episodes
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -65,6 +63,35 @@ def main(argv: list[str] | None = None) -> None:
     )
     assign_cameras.add_argument("--no-detected-match", action="store_true")
 
+    bind = subcommands.add_parser("bind", help="Bind detected hardware roles")
+    bind_sub = bind.add_subparsers(dest="bind_target", required=True)
+    bind_arms = bind_sub.add_parser("arms", help="Bind leader/follower arm ports")
+    bind_arms.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
+    bind_arms.add_argument("--leader-port")
+    bind_arms.add_argument("--follower-port")
+    bind_arms.add_argument("--base-arm-config")
+    bind_arms.add_argument("--leader-arm-config", default=DEFAULT_LEADER_ARM_CONFIG)
+    bind_arms.add_argument("--follower-arm-config", default=DEFAULT_FOLLOWER_ARM_CONFIG)
+    bind_arms.add_argument("--max-relative-target", type=float)
+    bind_cameras = bind_sub.add_parser("cameras", help="Bind wrist/third-person cameras")
+    bind_cameras.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
+    bind_cameras.add_argument("--wrist-index", type=int)
+    bind_cameras.add_argument("--third-person-index", type=int)
+    bind_cameras.add_argument("--width", type=int, default=640)
+    bind_cameras.add_argument("--height", type=int, default=480)
+    bind_cameras.add_argument("--fps", type=int, default=30)
+    bind_cameras.add_argument(
+        "--backend",
+        choices=["auto", "avfoundation", "default", "any"],
+        default="auto",
+    )
+    bind_cameras.add_argument("--no-detected-match", action="store_true")
+
+    verify = subcommands.add_parser("verify", help="Verify saved hardware bindings")
+    verify_sub = verify.add_subparsers(dest="verify_target", required=True)
+    verify_bindings = verify_sub.add_parser("bindings")
+    verify_bindings.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
+
     preview = subcommands.add_parser("preview", help="Preview local hardware")
     preview_sub = preview.add_subparsers(dest="preview_target", required=True)
     preview_cameras = preview_sub.add_parser("cameras", help="Capture camera preview frames")
@@ -82,15 +109,31 @@ def main(argv: list[str] | None = None) -> None:
     status = subcommands.add_parser("status", help="Read dual-arm status")
     status.add_argument("--config", default="configs/sessions/mock.yaml")
 
+    preflight = subcommands.add_parser("preflight", help="Run recording readiness checks")
+    preflight.add_argument("--config", default="configs/sessions/mock.yaml")
+    preflight.add_argument("--overwrite", action="store_true")
+
+    calibrate = subcommands.add_parser("calibrate", help="Run SOARM calibration workflow")
+    calibrate.add_argument("--config", default="configs/sessions/mock.yaml")
+    calibrate.add_argument(
+        "--role",
+        choices=["leader", "follower", "both"],
+        default="both",
+    )
+
     teleop = subcommands.add_parser("teleop", help="Run leader-to-follower teleop")
     teleop.add_argument("--config", default="configs/sessions/mock.yaml")
     teleop.add_argument("--seconds", type=float, default=2.0)
+    teleop.add_argument("--free-test", action="store_true")
 
     record = subcommands.add_parser("record", help="Record one teleop episode")
     record.add_argument("--config", default="configs/sessions/mock.yaml")
     record.add_argument("--seconds", type=float, default=2.0)
     record.add_argument("--task", default="mock task")
     record.add_argument("--overwrite", action="store_true")
+    record.add_argument("--episodes", type=int, default=1)
+    record.add_argument("--warmup", type=float, default=0.0)
+    record.add_argument("--save-policy", choices=["auto", "manual"], default="auto")
 
     dataset = subcommands.add_parser("dataset", help="Dataset tools")
     dataset_sub = dataset.add_subparsers(dest="dataset_command", required=True)
@@ -98,6 +141,14 @@ def main(argv: list[str] | None = None) -> None:
     dataset_inspect.add_argument("root")
     dataset_validate = dataset_sub.add_parser("validate")
     dataset_validate.add_argument("root")
+    dataset_rerun = dataset_sub.add_parser("rerun")
+    dataset_rerun.add_argument("root")
+    dataset_rerun.add_argument("--output")
+
+    web = subcommands.add_parser("web", help="Run local SOARM Studio web UI")
+    web.add_argument("--config", default="configs/sessions/mock.yaml")
+    web.add_argument("--host", default="127.0.0.1")
+    web.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
 
@@ -105,21 +156,38 @@ def main(argv: list[str] | None = None) -> None:
         _handle_detect(args)
     elif args.command == "assign":
         _handle_assign(args)
+    elif args.command == "bind":
+        _handle_bind(args)
+    elif args.command == "verify":
+        _handle_verify(args)
     elif args.command == "preview":
         _handle_preview(args)
     elif args.command == "status":
         _handle_status(load_session_config(args.config))
+    elif args.command == "preflight":
+        _handle_preflight(load_session_config(args.config), overwrite=args.overwrite)
+    elif args.command == "calibrate":
+        _print_json(calibrate_session(load_session_config(args.config), role=args.role))
     elif args.command == "teleop":
-        _handle_teleop(load_session_config(args.config), seconds=args.seconds)
+        _handle_teleop(
+            load_session_config(args.config),
+            seconds=args.seconds,
+            free_test=args.free_test,
+        )
     elif args.command == "record":
         _handle_record(
             load_session_config(args.config),
             seconds=args.seconds,
             task=args.task,
             overwrite=args.overwrite,
+            episodes=args.episodes,
+            warmup=args.warmup,
+            save_policy=args.save_policy,
         )
     elif args.command == "dataset":
-        _handle_dataset(args.dataset_command, Path(args.root))
+        _handle_dataset(args)
+    elif args.command == "web":
+        _handle_web(load_session_config(args.config), host=args.host, port=args.port)
     else:
         raise AssertionError(args.command)
 
@@ -192,8 +260,20 @@ def _handle_assign(args) -> None:
             )
         else:
             raise AssertionError(args.assign_target)
-    except ValueError as exc:
+    except (RuntimeError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
+
+
+def _handle_bind(args) -> None:
+    args.assign_target = args.bind_target
+    _handle_assign(args)
+
+
+def _handle_verify(args) -> None:
+    if args.verify_target != "bindings":
+        raise AssertionError(args.verify_target)
+    session = HardwareSession(load_session_config(args.config))
+    _print_json(session.verify_bindings())
 
 
 def _handle_preview(args) -> None:
@@ -220,48 +300,24 @@ def _handle_preview(args) -> None:
 
 
 def _handle_status(config: SessionConfig) -> None:
-    leader = create_arm(config.leader, config.joints, role="leader")
-    follower = create_arm(config.follower, config.joints, role="follower")
-    try:
-        leader.connect()
-        follower.connect()
-        leader_sample = leader.read_joints()
-        follower_sample = follower.read_joints()
-        _print_json(
-            {
-                "session": config.name,
-                "leader": {
-                    "status": asdict(leader.status()),
-                    "positions": leader_sample.positions,
-                },
-                "follower": {
-                    "status": asdict(follower.status()),
-                    "positions": follower_sample.positions,
-                },
-                "cameras": {
-                    name: {
-                        "kind": camera.kind,
-                        "width": camera.width,
-                        "height": camera.height,
-                        "enabled": camera.enabled,
-                    }
-                    for name, camera in config.cameras.items()
-                },
-            }
-        )
-    finally:
-        follower.disconnect()
-        leader.disconnect()
+    with HardwareSession(config) as hardware:
+        _print_json(hardware.read_status())
 
 
-def _handle_teleop(config: SessionConfig, *, seconds: float) -> None:
-    loop = _create_loop(config)
-    try:
-        loop.connect()
-        metrics = loop.run(seconds=seconds)
-        _print_metrics(config.name, _metrics_view(metrics))
-    finally:
-        loop.disconnect()
+def _handle_preflight(config: SessionConfig, *, overwrite: bool) -> None:
+    with HardwareSession(config) as hardware:
+        _print_json(preflight_report_to_dict(hardware.preflight(dataset_overwrite=overwrite)))
+
+
+def _handle_teleop(config: SessionConfig, *, seconds: float, free_test: bool) -> None:
+    with HardwareSession(config) as hardware:
+        if free_test:
+            report = hardware.preflight(dataset_overwrite=True)
+            if not report.ok:
+                _print_json(preflight_report_to_dict(report))
+                raise SystemExit("preflight failed")
+        metrics = hardware.run_teleop(seconds=seconds)
+        _print_json({"session": config.name, "state": hardware.state.value, "metrics": metrics})
 
 
 def _handle_record(
@@ -270,56 +326,44 @@ def _handle_record(
     seconds: float,
     task: str,
     overwrite: bool,
+    episodes: int,
+    warmup: float,
+    save_policy: str,
 ) -> None:
-    writer = create_lerobot_writer(config, overwrite=overwrite)
-    episode = writer.start_episode(task)
-
-    def add_recording_frame(state, action, frames):
-        episode.add_frame(state=state, action=action, images=frames)
-
-    loop = _create_loop(config, on_frame=add_recording_frame)
-    try:
-        loop.connect()
-        metrics = loop.run(seconds=seconds)
-        episode.save()
-        _print_json(
-            {
-                "dataset": config.dataset.root,
-                "task": task,
-                "metrics": _metrics_view(metrics),
-            }
+    if save_policy == "manual":
+        raise SystemExit("--save-policy manual is reserved for the Web UI in this version")
+    _print_json(
+        record_lerobot_episodes(
+            config,
+            seconds=seconds,
+            task=task,
+            overwrite=overwrite,
+            warmup=warmup,
+            episodes=episodes,
         )
-    except Exception:
-        episode.discard()
-        raise
-    finally:
-        loop.disconnect()
-        writer.finalize()
+    )
 
 
-def _handle_dataset(command: str, root: Path) -> None:
-    if command == "inspect":
+def _handle_dataset(args) -> None:
+    root = Path(args.root)
+    if args.dataset_command == "inspect":
         _print_json(inspect_dataset(root))
-    elif command == "validate":
+    elif args.dataset_command == "validate":
         errors = validate_dataset(root)
         _print_json({"valid": not errors, "errors": errors})
+    elif args.dataset_command == "rerun":
+        try:
+            _print_json(export_rerun_dataset(root, output=args.output))
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
     else:
-        raise AssertionError(command)
+        raise AssertionError(args.dataset_command)
 
 
-def _create_loop(config: SessionConfig, *, on_frame=None) -> TeleopLoop:
-    leader = create_arm(config.leader, config.joints, role="leader")
-    follower = create_arm(config.follower, config.joints, role="follower")
-    cameras = create_cameras(config.cameras)
-    return TeleopLoop(
-        leader=leader,
-        follower=follower,
-        joint_names=config.joints,
-        hz=config.loop_hz,
-        max_relative_target=config.follower.max_relative_target,
-        cameras=cameras,
-        on_frame=on_frame,
-    )
+def _handle_web(config: SessionConfig, *, host: str, port: int) -> None:
+    from .web import run_web
+
+    run_web(config, host=host, port=port)
 
 
 def _metrics_view(metrics) -> dict:

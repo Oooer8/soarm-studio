@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from soarm_studio.assignment import assign_arm_roles, assign_camera_roles
 from soarm_studio.config import load_config_mapping
 
@@ -51,6 +53,18 @@ def test_assign_arm_roles_writes_arm_configs_and_session(tmp_path) -> None:
     assert follower["arm"]["name"] == "soarm-follower"
     assert follower["arm"]["port"] == "/dev/cu.follower"
     assert result["warnings"]
+
+
+def test_assign_arm_roles_rejects_duplicate_ports(tmp_path) -> None:
+    session_path = tmp_path / "session.yaml"
+    session_path.write_text(json.dumps({}))
+
+    with pytest.raises(ValueError, match="must be different"):
+        assign_arm_roles(
+            session_config=session_path,
+            leader_port="/dev/cu.same",
+            follower_port="/dev/cu.same",
+        )
 
 
 def test_assign_camera_roles_writes_wrist_and_third_person(tmp_path) -> None:

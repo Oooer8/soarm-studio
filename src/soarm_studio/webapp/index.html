@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="steps" aria-label="Workflow">
+        <div class="brand">
+          <span class="mark"></span>
+          <strong>SOARM Studio</strong>
+        </div>
+        <button class="step active" data-view="bind">1 Bind</button>
+        <button class="step" data-view="status">2 Status</button>
+        <button class="step" data-view="teleop">3 Teleop</button>
+        <button class="step" data-view="record">4 Record</button>
+        <button class="step" data-view="review">5 Review</button>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <h1 id="viewTitle">Bind</h1>
+            <span id="sessionLabel">Session</span>
+          </div>
+          <button id="refreshBtn" class="icon-button" title="Refresh">Refresh</button>
+        </header>
+
+        <section class="view active" data-panel="bind">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Bindings</h2>
+              <button id="verifyBtn">Verify</button>
+            </div>
+            <pre id="bindingsOut" class="log"></pre>
+          </div>
+        </section>
+
+        <section class="view" data-panel="status">
+          <div class="split">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Preflight</h2>
+                <div class="button-row">
+                  <button id="preflightBtn">Run</button>
+                  <button id="calibrateBtn">Calibrate</button>
+                </div>
+              </div>
+              <div id="preflightList" class="checks"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Status</h2>
+                <button id="statusBtn">Read</button>
+              </div>
+              <pre id="statusOut" class="log"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-panel="teleop">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Teleop</h2>
+              <button id="teleopBtn">Run</button>
+            </div>
+            <label class="field">Seconds <input id="teleopSeconds" type="number" value="2" min="0.1" step="0.1" /></label>
+            <pre id="teleopOut" class="log"></pre>
+          </div>
+        </section>
+
+        <section class="view" data-panel="record">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Dataset</h2>
+              <button id="recordBtn">Record</button>
+            </div>
+            <div class="form-grid">
+              <label class="field">Task <input id="taskInput" value="web recording" /></label>
+              <label class="field">Seconds <input id="recordSeconds" type="number" value="2" min="0.1" step="0.1" /></label>
+              <label class="field">Episodes <input id="episodeCount" type="number" value="1" min="1" step="1" /></label>
+              <label class="field checkbox"><input id="overwriteInput" type="checkbox" /> Overwrite</label>
+            </div>
+            <pre id="recordOut" class="log"></pre>
+          </div>
+        </section>
+
+        <section class="view" data-panel="review">
+          <div class="split">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Inspect</h2>
+                <button id="inspectBtn">Load</button>
+              </div>
+              <pre id="inspectOut" class="log"></pre>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Validate</h2>
+                <button id="validateBtn">Check</button>
+              </div>
+              <pre id="validateOut" class="log"></pre>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="metrics">
+        <h2>Sync quality</h2>
+        <div class="metric"><span>State</span><strong id="stateMetric">Idle</strong></div>
+        <div class="metric"><span>Frames</span><strong id="framesMetric">0</strong></div>
+        <div class="metric"><span>Loop max</span><strong id="loopMetric">0 ms</strong></div>
+        <div class="metric"><span>Camera max</span><strong id="cameraMetric">0 ms</strong></div>
+        <div class="preview-grid">
+          <div class="preview">Wrist</div>
+          <div class="preview">Third person</div>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from soarm_studio.datasets.lerobot_v3.deps import require_pyarrow
@@ -16,6 +17,7 @@ from soarm_studio.datasets.lerobot_v3.schema import (
 def inspect_dataset(root: str | Path) -> dict:
     root = Path(root)
     info = read_info(root)
+    sidecars = _read_sidecars(root)
     summary = {
         "root": str(root),
         "codebase_version": info.codebase_version,
@@ -24,6 +26,7 @@ def inspect_dataset(root: str | Path) -> dict:
         "total_episodes": info.total_episodes,
         "total_frames": info.total_frames,
         "features": list(info.features),
+        "sidecars": sidecars,
     }
     return summary
 
@@ -81,3 +84,51 @@ def validate_dataset(root: str | Path) -> list[str]:
                 errors.append(f"Missing {video_path.relative_to(root)}")
 
     return errors
+
+
+def export_rerun_dataset(root: str | Path, *, output: str | Path | None = None) -> dict:
+    root = Path(root)
+    try:
+        import rerun as rr  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Rerun export requires `rerun-sdk`. Install it in the active environment first."
+        ) from exc
+
+    info = read_info(root)
+    _, pq = require_pyarrow(purpose="dataset rerun export")
+    data_path = root / DATA_PATH.format(chunk_index=0, file_index=0)
+    table = pq.read_table(data_path)
+    rows = table.to_pylist()
+    output_path = Path(output) if output is not None else root / "rerun" / "dataset.rrd"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rr.init("soarm-studio-dataset", spawn=False)
+    for row in rows:
+        timestamp = float(row["timestamp"])
+        rr.set_time_seconds("episode_time", timestamp)
+        rr.log("robot/state", rr.Scalars(_named_values(info, "observation.state", row)))
+        rr.log("robot/action", rr.Scalars(_named_values(info, "action", row)))
+    rr.save(str(output_path))
+    return {
+        "root": str(root),
+        "output": str(output_path),
+        "frames": len(rows),
+    }
+
+
+def _read_sidecars(root: Path) -> dict:
+    sidecars = {}
+    for name, path in {
+        "session": root / "meta" / "soarm_session.json",
+        "sync_quality": root / "meta" / "sync_quality.json",
+    }.items():
+        if path.exists():
+            sidecars[name] = json.loads(path.read_text())
+    return sidecars
+
+
+def _named_values(info, feature: str, row: dict) -> dict[str, float]:
+    names = info.features[feature].get("names") or []
+    values = row[feature]
+    return {str(name): float(value) for name, value in zip(names, values, strict=False)}

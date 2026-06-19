@@ -18,6 +18,7 @@ dataset = ["pyarrow>=15.0.0", "opencv-python>=4.8.0", "numpy>=1.26"]
 ports = ["pyserial>=3.5"]
 hardware = ["pyserial>=3.5", "soarm @ git+ssh://git@github.com/Oooer8/soarm-sdk.git@main"]
 lerobot-compat = ["lerobot[dataset]>=0.5,<0.6"]
+rerun = ["rerun-sdk>=0.16"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]
@@ -25,6 +26,9 @@ soarm-studio = "soarm_studio.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+soarm_studio = ["webapp/*"]
 
 [tool.ruff]
 line-length = 100

@@ -43,5 +43,20 @@
     "repo_id": "oooer/dual-soarm",
     "fps": 30,
     "robot_type": "soarm"
+  },
+  "runtime": {
+    "preflight_required": true
+  },
+  "recording": {
+    "default_seconds": 2.0,
+    "warmup": 1.0,
+    "episodes": 1
+  },
+  "sync": {
+    "slow_camera_ms": 100.0
+  },
+  "web": {
+    "host": "127.0.0.1",
+    "port": 8000
   }
 }
