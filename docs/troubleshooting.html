@@ -105,6 +105,17 @@
                 every joint through the safe range you want available.
               </p>
             </article>
+            <article class="card">
+              <h3 id="teleop-hz-low">Teleop completes but observed_hz is low</h3>
+              <p>
+                The run reached <code class="inline">TELEOP_READY</code>, so it
+                did not crash. If <code class="inline">observed_hz</code> is
+                far below <code class="inline">target_hz</code>, the synchronous
+                Studio loop is spending too long reading leader joints,
+                follower readback, or cameras. At 30 Hz, each loop step must
+                stay under about 33 ms.
+              </p>
+            </article>
           </div>
         </section>
 
@@ -122,6 +133,7 @@
         <a class="toc-level-2" href="#wrong-camera-role">Wrong camera role</a>
         <a class="toc-level-2" href="#serial-port-denied">Serial port denied</a>
         <a class="toc-level-2" href="#calibration-feels-wrong">Calibration feels wrong</a>
+        <a class="toc-level-2" href="#teleop-hz-low">Teleop Hz low</a>
       </aside>
     </div>
   </body>

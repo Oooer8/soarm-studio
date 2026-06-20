@@ -90,6 +90,86 @@
           </p>
         </section>
 
+        <section id="reading-output" class="doc-page">
+          <h2>Reading the CLI output</h2>
+          <p>
+            A successful teleop command prints the hardware connection log,
+            then a JSON metrics object. The JSON describes the Studio-side
+            synchronous leader, follower, and camera sampling loop, not the
+            SDK's internal direct stream output rate.
+          </p>
+          <details class="cli-result" open>
+            <summary>Example 60 second free-test output</summary>
+            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+{
+  "session": "dual-soarm",
+  "state": "TELEOP_READY",
+  "metrics": {
+    "iterations": 886,
+    "target_hz": 30,
+    "observed_hz": 14.752,
+    "last_latency_ms": 67.854,
+    "max_latency_ms": 101.626,
+    "elapsed_s": 60.059
+  }
+}
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.</code></pre>
+          </details>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>iterations</code></td>
+                  <td>How many synchronized Studio samples were completed. At 30 Hz for 60 seconds, a healthy run would be near 1800.</td>
+                </tr>
+                <tr>
+                  <td><code>target_hz</code></td>
+                  <td>The configured Studio loop target from <code class="inline">configs/session.yaml</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>observed_hz</code></td>
+                  <td>The actual Studio loop rate, computed as <code class="inline">iterations / elapsed_s</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>last_latency_ms</code></td>
+                  <td>The time spent in the last loop step, including leader read, follower readback, target update, and camera reads if cameras are configured.</td>
+                </tr>
+                <tr>
+                  <td><code>max_latency_ms</code></td>
+                  <td>The slowest loop step seen during the run.</td>
+                </tr>
+                <tr>
+                  <td><code>elapsed_s</code></td>
+                  <td>The wall-clock duration of the teleop run.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>What the example means</strong>
+              <p>
+                The run connected to both arms and exited normally, but the
+                Studio loop did not keep up with 30 Hz. The actual rate was
+                14.752 Hz and the last step took 67.854 ms, which is longer
+                than the 33.3 ms budget for a 30 Hz loop. This usually means
+                the synchronous app loop is I/O-bound. Direct streaming removes
+                SDK-side smoothing lag, but the follower still only receives
+                new leader targets as fast as Studio can read and publish them.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <nav class="footer-nav" aria-label="Footer">
           <a href="calibration.html"><span>Previous</span>Step 2 Calibration</a>
           <a href="recording.html"><span>Next</span>Recording</a>
@@ -100,6 +180,7 @@
         <h2>This section</h2>
         <p class="toc-current">Teleoperation</p>
         <a class="toc-level-1" href="#teleop">Overview</a>
+        <a class="toc-level-1" href="#reading-output">Reading output</a>
       </aside>
     </div>
   </body>
