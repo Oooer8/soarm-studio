@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 标定原理</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 标定原理" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/calibration-principles.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/calibration-principles.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/calibration-principles.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/calibration-principles.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../calibration-principles.html">English</option>
+            <option value="zh-CN" data-href="calibration-principles.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a class="active" aria-current="page" href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 标定原理</div>
+
+        <section id="calibration-principles" class="doc-page">
+          <h1>标定原理</h1>
+          <p class="lead">
+            SOARM 标定把原始舵机编码器 tick 转换成有意义的关节角、安全软件限位和可复现数据。Studio 命令只负责路由工作流；物理采样和配置回写仍在 <code class="inline">soarm-sdk</code>。
+          </p>
+
+          <h2 id="why-calibration-exists">为什么需要标定</h2>
+          <p>
+            每台装好的机械臂都会有细小机械差异：舵盘安装偏移、镜像关节方向、走线方式，以及与名义模型不完全一致的可用行程。舵机可以报告原始 tick，但在软件知道哪个物理姿态是零位、哪个方向为正之前，这个 tick 还不是稳定的关节角。
+          </p>
+          <p>
+            标定会把这层关系写入每台机械臂配置，后续命令就可以用弧度而不是原始硬件 tick 推理。
+          </p>
+
+          <div class="code-title">
+            <span>标定数据模型</span>
+            <span>text</span>
+          </div>
+          <pre><code>raw servo tick
+  -> zero_tick + direction
+  -> joint radians
+  -> min_rad / max_rad safety envelope
+  -> check, teleop, record, replay, diagnostics</code></pre>
+
+          <h2 id="what-is-recorded">记录哪些内容</h2>
+          <div class="cards">
+            <article class="card">
+              <h3 id="zero-tick">零位 tick</h3>
+              <p>
+                已知物理零位姿态下的当前编码器读数。它是把当前位置转换成关节弧度的参考偏移。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="joint-direction">关节方向</h3>
+              <p>
+                即使两台机械臂或关节存在镜像，也能让正向关节运动与模型保持一致的符号约定。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="min-max-limits">最小/最大限位</h3>
+              <p>
+                手动扫动得到的安全可用行程，会保存为用于检查和裁剪的关节空间限位。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="diagnostics">诊断</h3>
+              <p>
+                标定前后的状态报告用于确认机械臂可访问，且保存的限位合理。
+              </p>
+            </article>
+          </div>
+
+          <h2 id="how-the-live-flow-works">实时流程如何工作</h2>
+          <ol>
+            <li>运行 <code class="inline">check</code> ，先确认角色配置和总线可访问。</li>
+            <li>按提示把选中的机械臂摆到已知零位姿态。</li>
+            <li>SDK 会把当前原始编码器 tick 采集为 <code class="inline">zero_tick</code>。</li>
+            <li>扭矩会被关闭，因此你可以手动扫动每个关节。</li>
+            <li>SDK 会连续采样关节读数，并跟踪观测到的最小/最大值。</li>
+            <li>更新后的标定会写回对应机械臂配置。</li>
+            <li>运行 <code class="inline">check</code> ，然后再进入遥操作或录制。</li>
+          </ol>
+
+          <h2 id="why-it-matters">为什么重要</h2>
+          <p>
+            遥操作依赖主臂和从臂读数使用同一套关节约定。录制依赖观测能跨会话复现。安全则依赖软件限位匹配桌面上的真实机械臂。错误标定可能让机械臂看起来已连接，但角度、限位或镜像符号是错的。
+          </p>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>标定以读取为主</strong>
+              <p>
+                实时流程会在你手动移动机械臂时读取编码器位置。零位采集或范围扫描期间不应主动发送运动命令。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="configuration.html"><span>上一页</span>配置</a>
+          <a href="images-and-video.html"><span>下一页</span>图片与视频</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">标定原理</p>
+        <a class="toc-level-1" href="#calibration-principles">概览</a>
+        <a class="toc-level-1" href="#why-calibration-exists">为什么需要标定</a>
+        <a class="toc-level-1" href="#what-is-recorded">记录哪些内容</a>
+        <a class="toc-level-2" href="#zero-tick">零位 tick</a>
+        <a class="toc-level-2" href="#joint-direction">关节方向</a>
+        <a class="toc-level-2" href="#min-max-limits">最小/最大限位</a>
+        <a class="toc-level-2" href="#diagnostics">诊断</a>
+        <a class="toc-level-1" href="#how-the-live-flow-works">实时流程如何工作</a>
+        <a class="toc-level-1" href="#why-it-matters">为什么重要</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

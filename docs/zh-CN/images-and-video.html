@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 图片与视频</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 图片与视频" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/images-and-video.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/images-and-video.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/images-and-video.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/images-and-video.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../images-and-video.html">English</option>
+            <option value="zh-CN" data-href="images-and-video.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a class="active" aria-current="page" href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 图片与视频</div>
+
+        <section id="media" class="doc-page">
+          <h1>图片、视频和代码示例</h1>
+          <p>
+            文档站已经为后续硬件照片、摄像头预览、标定视频、数据集截图和较长代码示例预留位置。媒体文件放在 <code class="inline">docs/assets/</code>。
+          </p>
+          <div class="media-grid">
+            <div class="media-slot">
+              <div>
+                <strong>图片占位</strong>
+                <p>用于摄像头预览、线缆标签和设置照片。</p>
+                <code>docs/assets/images/step-1-preview.jpg</code>
+              </div>
+            </div>
+            <div class="media-slot">
+              <div>
+                <strong>视频占位</strong>
+                <p>用于标定零位姿态和连续扫动演示。</p>
+                <code>docs/assets/videos/calibration-sweep.mp4</code>
+              </div>
+            </div>
+          </div>
+          <div class="code-title">
+            <span>媒体标记模板</span>
+            <span>html</span>
+          </div>
+          <pre><code>&lt;figure&gt;
+  &lt;img src="../assets/images/step-1-preview.jpg" alt="Camera preview showing wrist and third-person views" /&gt;
+  &lt;figcaption&gt;Preview images are the source of truth for camera roles.&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;figure&gt;
+  &lt;video controls src="../assets/videos/calibration-sweep.mp4"&gt;&lt;/video&gt;
+  &lt;figcaption&gt;Move the arm by hand while the SDK records min/max ticks.&lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="calibration-principles.html"><span>上一页</span>标定原理</a>
+          <a href="publishing.html"><span>下一页</span>发布</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">图片与视频</p>
+        <a class="toc-level-1" href="#media">概览</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

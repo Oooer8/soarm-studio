@@ -16,6 +16,9 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/installation.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/installation.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/installation.html" />
   </head>
   <body>
     <header class="topbar">
@@ -33,9 +36,18 @@
         <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
         <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
       </nav>
-      <div class="search" aria-label="Search placeholder">
-        <span>Search documentation...</span>
-        <kbd>/</kbd>
+      <div class="top-actions">
+        <div class="search" aria-label="Search placeholder">
+          <span>Search documentation...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">Language</span>
+          <select aria-label="Documentation language" data-language-switcher>
+            <option value="en" data-href="installation.html" selected>English</option>
+            <option value="zh-CN" data-href="zh-CN/installation.html">中文</option>
+          </select>
+        </label>
       </div>
     </header>
 
@@ -107,5 +119,6 @@ soarm-studio check --config configs/sessions/mock.yaml --overwrite</code></pre>
         <a class="toc-level-1" href="#installation">Overview</a>
       </aside>
     </div>
+    <script src="assets/docs.js"></script>
   </body>
 </html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 安装</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 安装" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/installation.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/installation.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/installation.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/installation.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../installation.html">English</option>
+            <option value="zh-CN" data-href="installation.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a class="active" aria-current="page" href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 安装</div>
+
+        <section id="installation" class="doc-page">
+          <h1>安装</h1>
+          <p>
+            conda 环境会以 editable 模式安装 SOARM Studio，并拉取 hardware extra 中声明的 GitHub 版 <code class="inline">soarm-sdk</code> 依赖。
+          </p>
+          <div class="code-title">
+            <span>安装环境</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>conda env create -f environment.yml
+conda activate soarm-studio</code></pre>
+
+          <div class="code-title">
+            <span>验证本地安装</span>
+            <span>zsh</span>
+          </div>
+          <pre><code>soarm-studio --help
+soarm-studio check --config configs/sessions/mock.yaml --overwrite</code></pre>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="index.html"><span>上一页</span>介绍</a>
+          <a href="quickstart.html"><span>下一页</span>快速开始</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">安装</p>
+        <a class="toc-level-1" href="#installation">概览</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

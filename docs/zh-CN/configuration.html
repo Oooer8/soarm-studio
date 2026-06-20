@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 配置</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 配置" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/configuration.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/configuration.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/configuration.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/configuration.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../configuration.html">English</option>
+            <option value="zh-CN" data-href="configuration.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a class="active" aria-current="page" href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 配置</div>
+
+        <section id="configuration" class="doc-page">
+          <h1>配置</h1>
+          <p>
+            setup 会写入一个运行配置和两份机械臂配置。这些文件会被忽略，因为它们依赖本机 USB 端口、摄像头 index 和标定后的限位。
+          </p>
+          <div class="code-title">
+            <span>生成文件</span>
+            <span>text</span>
+          </div>
+          <pre><code>configs/session.yaml
+configs/arms/leader.yaml
+configs/arms/follower.yaml</code></pre>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>不要把示例配置当成运行状态</strong>
+              <p>
+                <code class="inline">configs/sessions/</code> 下的文件只是模板；运行 <code class="inline">setup</code> 后，真实运行使用 <code class="inline">configs/session.yaml</code>。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="architecture.html"><span>上一页</span>架构</a>
+          <a href="calibration-principles.html"><span>下一页</span>标定原理</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">配置</p>
+        <a class="toc-level-1" href="#configuration">概览</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

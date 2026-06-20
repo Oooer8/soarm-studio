@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 故障排查</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 故障排查" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/troubleshooting.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/troubleshooting.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/troubleshooting.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/troubleshooting.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../troubleshooting.html">English</option>
+            <option value="zh-CN" data-href="troubleshooting.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a class="active" aria-current="page" href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 故障排查</div>
+
+        <section id="troubleshooting" class="doc-page">
+          <h1>故障排查</h1>
+          <div class="cards">
+            <article class="card">
+              <h3 id="camera-preview-fails">摄像头预览失败</h3>
+              <p>
+                在 macOS 上，为终端应用授予相机权限，然后重新运行 <code class="inline">scan --preview-cameras</code>。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="wrong-camera-role">摄像头角色错误</h3>
+              <p>
+                OpenCV index 可能变化。重新采集预览并重新运行
+                <code class="inline">setup cameras</code>。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="serial-port-denied">串口访问被拒绝</h3>
+              <p>
+                确认终端有权限打开
+                <code class="inline">/dev/cu.*</code> ，并且没有其他进程占用同一个端口。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="calibration-feels-wrong">标定结果感觉不对</h3>
+              <p>
+                一次只重标定一台机械臂。仔细采集零位，然后把每个关节扫过希望可用的安全范围。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="teleop-hz-low">遥操作完成但 observed_hz 偏低</h3>
+              <p>
+                运行已到达 <code class="inline">TELEOP_READY</code>，说明它没有崩溃。如果 <code class="inline">observed_hz</code> 远低于 <code class="inline">target_hz</code>，说明同步的 Studio 循环在读取主臂关节、从臂回读或摄像头时耗时过长。30 Hz 下，每一步循环都要控制在约 33 ms 以内。
+              </p>
+              <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 10 --debug</code></pre>
+              <p>
+                比较 <code class="inline">scheduler_lag</code>，
+                <code class="inline">leader_read</code>，
+                <code class="inline">follower_before_read</code>，
+                <code class="inline">follower_after_read</code>，
+                <code class="inline">stream_update</code>，以及
+                <code class="inline">camera_read:*</code>。OpenCV 摄像头由后台 latest-frame 线程读取；经过这个优化后
+                <code class="inline">camera_read:*</code> 应该很小，
+                <code class="inline">camera_age:*</code> 显示帧新鲜度。如果每个阶段都低于预算但观测频率仍偏低，检查 <code class="inline">sleep</code> 和
+                <code class="inline">scheduler_lag</code> 以排查 OS 计时漂移。如果
+                <code class="inline">follower_after_read</code> 耗时较高，实时遥操作请保留默认的
+                <code class="inline">--follower-readback-every 0</code>，也可以用
+                <code class="inline">--follower-readback-every 10</code> 偶尔采样。
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="generated-files.html"><span>上一页</span>生成文件</a>
+          <a href="https://github.com/Oooer8/soarm-studio"><span>项目</span>GitHub</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">故障排查</p>
+        <a class="toc-level-1" href="#troubleshooting">概览</a>
+        <a class="toc-level-2" href="#camera-preview-fails">摄像头预览失败</a>
+        <a class="toc-level-2" href="#wrong-camera-role">摄像头角色错误</a>
+        <a class="toc-level-2" href="#serial-port-denied">串口访问被拒绝</a>
+        <a class="toc-level-2" href="#calibration-feels-wrong">标定结果感觉不对</a>
+        <a class="toc-level-2" href="#teleop-hz-low">遥操作频率低</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

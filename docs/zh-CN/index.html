@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/index.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/index.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/index.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/index.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../index.html">English</option>
+            <option value="zh-CN" data-href="index.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a class="active" aria-current="page" href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 介绍</div>
+
+        <section id="introduction" class="doc-page">
+          <h1>SOARM Studio 文档</h1>
+          <p class="lead">
+            SOARM Studio 是双 SOARM 启动、标定、遥操作和本地数据采集的应用层。它保持用户流程清晰，同时把底层机械臂行为委托给
+            <code class="inline">soarm-sdk</code>。
+          </p>
+
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
+              <strong>README 与文档</strong>
+              <p>
+                README 是简短的项目入口。这些文档是更详细的操作手册，涵盖安装、概念、硬件设置、标定、录制、媒体示例和故障排查。
+              </p>
+            </div>
+          </div>
+
+          <div class="cards">
+            <article class="card">
+              <h3 id="recommended-command-path">推荐命令路径</h3>
+              <p>
+                使用 <code class="inline">scan</code>，
+                <code class="inline">setup</code>，
+                <code class="inline">check</code>，
+                <code class="inline">calibrate</code>，
+                <code class="inline">teleop</code>，以及
+                <code class="inline">record</code>。旧的重复命令形态已经从公开 CLI 中移除。
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="one-generated-runtime-config">一个生成的运行配置</h3>
+              <p>
+                <code class="inline">configs/session.yaml</code> 是单台机器的本地运行配置。示例配置仍作为模板放在 <code class="inline">configs/sessions/</code>。
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="https://github.com/Oooer8/soarm-studio#readme"><span>项目</span>README</a>
+          <a href="installation.html"><span>下一页</span>安装</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">介绍</p>
+        <a class="toc-level-1" href="#introduction">概览</a>
+        <a class="toc-level-2" href="#recommended-command-path">推荐命令路径</a>
+        <a class="toc-level-2" href="#one-generated-runtime-config">一个生成的运行配置</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

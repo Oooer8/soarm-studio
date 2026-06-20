@@ -1,3 +1,17 @@
+document.querySelectorAll("[data-language-switcher]").forEach((select) => {
+  select.addEventListener("change", () => {
+    const option = select.selectedOptions[0];
+    const href = option?.dataset.href;
+    if (href) {
+      window.location.href = href;
+    }
+  });
+});
+
+const copyLabels = document.documentElement.lang.startsWith("zh")
+  ? { copied: "已复制", selected: "已选中" }
+  : { copied: "Copied", selected: "Selected" };
+
 document.querySelectorAll(".copy-button").forEach((button) => {
   const originalLabel = button.textContent;
 
@@ -11,10 +25,10 @@ document.querySelectorAll(".copy-button").forEach((button) => {
 
     try {
       await copyText(text);
-      button.textContent = "Copied";
+      button.textContent = copyLabels.copied;
     } catch {
       selectCode(code);
-      button.textContent = "Selected";
+      button.textContent = copyLabels.selected;
     }
 
     window.setTimeout(() => {

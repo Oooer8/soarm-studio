@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio 文档: 遥操作</title>
+    <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta property="og:title" content="SOARM Studio 文档: 遥操作" />
+    <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/zh-CN/teleoperation.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/teleoperation.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/teleoperation.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/teleoperation.html" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="主导航">
+        <a href="index.html" aria-current="page">文档</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="搜索占位">
+          <span>搜索文档...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">语言</span>
+          <select aria-label="文档语言" data-language-switcher>
+            <option value="en" data-href="../teleoperation.html">English</option>
+            <option value="zh-CN" data-href="teleoperation.html" selected>中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="文档">
+        <div class="side-section">
+          <h2>入门</h2>
+          <a href="index.html">介绍</a>
+          <a href="installation.html">安装</a>
+          <a href="quickstart.html">快速开始</a>
+        </div>
+        <div class="side-section">
+          <h2>核心概念</h2>
+          <a href="architecture.html">架构</a>
+          <a href="configuration.html">配置</a>
+          <a href="calibration-principles.html">标定原理</a>
+          <a class="active" aria-current="page" href="teleoperation.html">遥操作</a>
+          <a href="images-and-video.html">图片与视频</a>
+          <a href="publishing.html">发布</a>
+        </div>
+        <div class="side-section">
+          <h2>教程</h2>
+          <a href="hardware-setup.html">第 1 步硬件设置</a>
+          <a href="calibration.html">第 2 步标定</a>
+          <a href="recording.html">录制</a>
+        </div>
+        <div class="side-section">
+          <h2>参考</h2>
+          <a href="cli-reference.html">CLI 参考</a>
+          <a href="generated-files.html">生成文件</a>
+          <a href="troubleshooting.html">故障排查</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">文档 <span>/</span> 遥操作</div>
+
+        <section id="teleop" class="doc-page">
+          <h1>遥操作</h1>
+          <p>
+            遥操作是在 SDK direct joint stream 外包裹的一层 30 Hz Studio 侧采样循环。Studio 读取主臂和从臂动作前状态，计算裁剪后的目标，然后把目标发布给 <code class="inline">soarm-sdk</code>。SDK 负责固定频率的从臂输出、最新目标写入、关节限位检查和超时保持。
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
+          <p>
+            标定完成后使用 <code class="inline">--free-test</code>。它会在启动循环前运行就绪检查。
+          </p>
+        </section>
+
+        <section id="technical-plan" class="doc-page">
+          <h2>技术方案</h2>
+          <p>
+            默认实时路径针对确定性的目标发布做了优化:
+          </p>
+          <pre><code>leader_read
+  -> follower_before_read
+  -> target_compute
+  -> SDK direct stream update
+  -> latest camera frame fetch
+  -> sample callbacks
+  -> absolute 30 Hz scheduler sleep</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>领域</th>
+                  <th>决策</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>从臂输出</td>
+                  <td>使用 SDK direct joint stream。Studio 只发送最新目标；SDK 处理固定频率输出和超时行为。</td>
+                </tr>
+                <tr>
+                  <td>从臂回读</td>
+                  <td>不要在每个实时帧读取 <code class="inline">follower_after</code>。控制路径需要 <code class="inline">follower_before</code> 来做状态读取、裁剪和录制。诊断时可以通过 <code class="inline">--follower-readback-every N</code> 开启周期性回读。</td>
+                </tr>
+                <tr>
+                  <td>摄像头</td>
+                  <td>OpenCV 摄像头运行在后台 latest-frame 线程中。控制循环只获取缓存帧，因此摄像头 USB 或解码抖动不会阻塞目标发布。</td>
+                </tr>
+                <tr>
+                  <td>调度器</td>
+                  <td>按绝对 30 Hz tick 睡眠，并保留短保护窗口，因此普通 OS 睡眠超时不会累积成循环漂移。</td>
+                </tr>
+                <tr>
+                  <td>Debug 指标</td>
+                  <td>Debug 数据需要显式开启，并以阶段汇总形式报告。默认路径保持同样行为，但不存储逐阶段样本。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            诊断运行时添加 <code class="inline">--debug</code>:
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug</code></pre>
+          <p>
+            如果要检查命令后的从臂回读，但不想让它进入每帧路径，可以定期采样:
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug --follower-readback-every 10</code></pre>
+        </section>
+
+        <section id="reading-output" class="doc-page">
+          <h2>读取 CLI 输出</h2>
+          <p>
+            成功的遥操作命令会先打印硬件连接日志，然后输出 JSON 指标对象。该 JSON 描述的是 Studio 侧 30 Hz 控制和采样循环，而不是 SDK 内部 direct stream 的输出频率。
+          </p>
+          <details class="cli-result" open>
+            <summary>稳定 60 秒 debug 输出节选</summary>
+            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+{
+  "session": "dual-soarm",
+  "state": "TELEOP_READY",
+  "metrics": {
+    "iterations": 1800,
+    "target_hz": 30,
+    "observed_hz": 29.999,
+    "last_latency_ms": 2.98,
+    "max_latency_ms": 5.175,
+    "elapsed_s": 60.001,
+    "budget_ms": 33.333,
+    "over_budget_iterations": 0,
+    "phase_latency_ms": {
+      "scheduler_lag": {"p95_ms": 0.984, "max_ms": 3.456},
+      "leader_read": {"p95_ms": 1.652},
+      "follower_before_read": {"p95_ms": 1.496},
+      "stream_update": {"p95_ms": 0.025},
+      "camera_read:third_person": {"p95_ms": 0.003},
+      "camera_age:third_person": {"p95_ms": 39.297},
+      "camera_read:wrist": {"p95_ms": 0.002},
+      "camera_age:wrist": {"p95_ms": 35.384},
+      "sleep": {"p95_ms": 31.145}
+    }
+  }
+}
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.</code></pre>
+          </details>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>字段</th>
+                  <th>含义</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>iterations</code></td>
+                  <td>已完成的 Studio 控制样本数。30 Hz 运行 60 秒时，健康结果应接近 1800。</td>
+                </tr>
+                <tr>
+                  <td><code>target_hz</code></td>
+                  <td>来自配置的 Studio 循环目标: <code class="inline">configs/session.yaml</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>observed_hz</code></td>
+                  <td>实际 Studio 循环频率，计算方式为 <code class="inline">iterations / elapsed_s</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>last_latency_ms</code></td>
+                  <td>最后一次循环步骤耗时，包括主臂读取、从臂动作前读取、目标计算、stream 更新、latest-frame 摄像头获取和回调。</td>
+                </tr>
+                <tr>
+                  <td><code>max_latency_ms</code></td>
+                  <td>运行中最慢的循环步骤。</td>
+                </tr>
+                <tr>
+                  <td><code>elapsed_s</code></td>
+                  <td>遥操作运行的墙钟时长。</td>
+                </tr>
+                <tr>
+                  <td><code>phase_latency_ms</code></td>
+                  <td>仅在使用 <code class="inline">--debug</code> 时出现；会报告每个遥操作阶段的次数、最近值、平均值、p50、p95 和最大延迟。 <code class="inline">camera_read:*</code> 是缓存帧获取成本， <code class="inline">camera_age:*</code> 表示帧新鲜度， <code class="inline">scheduler_lag</code> 是计时漂移。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
+              <strong>示例说明</strong>
+              <p>
+                这次运行在 60 秒内完成 1800 个控制样本，没有任何超预算循环步骤。机械臂读取和目标更新低于数毫秒，摄像头读取是缓存 latest-frame 查询，调度器 p95 滞后低于 1 毫秒。camera-age 阶段表示帧新鲜度；30 Hz 摄像头出现约一帧的数值是正常的。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="页脚">
+          <a href="calibration-principles.html"><span>上一页</span>标定原理</a>
+          <a href="images-and-video.html"><span>下一页</span>图片与视频</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="本节">
+        <h2>本节</h2>
+        <p class="toc-current">遥操作</p>
+        <a class="toc-level-1" href="#teleop">概览</a>
+        <a class="toc-level-1" href="#technical-plan">技术方案</a>
+        <a class="toc-level-1" href="#reading-output">读取输出</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>
