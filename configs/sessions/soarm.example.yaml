@@ -1,5 +1,5 @@
 {
-  "name": "dual-soarm",
+  "name": "soarm",
   "loop_hz": 30,
   "joints": [
     "shoulder_pan",
@@ -39,8 +39,8 @@
     }
   },
   "dataset": {
-    "root": "datasets/dual-soarm",
-    "repo_id": "oooer/dual-soarm",
+    "root": "datasets/soarm",
+    "repo_id": "oooer/soarm",
     "fps": 30,
     "robot_type": "soarm"
   },

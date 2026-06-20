@@ -176,13 +176,13 @@ def test_assign_camera_roles_writes_wrist_and_third_person(tmp_path) -> None:
 
 
 def test_assign_uses_example_template_when_local_session_is_missing(tmp_path, monkeypatch) -> None:
-    template_path = tmp_path / "configs" / "sessions" / "dual_soarm.example.yaml"
+    template_path = tmp_path / "configs" / "sessions" / "soarm.example.yaml"
     session_path = tmp_path / "configs" / "session.yaml"
     template_path.parent.mkdir(parents=True)
     template_path.write_text(
         json.dumps(
             {
-                "name": "dual-soarm",
+                "name": "soarm",
                 "leader": {"name": "leader", "mock": True},
                 "follower": {"name": "follower", "mock": True},
                 "cameras": {},
@@ -200,5 +200,5 @@ def test_assign_uses_example_template_when_local_session_is_missing(tmp_path, mo
 
     session = load_config_mapping(session_path)
     assert result["session_config"] == str(session_path)
-    assert session["name"] == "dual-soarm"
+    assert session["name"] == "soarm"
     assert session["cameras"]["wrist"]["device"] == 0

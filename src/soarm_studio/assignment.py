@@ -9,7 +9,7 @@ from .hardware.cameras import CameraDeviceInfo, detect_camera_devices
 
 
 DEFAULT_SESSION_CONFIG = "configs/session.yaml"
-DEFAULT_SESSION_TEMPLATE = "configs/sessions/dual_soarm.example.yaml"
+DEFAULT_SESSION_TEMPLATE = "configs/sessions/soarm.example.yaml"
 DEFAULT_LEADER_ARM_CONFIG = "configs/arms/leader.yaml"
 DEFAULT_FOLLOWER_ARM_CONFIG = "configs/arms/follower.yaml"
 

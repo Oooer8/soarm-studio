@@ -81,8 +81,8 @@ Generated machine-local files are ignored by git:
 soarm-studio check --config configs/sessions/mock.yaml --overwrite
 soarm-studio teleop --config configs/sessions/mock.yaml --seconds 2
 soarm-studio record --config configs/sessions/mock.yaml --seconds 2 --task "mock pick" --overwrite
-soarm-studio dataset inspect datasets/mock-dual-soarm
-soarm-studio dataset validate datasets/mock-dual-soarm
+soarm-studio dataset inspect datasets/mock-soarm
+soarm-studio dataset validate datasets/mock-soarm
 ```
 
 ## Development

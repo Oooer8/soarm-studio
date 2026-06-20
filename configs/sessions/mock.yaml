@@ -1,5 +1,5 @@
 {
-  "name": "mock-dual-soarm",
+  "name": "mock-soarm",
   "loop_hz": 30,
   "joints": [
     "shoulder_pan",
@@ -36,8 +36,8 @@
     }
   },
   "dataset": {
-    "root": "datasets/mock-dual-soarm",
-    "repo_id": "oooer/mock-dual-soarm",
+    "root": "datasets/mock-soarm",
+    "repo_id": "oooer/mock-soarm",
     "fps": 30,
     "robot_type": "soarm"
   },

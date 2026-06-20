@@ -11,7 +11,7 @@ from soarm_studio.config import load_config_mapping, load_session_config
 def test_load_mock_config() -> None:
     config = load_session_config(Path("configs/sessions/mock.yaml"))
 
-    assert config.name == "mock-dual-soarm"
+    assert config.name == "mock-soarm"
     assert config.loop_hz == 30
     assert config.leader.mock is True
     assert config.follower.max_relative_target == 0.08
