@@ -165,42 +165,14 @@
                 <li>
                   <h3 id="probe-arms">热插拔确认主从臂串口</h3>
                   <p>
-                    先让两台机械臂保持连接并完成一次基准扫描，再逐台热插拔机械臂连接并重新扫描。对比每次 <code class="inline">arm_ports</code>，消失后重新出现的 <code class="inline">device</code> 就是刚才热插拔的那台机械臂串口。
+                    先让两台机械臂保持连接并完成一次总线基准探测，再逐台热插拔机械臂连接并重复探测。对比每次 <code class="inline">arm_ports</code>，消失后重新出现的 <code class="inline">device</code> 就是刚才热插拔的那台机械臂串口。
                   </p>
                   <ol>
-                    <li>两台机械臂都连接时运行下面的扫描，记录两个 <code class="inline">device</code>。</li>
-                    <li>热插拔主臂连接并重新扫描；对比前后列表，确认主臂串口。</li>
-                    <li>主臂恢复连接后，热插拔从臂并重新扫描；确认从臂串口。</li>
-                    <li>重新连接两台机械臂，确认两个串口都重新出现在列表中。</li>
+                    <li>两台机械臂都连接时运行下面的探测，记录两个 <code class="inline">device</code> 及其 <code class="inline">online_ids</code>。</li>
+                    <li>热插拔主臂连接并重新探测；对比前后列表，确认主臂串口。</li>
+                    <li>主臂恢复连接后，热插拔从臂并重新探测；确认从臂串口。</li>
+                    <li>重新连接两台机械臂，再探测一次，确认两个端口的 ID 1-6 都在线。</li>
                   </ol>
-                  <div class="cli-block">
-                    <div class="cli-toolbar">
-                      <span>CLI</span>
-                      <button class="copy-button" type="button">复制</button>
-                    </div>
-                    <pre><code>soarm-studio scan --include-system</code></pre>
-                  </div>
-                  <details class="cli-result">
-                    <summary>查看端口对比示例</summary>
-                    <pre><code>基准扫描:
-  /dev/cu.usbmodem5A7C1219051
-  /dev/cu.usbmodem5A7C1190351
-
-热插拔主臂后:
-  /dev/cu.usbmodem5A7C1190351
-
-确认主臂串口:
-  /dev/cu.usbmodem5A7C1219051</code></pre>
-                  </details>
-                  <p>
-                    从臂按相同方法确认。不要根据端口排序或插入顺序直接猜测角色。
-                  </p>
-                </li>
-                <li>
-                  <h3 id="verify-arm-buses">重新连接并探测机械臂总线</h3>
-                  <p>
-                    两台机械臂重新连接后，读取每个候选串口的默认电机 ID 1-6，确认两个端口都能访问完整总线。
-                  </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
                       <span>CLI</span>
@@ -208,6 +180,21 @@
                     </div>
                     <pre><code>soarm-studio scan --probe-arms</code></pre>
                   </div>
+                  <details class="cli-result">
+                    <summary>查看端口对比示例</summary>
+                    <pre><code>基准探测:
+  /dev/cu.usbmodem5A7C1219051  online_ids=[1,2,3,4,5,6]
+  /dev/cu.usbmodem5A7C1190351  online_ids=[1,2,3,4,5,6]
+
+热插拔主臂后再次探测:
+  /dev/cu.usbmodem5A7C1190351  online_ids=[1,2,3,4,5,6]
+
+确认主臂串口:
+  /dev/cu.usbmodem5A7C1219051</code></pre>
+                  </details>
+                  <p>
+                    从臂按相同方法确认。不要根据端口排序或插入顺序猜测角色；两台机械臂重新连接后，仍使用同一条命令完成最终总线复查。
+                  </p>
                   <details class="cli-result">
                     <summary>查看预期输出</summary>
                     <pre><code>{
@@ -470,7 +457,6 @@ hardware: disconnecting; disabling servo torque before closing the port.
         <a class="toc-level-1" href="#scan-hardware">扫描硬件</a>
         <a class="toc-level-1" href="#arm-setup">配置机械臂</a>
         <a class="toc-level-2" href="#probe-arms">热插拔确认主从臂串口</a>
-        <a class="toc-level-2" href="#verify-arm-buses">重新连接并探测总线</a>
         <a class="toc-level-2" href="#setup-arm-roles">写入机械臂角色</a>
         <a class="toc-level-1" href="#camera-setup">配置摄像头</a>
         <a class="toc-level-2" href="#preview-cameras">预览摄像头</a>

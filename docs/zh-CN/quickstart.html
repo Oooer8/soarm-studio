@@ -90,18 +90,20 @@
             完整硬件路径是分阶段的。不要直接跳到遥操作或录制。先启动硬件，再标定，然后做自由运动测试和数据集采集。
           </p>
           <p>
-            主从臂串口通过热插拔前后的扫描差异确认：两台都连接时记录基准列表，依次热插拔主臂和从臂并重新扫描，最后重新连接两台机械臂完成总线探测。
+            主从臂串口通过热插拔前后的总线探测差异确认：两台都连接时运行 <code class="inline">scan --probe-arms</code> 记录基准结果，依次热插拔主臂和从臂并重复探测，最后重新连接两台机械臂完成复查。
           </p>
           <div class="code-title">
             <span>端到端命令轮廓</span>
             <span>zsh</span>
           </div>
           <pre><code>soarm-studio scan --include-system
-# 热插拔主臂连接后，对比消失的串口
-soarm-studio scan --include-system
-# 主臂恢复后热插拔从臂，再次对比
-soarm-studio scan --include-system
-# 重新连接两台机械臂并探测总线
+# 两台机械臂连接时记录总线基准
+soarm-studio scan --probe-arms
+# 热插拔主臂连接后重复探测，对比消失的端口
+soarm-studio scan --probe-arms
+# 主臂恢复后热插拔从臂，再次探测
+soarm-studio scan --probe-arms
+# 重新连接两台机械臂并最终复查
 soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \

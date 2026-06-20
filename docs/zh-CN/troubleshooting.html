@@ -103,7 +103,7 @@
             <article class="card">
               <h3 id="uncertain-arm-role">主从臂串口无法确认</h3>
               <p>
-                不要根据设备顺序猜测。返回<a href="hardware-setup.html#probe-arms">硬件设置</a>，比较热插拔每台机械臂前后的 <code class="inline">scan --include-system</code> 结果，再重新连接两台机械臂运行 <code class="inline">scan --probe-arms</code>。
+                不要根据设备顺序猜测。返回<a href="hardware-setup.html#probe-arms">硬件设置</a>，热插拔每台机械臂前后都运行 <code class="inline">scan --probe-arms</code>，通过 <code class="inline">arm_ports</code> 的变化确认角色。
               </p>
             </article>
             <article class="card">

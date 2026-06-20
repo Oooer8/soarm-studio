@@ -165,42 +165,14 @@
                 <li>
                   <h3 id="probe-arms">Identify roles by hot-plugging</h3>
                   <p>
-                    Keep both arms connected for a baseline scan, then hot-plug one arm connection at a time and scan again. Compare <code class="inline">arm_ports</code>: the <code class="inline">device</code> that disappears and returns belongs to the arm you hot-plugged.
+                    Keep both arms connected for a baseline bus probe, then hot-plug one arm connection at a time and repeat the probe. Compare <code class="inline">arm_ports</code>: the <code class="inline">device</code> that disappears and returns belongs to the arm you hot-plugged.
                   </p>
                   <ol>
-                    <li>Run the scan below with both arms connected and record both <code class="inline">device</code> values.</li>
-                    <li>Hot-plug the leader connection and scan again; compare the lists to identify the leader port.</li>
-                    <li>Reconnect the leader, hot-plug the follower, and scan again to identify the follower port.</li>
-                    <li>Reconnect both arms and confirm both serial ports have returned.</li>
+                    <li>Run the probe below with both arms connected and record both <code class="inline">device</code> and <code class="inline">online_ids</code> values.</li>
+                    <li>Hot-plug the leader connection and probe again; compare the lists to identify the leader port.</li>
+                    <li>Reconnect the leader, hot-plug the follower, and probe again to identify the follower port.</li>
+                    <li>Reconnect both arms and probe once more to confirm IDs 1-6 are online on both ports.</li>
                   </ol>
-                  <div class="cli-block">
-                    <div class="cli-toolbar">
-                      <span>CLI</span>
-                      <button class="copy-button" type="button">Copy</button>
-                    </div>
-                    <pre><code>soarm-studio scan --include-system</code></pre>
-                  </div>
-                  <details class="cli-result">
-                    <summary>Show port comparison example</summary>
-                    <pre><code>Baseline scan:
-  /dev/cu.usbmodem5A7C1219051
-  /dev/cu.usbmodem5A7C1190351
-
-After hot-plugging the leader:
-  /dev/cu.usbmodem5A7C1190351
-
-Confirmed leader port:
-  /dev/cu.usbmodem5A7C1219051</code></pre>
-                  </details>
-                  <p>
-                    Repeat the same comparison for the follower. Do not infer roles from port sort or insertion order.
-                  </p>
-                </li>
-                <li>
-                  <h3 id="verify-arm-buses">Reconnect and probe both arm buses</h3>
-                  <p>
-                    With both arms reconnected, read default motor IDs 1-6 on every candidate serial port and confirm that both complete buses are reachable.
-                  </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
                       <span>CLI</span>
@@ -208,6 +180,21 @@ Confirmed leader port:
                     </div>
                     <pre><code>soarm-studio scan --probe-arms</code></pre>
                   </div>
+                  <details class="cli-result">
+                    <summary>Show port comparison example</summary>
+                    <pre><code>Baseline probe:
+  /dev/cu.usbmodem5A7C1219051  online_ids=[1,2,3,4,5,6]
+  /dev/cu.usbmodem5A7C1190351  online_ids=[1,2,3,4,5,6]
+
+Probe after hot-plugging the leader:
+  /dev/cu.usbmodem5A7C1190351  online_ids=[1,2,3,4,5,6]
+
+Confirmed leader port:
+  /dev/cu.usbmodem5A7C1219051</code></pre>
+                  </details>
+                  <p>
+                    Repeat the same comparison for the follower. Do not infer roles from port sort or insertion order; after reconnecting both arms, use the same command for the final bus check.
+                  </p>
                   <details class="cli-result">
                     <summary>Show expected output</summary>
                     <pre><code>{
@@ -470,7 +457,6 @@ hardware: disconnecting; disabling servo torque before closing the port.
         <a class="toc-level-1" href="#scan-hardware">Scan hardware</a>
         <a class="toc-level-1" href="#arm-setup">Configure arms</a>
         <a class="toc-level-2" href="#probe-arms">Identify roles by hot-plugging</a>
-        <a class="toc-level-2" href="#verify-arm-buses">Reconnect and probe both buses</a>
         <a class="toc-level-2" href="#setup-arm-roles">Write arm roles</a>
         <a class="toc-level-1" href="#camera-setup">Configure cameras</a>
         <a class="toc-level-2" href="#preview-cameras">Preview cameras</a>

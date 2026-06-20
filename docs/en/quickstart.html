@@ -92,18 +92,20 @@
             motion tests and dataset capture.
           </p>
           <p>
-            Identify the leader and follower ports by comparing scans before and after hot-plugging each arm: record a baseline with both connected, hot-plug each arm and rescan, then reconnect both arms for the bus probe.
+            Identify the leader and follower ports by comparing bus probes before and after hot-plugging each arm: run <code class="inline">scan --probe-arms</code> for the baseline, repeat it after hot-plugging each arm, then reconnect both arms for the final check.
           </p>
           <div class="code-title">
             <span>End-to-end command outline</span>
             <span>zsh</span>
           </div>
           <pre><code>soarm-studio scan --include-system
-# Hot-plug the leader and compare the missing port
-soarm-studio scan --include-system
-# Reconnect the leader, hot-plug the follower, and compare again
-soarm-studio scan --include-system
-# Reconnect both arms and probe both buses
+# Record a baseline with both arm buses connected
+soarm-studio scan --probe-arms
+# Hot-plug the leader and repeat the probe
+soarm-studio scan --probe-arms
+# Reconnect the leader, hot-plug the follower, and probe again
+soarm-studio scan --probe-arms
+# Reconnect both arms and run the final check
 soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
