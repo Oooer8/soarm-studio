@@ -168,7 +168,7 @@ hardware: disconnecting; closing the Feetech servo port.
   建议:
     下一步: soarm-studio calibrate --config configs/session.yaml --role follower
 
-调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
           </details>
 
           <details class="cli-result">
@@ -199,12 +199,12 @@ hardware: disconnecting; closing the Feetech servo port.
   建议:
     下一步: soarm-studio check --config configs/session.yaml --overwrite
 
-调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
           </details>
 
           <p>
             失败时先看摘要里的“复查”和“建议”；需要专业诊断时再加
-            <code class="inline">--verbose</code> 查看完整报告，或加
+            <code class="inline">--debug</code> 查看完整报告，或加
             <code class="inline">--json</code> 导出机器可读结果。
             通信失败通常检查串口、电源、总线和 ID；电压失败先确认该机械臂的实际供电档位和
             <code class="inline">low_voltage</code> 阈值是否匹配。

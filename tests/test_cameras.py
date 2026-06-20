@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import sys
+import time
 from types import SimpleNamespace
 
+from soarm_studio.config import CameraConfig
 from soarm_studio.hardware.cameras import (
+    LatestFrameCamera,
     _camera_infos_from_ioreg,
     preview_camera_devices,
 )
+from soarm_studio.types import CameraFrame
 
 
 def test_ioreg_camera_detection_filters_serial_device() -> None:
@@ -92,3 +96,92 @@ def test_preview_camera_devices_writes_preview_images(tmp_path, monkeypatch) -> 
     assert (tmp_path / "camera_0.jpg").read_bytes() == b"fake-jpeg"
     assert previews[1].ok is False
     assert previews[1].error == "default: camera did not open"
+
+
+def test_latest_frame_camera_serves_cached_frame_without_blocking() -> None:
+    class SlowCamera:
+        name = "slow"
+        width = 2
+        height = 2
+
+        def __init__(self) -> None:
+            self.connected = False
+            self.frames = 0
+
+        def connect(self) -> None:
+            self.connected = True
+
+        def disconnect(self) -> None:
+            self.connected = False
+
+        def read(self) -> CameraFrame:
+            time.sleep(0.03)
+            self.frames += 1
+            return CameraFrame(
+                name=self.name,
+                width=self.width,
+                height=self.height,
+                rgb=b"\x00\x00\x00" * self.width * self.height,
+            )
+
+    camera = SlowCamera()
+    latest = LatestFrameCamera(camera, fps=30, initial_timeout_s=0.5)
+
+    try:
+        latest.connect()
+        started = time.monotonic()
+        frame = latest.read()
+        elapsed_ms = (time.monotonic() - started) * 1000.0
+    finally:
+        latest.disconnect()
+
+    assert frame.name == "slow"
+    assert elapsed_ms < 5.0
+
+
+def test_create_cameras_wraps_opencv_in_latest_frame_camera(monkeypatch) -> None:
+    class FakeCapture:
+        def isOpened(self) -> bool:
+            return True
+
+        def set(self, _prop, _value) -> None:
+            return None
+
+        def read(self):
+            return True, SimpleNamespace(shape=(2, 2, 3), tobytes=lambda: b"\x00" * 12)
+
+        def release(self) -> None:
+            return None
+
+    fake_cv2 = SimpleNamespace(
+        VideoCapture=lambda *_args: FakeCapture(),
+        CAP_PROP_FRAME_WIDTH=3,
+        CAP_PROP_FRAME_HEIGHT=4,
+        CAP_PROP_FPS=5,
+        COLOR_BGR2RGB=1,
+        cvtColor=lambda frame, _code: frame,
+    )
+    monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
+
+    from soarm_studio.hardware.cameras import create_cameras
+
+    cameras = create_cameras(
+        {
+            "wrist": CameraConfig(
+                name="wrist",
+                kind="opencv",
+                device=0,
+                width=2,
+                height=2,
+                fps=30,
+            )
+        }
+    )
+
+    camera = cameras["wrist"]
+    assert isinstance(camera, LatestFrameCamera)
+    camera.connect()
+    try:
+        assert camera.read().name == "wrist"
+    finally:
+        camera.disconnect()

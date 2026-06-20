@@ -115,6 +115,27 @@
                 follower readback, or cameras. At 30 Hz, each loop step must
                 stay under about 33 ms.
               </p>
+              <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 10 --debug</code></pre>
+              <p>
+                Compare <code class="inline">scheduler_lag</code>,
+                <code class="inline">leader_read</code>,
+                <code class="inline">follower_before_read</code>,
+                <code class="inline">follower_after_read</code>,
+                <code class="inline">stream_update</code>, and
+                <code class="inline">camera_read:*</code>. OpenCV cameras are
+                read on background latest-frame threads; after this optimization
+                <code class="inline">camera_read:*</code> should be small, and
+                <code class="inline">camera_age:*</code> shows frame freshness.
+                If every phase is below budget but the observed rate is still
+                low, inspect <code class="inline">sleep</code> and
+                <code class="inline">scheduler_lag</code> for OS timing drift.
+                If
+                <code class="inline">follower_after_read</code> is expensive,
+                leave the default
+                <code class="inline">--follower-readback-every 0</code> in
+                place for live teleop, or sample it occasionally with
+                <code class="inline">--follower-readback-every 10</code>.
+              </p>
             </article>
           </div>
         </section>

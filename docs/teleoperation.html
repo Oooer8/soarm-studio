@@ -76,12 +76,12 @@
         <section id="teleop" class="doc-page">
           <h1>Teleoperation</h1>
           <p>
-            Teleop first aligns the follower to the current leader pose with a
-            safety-checked SDK move, then feeds leader targets into the SDK
-            online direct joint stream. Studio keeps the 30 Hz leader,
-            camera, and recording sample contract while
-            <code class="inline">soarm-sdk</code> owns fixed-rate follower
-            output, latest-target writes, joint-limit checks, and timeout hold.
+            Teleop is a 30 Hz Studio-side sampling loop wrapped around the SDK
+            direct joint stream. Studio reads the leader and the follower's
+            pre-action state, computes a clipped target, and publishes that
+            target to <code class="inline">soarm-sdk</code>. The SDK owns
+            fixed-rate follower output, latest-target writes, joint-limit
+            checks, and timeout hold.
           </p>
           <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
           <p>
@@ -90,28 +90,97 @@
           </p>
         </section>
 
+        <section id="technical-plan" class="doc-page">
+          <h2>Technical plan</h2>
+          <p>
+            The default live path is optimized for deterministic target
+            publishing:
+          </p>
+          <pre><code>leader_read
+  -> follower_before_read
+  -> target_compute
+  -> SDK direct stream update
+  -> latest camera frame fetch
+  -> sample callbacks
+  -> absolute 30 Hz scheduler sleep</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Decision</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Follower output</td>
+                  <td>Use the SDK direct joint stream. Studio only sends the newest target; the SDK handles fixed-rate output and timeout behavior.</td>
+                </tr>
+                <tr>
+                  <td>Follower readback</td>
+                  <td>Do not read <code class="inline">follower_after</code> every live frame. The control path needs <code class="inline">follower_before</code> for state, clipping, and recording. Readback can be enabled for diagnostics with <code class="inline">--follower-readback-every N</code>.</td>
+                </tr>
+                <tr>
+                  <td>Cameras</td>
+                  <td>OpenCV cameras run in background latest-frame threads. The control loop fetches cached frames, so camera USB or decode jitter does not block target publishing.</td>
+                </tr>
+                <tr>
+                  <td>Scheduler</td>
+                  <td>Sleep against an absolute 30 Hz tick with a short guard window, so normal OS sleep overshoot does not accumulate into loop drift.</td>
+                </tr>
+                <tr>
+                  <td>Debug metrics</td>
+                  <td>Debug data is opt-in and reported as phase summaries. The default path keeps the same behavior without storing per-phase samples.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            For a diagnostic run, add <code class="inline">--debug</code>:
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug</code></pre>
+          <p>
+            To inspect post-command follower readback without making it part of
+            every frame, sample it periodically:
+          </p>
+          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug --follower-readback-every 10</code></pre>
+        </section>
+
         <section id="reading-output" class="doc-page">
           <h2>Reading the CLI output</h2>
           <p>
             A successful teleop command prints the hardware connection log,
             then a JSON metrics object. The JSON describes the Studio-side
-            synchronous leader, follower, and camera sampling loop, not the
-            SDK's internal direct stream output rate.
+            30 Hz control and sampling loop, not the SDK's internal direct
+            stream output rate.
           </p>
           <details class="cli-result" open>
-            <summary>Example 60 second free-test output</summary>
+            <summary>Abridged stable 60 second debug output</summary>
             <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 {
   "session": "dual-soarm",
   "state": "TELEOP_READY",
   "metrics": {
-    "iterations": 886,
+    "iterations": 1800,
     "target_hz": 30,
-    "observed_hz": 14.752,
-    "last_latency_ms": 67.854,
-    "max_latency_ms": 101.626,
-    "elapsed_s": 60.059
+    "observed_hz": 29.999,
+    "last_latency_ms": 2.98,
+    "max_latency_ms": 5.175,
+    "elapsed_s": 60.001,
+    "budget_ms": 33.333,
+    "over_budget_iterations": 0,
+    "phase_latency_ms": {
+      "scheduler_lag": {"p95_ms": 0.984, "max_ms": 3.456},
+      "leader_read": {"p95_ms": 1.652},
+      "follower_before_read": {"p95_ms": 1.496},
+      "stream_update": {"p95_ms": 0.025},
+      "camera_read:third_person": {"p95_ms": 0.003},
+      "camera_age:third_person": {"p95_ms": 39.297},
+      "camera_read:wrist": {"p95_ms": 0.002},
+      "camera_age:wrist": {"p95_ms": 35.384},
+      "sleep": {"p95_ms": 31.145}
+    }
   }
 }
 hardware: disconnecting; disabling servo torque before closing the port.
@@ -128,7 +197,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
               <tbody>
                 <tr>
                   <td><code>iterations</code></td>
-                  <td>How many synchronized Studio samples were completed. At 30 Hz for 60 seconds, a healthy run would be near 1800.</td>
+                  <td>How many Studio control samples were completed. At 30 Hz for 60 seconds, a healthy run should be near 1800.</td>
                 </tr>
                 <tr>
                   <td><code>target_hz</code></td>
@@ -140,7 +209,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 </tr>
                 <tr>
                   <td><code>last_latency_ms</code></td>
-                  <td>The time spent in the last loop step, including leader read, follower readback, target update, and camera reads if cameras are configured.</td>
+                  <td>The time spent in the last loop step, including leader read, follower-before read, target compute, stream update, latest-frame camera fetches, and callbacks.</td>
                 </tr>
                 <tr>
                   <td><code>max_latency_ms</code></td>
@@ -150,21 +219,24 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                   <td><code>elapsed_s</code></td>
                   <td>The wall-clock duration of the teleop run.</td>
                 </tr>
+                <tr>
+                  <td><code>phase_latency_ms</code></td>
+                  <td>Present only with <code class="inline">--debug</code>; reports count, last, average, p50, p95, and max latency for each teleop phase. <code class="inline">camera_read:*</code> is cached-frame fetch cost, <code class="inline">camera_age:*</code> is frame freshness, and <code class="inline">scheduler_lag</code> is timing drift.</td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <div class="callout warn">
-            <span class="icon">!</span>
+          <div class="callout">
+            <span class="icon">i</span>
             <div>
               <strong>What the example means</strong>
               <p>
-                The run connected to both arms and exited normally, but the
-                Studio loop did not keep up with 30 Hz. The actual rate was
-                14.752 Hz and the last step took 67.854 ms, which is longer
-                than the 33.3 ms budget for a 30 Hz loop. This usually means
-                the synchronous app loop is I/O-bound. Direct streaming removes
-                SDK-side smoothing lag, but the follower still only receives
-                new leader targets as fast as Studio can read and publish them.
+                The run completed 1800 control samples in 60 seconds with zero
+                over-budget loop steps. Arm reads and target updates are under
+                a few milliseconds, camera reads are cached latest-frame
+                lookups, and scheduler lag stays below one millisecond at p95.
+                The camera-age phases show frame freshness; values around one
+                camera frame are expected for 30 Hz cameras.
               </p>
             </div>
           </div>
@@ -180,6 +252,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
         <h2>This section</h2>
         <p class="toc-current">Teleoperation</p>
         <a class="toc-level-1" href="#teleop">Overview</a>
+        <a class="toc-level-1" href="#technical-plan">Technical plan</a>
         <a class="toc-level-1" href="#reading-output">Reading output</a>
       </aside>
     </div>

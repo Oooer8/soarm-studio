@@ -3,7 +3,9 @@ from __future__ import annotations
 import sys
 import types
 
+from soarm_studio.config import CameraConfig
 from soarm_studio.hardware.arms import MockArm, SOARMArm
+from soarm_studio.hardware.cameras import MockCamera
 from soarm_studio.teleop import TeleopLoop
 
 
@@ -93,6 +95,7 @@ def test_teleop_step_returns_control_sample_with_pre_action_state() -> None:
         joint_names=joints,
         hz=30,
         max_relative_target=0.2,
+        follower_readback_every=1,
     )
     sample = loop.step()
 
@@ -101,6 +104,123 @@ def test_teleop_step_returns_control_sample_with_pre_action_state() -> None:
     assert sample.action == {"a": 0.2, "b": -0.2}
     assert sample.follower_after is not None
     assert sample.follower_after.positions == {"a": 0.2, "b": -0.2}
+
+
+def test_teleop_step_can_skip_follower_after_readback() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+    leader.send_joints({"a": 0.5, "b": -0.5})
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        follower_readback_every=0,
+    )
+    sample = loop.step()
+
+    assert sample.follower_after is None
+    assert sample.action == {"a": 0.5, "b": -0.5}
+    assert follower.read_joints().positions == {"a": 0.5, "b": -0.5}
+
+
+def test_teleop_profile_records_phase_latency() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        profile=True,
+        sync_start=False,
+        follower_readback_every=1,
+    )
+    metrics = loop.run(steps=2, sleep=False)
+
+    phase_latency = metrics.phase_summary()
+    assert phase_latency["leader_read"]["count"] == 2
+    assert phase_latency["follower_before_read"]["count"] == 2
+    assert phase_latency["stream_update"]["count"] == 2
+    assert phase_latency["follower_after_read"]["count"] == 2
+    assert set(phase_latency["leader_read"]) == {
+        "count",
+        "last_ms",
+        "avg_ms",
+        "p50_ms",
+        "p95_ms",
+        "max_ms",
+    }
+
+
+def test_teleop_profile_records_camera_frame_age() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    camera = MockCamera(CameraConfig(name="wrist", width=2, height=2))
+    leader.connect()
+    follower.connect()
+    camera.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        cameras={"wrist": camera},
+        profile=True,
+        sync_start=False,
+    )
+    metrics = loop.run(steps=1, sleep=False)
+
+    phase_latency = metrics.phase_summary()
+    assert phase_latency["camera_read:wrist"]["count"] == 1
+    assert phase_latency["camera_age:wrist"]["count"] == 1
+
+
+def test_teleop_default_skips_follower_after_readback() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+    )
+    sample = loop.step()
+
+    assert sample.follower_after is None
+
+
+def test_teleop_rejects_negative_follower_readback_every() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+
+    try:
+        TeleopLoop(
+            leader=leader,
+            follower=follower,
+            joint_names=joints,
+            hz=30,
+            follower_readback_every=-1,
+        )
+    except ValueError as exc:
+        assert "follower_readback_every" in str(exc)
+    else:
+        raise AssertionError("negative follower_readback_every should fail")
 
 
 def test_teleop_run_syncs_start_and_stops_stream() -> None:

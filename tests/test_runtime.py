@@ -34,3 +34,16 @@ def test_hardware_session_reports_mock_bindings(tmp_path) -> None:
     assert verification["ok"] is True
     assert verification["bindings"]["leader"]["kind"] == "mock"
     assert verification["bindings"]["follower"]["kind"] == "mock"
+
+
+def test_hardware_session_teleop_profile_includes_phase_latency(tmp_path) -> None:
+    with HardwareSession(_mock_session(tmp_path)) as hardware:
+        metrics = hardware.run_teleop(
+            seconds=0.01,
+            profile=True,
+        )
+
+    assert "phase_latency_ms" in metrics
+    assert "leader_read" in metrics["phase_latency_ms"]
+    assert "follower_after_read" not in metrics["phase_latency_ms"]
+    assert metrics["budget_ms"] == 33.333

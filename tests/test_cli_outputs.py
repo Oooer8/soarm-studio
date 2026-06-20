@@ -235,7 +235,107 @@ def test_calibrate_exits_nonzero_when_result_fails(tmp_path, monkeypatch, capsys
     output = capsys.readouterr().out
     assert "标定机械臂: 主臂" in output
     assert "标定结果: 失败 (主臂)" in output
-    assert "调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。" in output
+    assert "调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。" in output
+
+
+def test_calibrate_debug_includes_cleaned_full_report(tmp_path, monkeypatch, capsys) -> None:
+    config_path = tmp_path / "session.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "name": "test",
+                "leader": {"mock": True},
+                "follower": {"mock": True},
+            }
+        )
+    )
+    monkeypatch.setattr(
+        cli,
+        "calibrate_session",
+        lambda config, *, role, announce=None: {
+            "ok": True,
+            "role": role,
+            "results": [
+                {
+                    "role": "leader",
+                    "ok": True,
+                    "report": ["\x1b[32mdebug line\x1b[0m"],
+                }
+            ],
+        },
+    )
+
+    cli.main(["calibrate", "--config", str(config_path), "--role", "leader", "--debug"])
+
+    output = capsys.readouterr().out
+    assert "完整报告:" in output
+    assert "debug line" in output
+    assert "提示: 不带 --debug 可只显示摘要；--json 可导出完整机器可读结果。" in output
+
+
+def test_calibrate_rejects_legacy_verbose_flag(capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["calibrate", "--verbose"])
+
+    assert exc.value.code == 2
+    assert "unrecognized arguments: --verbose" in capsys.readouterr().err
+
+
+def test_teleop_debug_enables_detailed_metrics(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "session.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "name": "test",
+                "leader": {"mock": True},
+                "follower": {"mock": True},
+            }
+        )
+    )
+    captured = {}
+
+    def fake_handle_teleop(config, *, seconds, free_test, debug, follower_readback_every):
+        captured.update(
+            {
+                "session": config.name,
+                "seconds": seconds,
+                "free_test": free_test,
+                "debug": debug,
+                "follower_readback_every": follower_readback_every,
+            }
+        )
+
+    monkeypatch.setattr(cli, "_handle_teleop", fake_handle_teleop)
+
+    cli.main(
+        [
+            "teleop",
+            "--config",
+            str(config_path),
+            "--seconds",
+            "3",
+            "--free-test",
+            "--debug",
+            "--follower-readback-every",
+            "10",
+        ]
+    )
+
+    assert captured == {
+        "session": "test",
+        "seconds": 3.0,
+        "free_test": True,
+        "debug": True,
+        "follower_readback_every": 10,
+    }
+
+
+def test_teleop_rejects_legacy_profile_flag(capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["teleop", "--profile"])
+
+    assert exc.value.code == 2
+    assert "unrecognized arguments: --profile" in capsys.readouterr().err
 
 
 def test_calibrate_json_preserves_machine_readable_result(tmp_path, monkeypatch, capsys) -> None:

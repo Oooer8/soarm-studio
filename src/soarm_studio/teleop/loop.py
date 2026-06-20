@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 import time
 from typing import Callable
 
@@ -24,6 +26,8 @@ class TeleopLoop:
         sync_start: bool = True,
         stream_output_hz: float | None = None,
         stream_target_timeout_s: float | None = None,
+        profile: bool = False,
+        follower_readback_every: int = 0,
     ) -> None:
         self.leader = leader
         self.follower = follower
@@ -43,8 +47,13 @@ class TeleopLoop:
             if stream_target_timeout_s is None
             else float(stream_target_timeout_s)
         )
+        self.follower_readback_every = int(follower_readback_every)
+        if self.follower_readback_every < 0:
+            raise ValueError("follower_readback_every must be >= 0")
+        self.sleep_guard_s = min(0.004, self.dt * 0.25)
+        self.sleep_spin_s = min(0.0005, self.sleep_guard_s)
         self.paused = False
-        self.metrics = LoopMetrics(target_hz=hz)
+        self.metrics = LoopMetrics(target_hz=hz, profile=profile)
         self._stream: JointStream | None = None
 
     def connect(self) -> None:
@@ -77,22 +86,29 @@ class TeleopLoop:
         started = time.monotonic()
         started_ns = time.monotonic_ns()
         frame_index = self.metrics.iterations
-        leader_sample = self.leader.read_joints()
-        follower_before = self.follower.read_joints()
+
+        with self._phase("leader_read"):
+            leader_sample = self.leader.read_joints()
+        with self._phase("follower_before_read"):
+            follower_before = self.follower.read_joints()
+
         self._require_joint_keys("leader", leader_sample.positions)
         self._require_joint_keys("follower", follower_before.positions)
-        action = self._clip_relative(follower_before.positions, leader_sample.positions)
-        action = self._clip_joint_limits(action)
+        with self._phase("target_compute"):
+            action = self._clip_relative(follower_before.positions, leader_sample.positions)
+            action = self._clip_joint_limits(action)
 
         if not self.paused:
-            self._ensure_stream().update_target(action)
+            with self._phase("stream_update"):
+                self._ensure_stream().update_target(action)
 
         frames: dict[str, CameraFrame] = {}
         camera_metrics: dict[str, CameraSyncMetric] = {}
         for name, camera in self.cameras.items():
             camera_started = time.monotonic()
             try:
-                frame = camera.read()
+                with self._phase(f"camera_read:{name}"):
+                    frame = camera.read()
             except Exception as exc:
                 latency_ms = (time.monotonic() - camera_started) * 1000.0
                 camera_metrics[name] = CameraSyncMetric(
@@ -105,20 +121,32 @@ class TeleopLoop:
                 )
                 raise
             latency_ms = (time.monotonic() - camera_started) * 1000.0
+            frame_age_ms = (time.monotonic_ns() - frame.monotonic_time_ns) / 1_000_000.0
+            self.metrics.observe_phase(f"camera_age:{name}", frame_age_ms / 1000.0)
+            camera_ok = latency_ms <= self.slow_camera_ms and frame_age_ms <= self.slow_camera_ms
+            camera_error = None
+            if latency_ms > self.slow_camera_ms:
+                camera_error = "slow camera read"
+            elif frame_age_ms > self.slow_camera_ms:
+                camera_error = "stale camera frame"
             frames[name] = frame
             camera_metrics[name] = CameraSyncMetric(
                 camera=name,
-                ok=latency_ms <= self.slow_camera_ms,
+                ok=camera_ok,
                 timestamp=frame.timestamp,
                 monotonic_time_ns=frame.monotonic_time_ns,
                 read_latency_ms=latency_ms,
+                frame_age_ms=frame_age_ms,
                 width=frame.width,
                 height=frame.height,
-                error=None if latency_ms <= self.slow_camera_ms else "slow camera read",
+                error=camera_error,
             )
 
-        follower_after = self.follower.read_joints()
-        self._require_joint_keys("follower_after", follower_after.positions)
+        follower_after = None
+        if self._should_read_follower_after(frame_index):
+            with self._phase("follower_after_read"):
+                follower_after = self.follower.read_joints()
+            self._require_joint_keys("follower_after", follower_after.positions)
         latency_ms = (time.monotonic() - started) * 1000.0
         sample = ControlSample(
             frame_index=frame_index,
@@ -132,10 +160,16 @@ class TeleopLoop:
             latency_ms=latency_ms,
         )
 
-        if self.on_sample is not None:
-            self.on_sample(sample)
-        if self.on_frame is not None:
-            self.on_frame(follower_after.positions, action, frames)
+        with self._phase("callbacks"):
+            if self.on_sample is not None:
+                self.on_sample(sample)
+            if self.on_frame is not None:
+                frame_state = (
+                    follower_after.positions
+                    if follower_after is not None
+                    else follower_before.positions
+                )
+                self.on_frame(frame_state, action, frames)
 
         self.metrics.iterations += 1
         self.metrics.observe_latency(time.monotonic() - started)
@@ -150,24 +184,36 @@ class TeleopLoop:
     ) -> LoopMetrics:
         if seconds is None and steps is None:
             raise ValueError("Either seconds or steps is required")
-        deadline = None if seconds is None else time.monotonic() + seconds
         try:
             if self.sync_start and not self.paused:
                 self._sync_start_to_leader()
 
+            self.metrics.started_at = time.monotonic()
+            self.metrics.finished_at = None
+            deadline = None if seconds is None else self.metrics.started_at + seconds
+            next_tick = self.metrics.started_at
             while True:
                 if steps is not None and self.metrics.iterations >= steps:
                     break
                 if deadline is not None and time.monotonic() >= deadline:
                     break
 
-                step_started = time.monotonic()
+                self.metrics.observe_phase(
+                    "scheduler_lag",
+                    max(0.0, time.monotonic() - next_tick),
+                )
                 self.step()
                 if sleep:
-                    remaining = self.dt - (time.monotonic() - step_started)
-                    if remaining > 0:
-                        time.sleep(remaining)
+                    next_tick += self.dt
+                    if steps is not None and self.metrics.iterations >= steps:
+                        continue
+                    sleep_until = next_tick if deadline is None else min(next_tick, deadline)
+                    if sleep_until > time.monotonic():
+                        with self._phase("sleep"):
+                            self._sleep_until(sleep_until)
         finally:
+            if self.metrics.finished_at is None:
+                self.metrics.finish()
             self._stop_stream()
 
         return self.metrics
@@ -188,8 +234,10 @@ class TeleopLoop:
         self._stream = None
 
     def _sync_start_to_leader(self) -> None:
-        leader_sample = self.leader.read_joints()
-        follower_sample = self.follower.read_joints()
+        with self._phase("sync_start:leader_read"):
+            leader_sample = self.leader.read_joints()
+        with self._phase("sync_start:follower_read"):
+            follower_sample = self.follower.read_joints()
         self._require_joint_keys("leader", leader_sample.positions)
         self._require_joint_keys("follower", follower_sample.positions)
         target = {name: float(leader_sample.positions[name]) for name in self.joint_names}
@@ -200,7 +248,36 @@ class TeleopLoop:
         )
         if max_delta <= 1e-4:
             return
-        self.follower.move_joints(target)
+        with self._phase("sync_start:move"):
+            self.follower.move_joints(target)
+
+    def _should_read_follower_after(self, frame_index: int) -> bool:
+        return self.follower_readback_every > 0 and frame_index % self.follower_readback_every == 0
+
+    def _sleep_until(self, deadline_s: float) -> None:
+        while True:
+            remaining = deadline_s - time.monotonic()
+            if remaining <= 0:
+                return
+            if remaining > self.sleep_guard_s:
+                time.sleep(max(0.0, remaining - self.sleep_guard_s))
+            elif remaining > self.sleep_spin_s:
+                time.sleep(0)
+            else:
+                while time.monotonic() < deadline_s:
+                    pass
+                return
+
+    @contextmanager
+    def _phase(self, name: str) -> Iterator[None]:
+        if not self.metrics.profile:
+            yield
+            return
+        started = time.monotonic()
+        try:
+            yield
+        finally:
+            self.metrics.observe_phase(name, time.monotonic() - started)
 
     def _require_joint_keys(self, source: str, positions: dict[str, float]) -> None:
         missing = [name for name in self.joint_names if name not in positions]

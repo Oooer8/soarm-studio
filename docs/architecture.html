@@ -85,8 +85,8 @@
             <span>Runtime path</span>
             <span>text</span>
           </div>
-          <pre><code>leader arm -> teleop loop -> SDK direct joint stream -> follower arm
-                         -> synchronized samples -> LeRobot-v3-compatible files</code></pre>
+          <pre><code>leader arm -> 30 Hz teleop loop -> SDK direct joint stream -> follower arm
+                         latest-frame cameras -> synchronized samples -> LeRobot-v3-compatible files</code></pre>
 
           <div class="table-wrap">
             <table>
@@ -103,7 +103,7 @@
                 </tr>
                 <tr>
                   <td><code>hardware.cameras</code></td>
-                  <td>USB camera inventory, OpenCV preview, and capture adapters.</td>
+                  <td>USB camera inventory, OpenCV preview, blocking camera adapters, and latest-frame wrappers for non-blocking teleop capture.</td>
                 </tr>
                 <tr>
                   <td><code>assignment</code></td>

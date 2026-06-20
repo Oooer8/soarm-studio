@@ -110,16 +110,22 @@ def _quality_summary(episodes: list[dict]) -> dict:
         return {
             "frames": 0,
             "dropped_camera_frames": 0,
+            "stale_camera_frames": 0,
             "max_loop_latency_ms": 0.0,
             "max_camera_latency_ms": 0.0,
+            "max_camera_age_ms": 0.0,
         }
     frames = sum(int(item["quality"]["frames"]) for item in episodes)
     dropped = sum(int(item["quality"]["dropped_camera_frames"]) for item in episodes)
+    stale = sum(int(item["quality"].get("stale_camera_frames", 0)) for item in episodes)
     max_loop = max(float(item["quality"]["max_loop_latency_ms"]) for item in episodes)
     max_camera = max(float(item["quality"]["max_camera_latency_ms"]) for item in episodes)
+    max_camera_age = max(float(item["quality"].get("max_camera_age_ms", 0.0)) for item in episodes)
     return {
         "frames": frames,
         "dropped_camera_frames": dropped,
+        "stale_camera_frames": stale,
         "max_loop_latency_ms": max_loop,
         "max_camera_latency_ms": max_camera,
+        "max_camera_age_ms": max_camera_age,
     }

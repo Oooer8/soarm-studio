@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> None:
         help="Print the full machine-readable calibration result",
     )
     calibrate.add_argument(
-        "--verbose",
+        "--debug",
         action="store_true",
         help="Include the full cleaned calibration report in human output",
     )
@@ -88,6 +88,17 @@ def main(argv: list[str] | None = None) -> None:
     teleop.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
     teleop.add_argument("--seconds", type=float, default=2.0)
     teleop.add_argument("--free-test", action="store_true")
+    teleop.add_argument(
+        "--debug",
+        action="store_true",
+        help="Include per-phase teleop latency statistics in the metrics JSON.",
+    )
+    teleop.add_argument(
+        "--follower-readback-every",
+        type=int,
+        default=0,
+        help="Read follower_after every N frames for diagnostics; 0 disables live readback.",
+    )
 
     record = subcommands.add_parser("record", help="Record one teleop episode")
     record.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
@@ -131,13 +142,15 @@ def main(argv: list[str] | None = None) -> None:
             load_session_config(args.config),
             role=args.role,
             output_json=args.output_json,
-            verbose=args.verbose,
+            debug=args.debug,
         )
     elif args.command == "teleop":
         _handle_teleop(
             load_session_config(args.config),
             seconds=args.seconds,
             free_test=args.free_test,
+            debug=args.debug,
+            follower_readback_every=args.follower_readback_every,
         )
     elif args.command == "record":
         _handle_record(
@@ -317,14 +330,25 @@ def _handle_assign(args) -> None:
         raise SystemExit(str(exc)) from exc
 
 
-def _handle_teleop(config: SessionConfig, *, seconds: float, free_test: bool) -> None:
+def _handle_teleop(
+    config: SessionConfig,
+    *,
+    seconds: float,
+    free_test: bool,
+    debug: bool,
+    follower_readback_every: int,
+) -> None:
     with HardwareSession(config) as hardware:
         if free_test:
             report = hardware.preflight(dataset_overwrite=True)
             if not report.ok:
                 _print_json(preflight_report_to_dict(report))
                 raise SystemExit("preflight failed")
-        metrics = hardware.run_teleop(seconds=seconds)
+        metrics = hardware.run_teleop(
+            seconds=seconds,
+            profile=debug,
+            follower_readback_every=follower_readback_every,
+        )
         _print_json({"session": config.name, "state": hardware.state.value, "metrics": metrics})
 
 
@@ -379,7 +403,7 @@ def _handle_calibrate(
     *,
     role: str,
     output_json: bool,
-    verbose: bool,
+    debug: bool,
 ) -> None:
     calibration_role = cast(CalibrationRole, role)
     if output_json:
@@ -392,7 +416,7 @@ def _handle_calibrate(
             role=calibration_role,
             announce=_print_calibration_event,
         )
-        _print_calibration_summary(result, verbose=verbose)
+        _print_calibration_summary(result, debug=debug)
     if not result.get("ok"):
         raise SystemExit(1)
 
@@ -426,21 +450,21 @@ def _print_calibration_event(role: str, message: str) -> None:
         print(f"{label}: 配置已保存。")
 
 
-def _print_calibration_summary(result: dict[str, Any], *, verbose: bool) -> None:
+def _print_calibration_summary(result: dict[str, Any], *, debug: bool) -> None:
     status = "成功" if result.get("ok") else "失败"
     print("")
     print(f"标定结果: {status} ({_role_label(str(result.get('role', 'unknown')))})")
     for endpoint in result.get("results", []):
-        _print_calibration_endpoint_summary(endpoint, verbose=verbose)
-    if verbose:
+        _print_calibration_endpoint_summary(endpoint, debug=debug)
+    if debug:
         print("")
-        print("提示: 不带 --verbose 可只显示摘要；--json 可导出完整机器可读结果。")
+        print("提示: 不带 --debug 可只显示摘要；--json 可导出完整机器可读结果。")
     else:
         print("")
-        print("调试: 加 --verbose 查看完整诊断报告；加 --json 导出完整 JSON。")
+        print("调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。")
 
 
-def _print_calibration_endpoint_summary(endpoint: dict[str, Any], *, verbose: bool) -> None:
+def _print_calibration_endpoint_summary(endpoint: dict[str, Any], *, debug: bool) -> None:
     role = str(endpoint.get("role", "unknown"))
     label = _role_label(role)
     status = "通过" if endpoint.get("ok") else "未通过"
@@ -480,7 +504,7 @@ def _print_calibration_endpoint_summary(endpoint: dict[str, Any], *, verbose: bo
         for line in guidance:
             print(f"    {line}")
 
-    if verbose and report:
+    if debug and report:
         print("  完整报告:")
         for line in report:
             print(f"    {_clean_report_line(line)}")
@@ -544,7 +568,7 @@ def _calibration_guidance(endpoint: dict[str, Any], focus: list[str]) -> list[st
     if "invalid raw" in text:
         guidance.append("检查编码器原始 tick 是否越界，必要时重新上电并重新读取。")
     if not guidance:
-        guidance.append("用 --verbose 查看完整报告，再按失败项处理。")
+        guidance.append("用 --debug 查看完整报告，再按失败项处理。")
     return guidance
 
 

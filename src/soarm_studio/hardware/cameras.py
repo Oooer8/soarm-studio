@@ -5,11 +5,11 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
-from typing import Protocol
+from typing import Any, Protocol
 
 from soarm_studio.config import CameraConfig
 from soarm_studio.types import CameraFrame
@@ -103,7 +103,6 @@ class OpenCVCamera:
         self.device = 0 if config.device is None else config.device
         self.backend = config.backend
         self._capture = None
-        self._backend_name = None
 
     def connect(self) -> None:
         try:
@@ -121,7 +120,6 @@ class OpenCVCamera:
             capture = _open_video_capture(cv2, device, backend_api)
             if capture.isOpened():
                 self._capture = capture
-                self._backend_name = backend_name
                 self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
                 self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
                 fps_prop = getattr(cv2, "CAP_PROP_FPS", None)
@@ -136,7 +134,6 @@ class OpenCVCamera:
         if self._capture is not None:
             self._capture.release()
             self._capture = None
-            self._backend_name = None
 
     def read(self) -> CameraFrame:
         if self._capture is None:
@@ -161,18 +158,109 @@ class OpenCVCamera:
         )
 
 
+class LatestFrameCamera:
+    def __init__(
+        self,
+        camera: Camera,
+        *,
+        fps: int,
+        initial_timeout_s: float = 2.0,
+    ) -> None:
+        self._camera = camera
+        self.name = camera.name
+        self.width = camera.width
+        self.height = camera.height
+        self.fps = max(1, int(fps))
+        self.initial_timeout_s = float(initial_timeout_s)
+        self._lock = threading.Lock()
+        self._ready = threading.Event()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._latest: CameraFrame | None = None
+        self._last_error: str | None = None
+
+    def connect(self) -> None:
+        self._camera.connect()
+        self._ready.clear()
+        self._stop.clear()
+        self._latest = None
+        self._last_error = None
+        self._thread = threading.Thread(
+            target=self._capture_loop,
+            name=f"soarm-camera-{self.name}",
+            daemon=True,
+        )
+        self._thread.start()
+        if not self._ready.wait(self.initial_timeout_s):
+            with self._lock:
+                error = self._last_error
+            self.disconnect()
+            detail = f": {error}" if error else ""
+            raise RuntimeError(f"Timed out waiting for first frame from camera {self.name}{detail}")
+        with self._lock:
+            latest = self._latest
+            error = self._last_error
+        if latest is None and error is not None:
+            self.disconnect()
+            raise RuntimeError(f"Failed to read first frame from camera {self.name}: {error}")
+
+    def disconnect(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+        self._camera.disconnect()
+
+    def read(self) -> CameraFrame:
+        with self._lock:
+            frame = self._latest
+            error = self._last_error
+        if frame is None:
+            if error is not None:
+                raise RuntimeError(f"Camera {self.name} has no frame: {error}")
+            raise RuntimeError(f"Camera {self.name} has no frame yet")
+        return frame
+
+    def _capture_loop(self) -> None:
+        period_s = 1.0 / self.fps
+        while not self._stop.is_set():
+            started = time.monotonic()
+            try:
+                frame = self._camera.read()
+            except Exception as exc:
+                with self._lock:
+                    self._last_error = str(exc)
+                    has_frame = self._latest is not None
+                if has_frame:
+                    self._ready.set()
+            else:
+                with self._lock:
+                    self._latest = frame
+                    self._last_error = None
+                self._ready.set()
+
+            remaining = period_s - (time.monotonic() - started)
+            if remaining > 0:
+                self._stop.wait(remaining)
+            elif self._last_error is not None:
+                self._stop.wait(min(period_s, 0.1))
+
+
 def create_cameras(configs: dict[str, CameraConfig]) -> dict[str, Camera]:
     cameras: dict[str, Camera] = {}
     for name, config in configs.items():
         if not config.enabled:
             continue
-        if config.kind == "mock":
-            cameras[name] = MockCamera(config)
-        elif config.kind == "opencv":
-            cameras[name] = OpenCVCamera(config)
-        else:
-            raise ValueError(f"Unsupported camera kind for {name}: {config.kind}")
+        cameras[name] = create_camera(config)
     return cameras
+
+
+def create_camera(config: CameraConfig) -> Camera:
+    if config.kind == "mock":
+        return MockCamera(config)
+    if config.kind == "opencv":
+        return LatestFrameCamera(OpenCVCamera(config), fps=config.fps)
+    raise ValueError(f"Unsupported camera kind for {config.name}: {config.kind}")
 
 
 def detect_camera_devices(

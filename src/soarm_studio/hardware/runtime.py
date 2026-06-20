@@ -148,6 +148,8 @@ class HardwareSession:
         self,
         *,
         on_sample: Callable[[ControlSample], None] | None = None,
+        profile: bool = False,
+        follower_readback_every: int = 0,
     ) -> TeleopLoop:
         self._require_connected()
         assert self.leader is not None
@@ -162,21 +164,27 @@ class HardwareSession:
             cameras=self.cameras,
             on_sample=on_sample,
             slow_camera_ms=self.config.sync.slow_camera_ms,
+            profile=profile,
+            follower_readback_every=follower_readback_every,
         )
 
-    def run_teleop(self, *, seconds: float, on_sample=None) -> dict:
-        loop = self.create_loop(on_sample=on_sample)
+    def run_teleop(
+        self,
+        *,
+        seconds: float,
+        on_sample=None,
+        profile: bool = False,
+        follower_readback_every: int = 0,
+    ) -> dict:
+        loop = self.create_loop(
+            on_sample=on_sample,
+            profile=profile,
+            follower_readback_every=follower_readback_every,
+        )
         self.state = RuntimeState.TELEOP_RUNNING
         try:
             metrics = loop.run(seconds=seconds)
-            return {
-                "iterations": metrics.iterations,
-                "target_hz": metrics.target_hz,
-                "observed_hz": round(metrics.observed_hz, 3),
-                "last_latency_ms": round(metrics.last_latency_ms, 3),
-                "max_latency_ms": round(metrics.max_latency_ms, 3),
-                "elapsed_s": round(metrics.elapsed_s, 3),
-            }
+            return metrics.to_dict(include_profile=profile)
         finally:
             if self.state != RuntimeState.E_STOP:
                 self.state = RuntimeState.TELEOP_READY

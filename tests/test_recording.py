@@ -30,3 +30,5 @@ def test_record_lerobot_episodes_writes_quality_sidecars(tmp_path) -> None:
     assert (root / "meta" / "sync_quality.json").exists()
     quality = json.loads((root / "episodes" / "episode_000000" / "quality.json").read_text())
     assert quality["frames"] > 0
+    assert quality["stale_camera_frames"] == 0
+    assert quality["max_camera_age_ms"] == 0.0

@@ -46,24 +46,106 @@ class ArmStatus:
 
 
 @dataclass
+class PhaseLatencyStats:
+    count: int = 0
+    last_ms: float = 0.0
+    total_ms: float = 0.0
+    max_ms: float = 0.0
+    samples_ms: list[float] = field(default_factory=list)
+
+    def observe(self, latency_s: float) -> None:
+        latency_ms = latency_s * 1000.0
+        self.count += 1
+        self.last_ms = latency_ms
+        self.total_ms += latency_ms
+        self.max_ms = max(self.max_ms, latency_ms)
+        self.samples_ms.append(latency_ms)
+
+    @property
+    def avg_ms(self) -> float:
+        if self.count == 0:
+            return 0.0
+        return self.total_ms / self.count
+
+    @staticmethod
+    def percentile_ms(ordered_samples_ms: list[float], percentile: float) -> float:
+        if not ordered_samples_ms:
+            return 0.0
+        index = int(round((percentile / 100.0) * (len(ordered_samples_ms) - 1)))
+        return ordered_samples_ms[max(0, min(len(ordered_samples_ms) - 1, index))]
+
+    def to_dict(self) -> dict[str, float | int]:
+        ordered = sorted(self.samples_ms)
+        return {
+            "count": self.count,
+            "last_ms": round(self.last_ms, 3),
+            "avg_ms": round(self.avg_ms, 3),
+            "p50_ms": round(self.percentile_ms(ordered, 50.0), 3),
+            "p95_ms": round(self.percentile_ms(ordered, 95.0), 3),
+            "max_ms": round(self.max_ms, 3),
+        }
+
+
+@dataclass
 class LoopMetrics:
     target_hz: float
     iterations: int = 0
     started_at: float = field(default_factory=time.monotonic)
+    finished_at: float | None = None
     last_latency_ms: float = 0.0
     max_latency_ms: float = 0.0
+    over_budget_iterations: int = 0
+    profile: bool = False
+    phase_latency: dict[str, PhaseLatencyStats] = field(default_factory=dict)
 
     @property
     def elapsed_s(self) -> float:
-        return max(time.monotonic() - self.started_at, 1e-9)
+        ended_at = time.monotonic() if self.finished_at is None else self.finished_at
+        return max(ended_at - self.started_at, 1e-9)
 
     @property
     def observed_hz(self) -> float:
         return self.iterations / self.elapsed_s
 
+    @property
+    def budget_ms(self) -> float:
+        return 1000.0 / self.target_hz
+
     def observe_latency(self, latency_s: float) -> None:
         self.last_latency_ms = latency_s * 1000.0
         self.max_latency_ms = max(self.max_latency_ms, self.last_latency_ms)
+        if self.last_latency_ms > self.budget_ms:
+            self.over_budget_iterations += 1
+
+    def observe_phase(self, name: str, latency_s: float) -> None:
+        if not self.profile:
+            return
+        self.phase_latency.setdefault(name, PhaseLatencyStats()).observe(latency_s)
+
+    def finish(self, ended_at: float | None = None) -> None:
+        self.finished_at = time.monotonic() if ended_at is None else ended_at
+
+    def phase_summary(self) -> dict[str, dict[str, float | int]]:
+        return {name: stats.to_dict() for name, stats in self.phase_latency.items()}
+
+    def to_dict(self, *, include_profile: bool = False) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "iterations": self.iterations,
+            "target_hz": self.target_hz,
+            "observed_hz": round(self.observed_hz, 3),
+            "last_latency_ms": round(self.last_latency_ms, 3),
+            "max_latency_ms": round(self.max_latency_ms, 3),
+            "elapsed_s": round(self.elapsed_s, 3),
+        }
+        if include_profile:
+            payload.update(
+                {
+                    "budget_ms": round(self.budget_ms, 3),
+                    "over_budget_iterations": self.over_budget_iterations,
+                    "phase_latency_ms": self.phase_summary(),
+                }
+            )
+        return payload
 
 
 class RuntimeState(StrEnum):
@@ -126,6 +208,7 @@ class CameraSyncMetric:
     timestamp: float | None
     monotonic_time_ns: int | None
     read_latency_ms: float
+    frame_age_ms: float | None = None
     width: int | None = None
     height: int | None = None
     error: str | None = None
@@ -152,8 +235,10 @@ class ControlSample:
 class RecordingQuality:
     frames: int
     dropped_camera_frames: int = 0
+    stale_camera_frames: int = 0
     max_loop_latency_ms: float = 0.0
     max_camera_latency_ms: float = 0.0
+    max_camera_age_ms: float = 0.0
     warnings: tuple[str, ...] = ()
 
 
