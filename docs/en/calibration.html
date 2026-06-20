@@ -12,20 +12,20 @@
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/calibration.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/calibration.html" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/docs.css" />
-    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/calibration.html" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/calibration.html" />
     <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/calibration.html" />
-    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/calibration.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img
           class="brand-logo"
-          src="assets/brand/soarm-studio-logo-mark.svg"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
           alt=""
           aria-hidden="true"
         />
@@ -45,7 +45,7 @@
           <span class="sr-only">Language</span>
           <select aria-label="Documentation language" data-language-switcher>
             <option value="en" data-href="calibration.html" selected>English</option>
-            <option value="zh-CN" data-href="zh-CN/calibration.html">中文</option>
+            <option value="zh-CN" data-href="../zh-CN/calibration.html">中文</option>
           </select>
         </label>
       </div>
@@ -66,7 +66,6 @@
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="images-and-video.html">Images and video</a>
-          <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -88,22 +87,22 @@
         <section id="step-2" class="doc-page">
           <h1>Step 2 Calibration</h1>
           <p>
-            标定会先记录物理零位，再在你手动推动机械臂时记录每个关节的可用范围。
-            程序会关闭扭矩并读取编码器，不会主动发送运动目标。
+            Calibration first records the physical zero pose, then records each joint's usable range while you move the arm by hand.
+            The program disables torque and reads encoders; it does not command motion.
           </p>
           <p>
-            先在 Step 1 Hardware setup 中完成端口和摄像头绑定，并运行“检查并写入配置”，
-            然后按主臂、从臂的顺序分别标定。
-            底层模型说明见
-            <a href="calibration-principles.html">Calibration principles</a>。
+            First complete port and camera binding in Step 1 Hardware setup, then run the readiness check.
+            Calibrate the leader and follower separately, in that order.
+            See
+            <a href="calibration-principles.html">Calibration principles</a> for the underlying model.
           </p>
 
-          <h2 id="calibrate-arms">标定机械臂</h2>
+          <h2 id="calibrate-arms">Calibrate arms</h2>
 
-          <h3 id="calibrate-leader">1. 标定主臂</h3>
+          <h3 id="calibrate-leader">1. Calibrate the leader</h3>
           <p>
-            主臂对应 <code class="inline">configs/arms/leader.yaml</code>。
-            启动后，CLI 会先做一次状态检查，再关闭扭矩并等待你摆放零位。
+            The leader uses <code class="inline">configs/arms/leader.yaml</code>.
+            After startup, the CLI runs one status check, disables torque, then waits for you to place the zero pose.
           </p>
           <div class="cli-block">
             <div class="cli-toolbar">
@@ -114,24 +113,24 @@
           </div>
 
           <p>
-            当终端提示放置零位时，把主臂每个关节摆到物理零位，保持不动后按 Enter。
-            随后按提示缓慢扫过肩、肘、腕和夹爪的安全可用范围，不要硬顶机械限位。
-            扫完后停住机械臂，再按 Enter 写入新的
-            <code class="inline">zero_tick</code>、方向和软限位。
+            When the terminal asks for the zero pose, place every leader joint at the physical zero pose, hold still, then press Enter.
+            Next, slowly sweep the safe usable range of the shoulder, elbow, wrist, and gripper. Do not force the mechanical hard stops.
+            After the sweep, stop the arm and press Enter to write the new
+            <code class="inline">zero_tick</code>, direction, and soft limits.
           </p>
 
           <div class="code-title">
-            <span>交互提示</span>
+            <span>Interactive prompt</span>
             <span>terminal</span>
           </div>
           <pre><code>Place every joint in the physical zero pose, then press Enter to record zero ticks:
 Freely sweep the full range of motion for each joint. Press Enter when done:</code></pre>
 
-          <h3 id="calibrate-follower">2. 标定从臂</h3>
+          <h3 id="calibrate-follower">2. Calibrate the follower</h3>
           <p>
-            从臂对应 <code class="inline">configs/arms/follower.yaml</code>。
-            主臂完成后，用同样流程标定从臂。两台机械臂要分别完成零位记录和动态范围扫描，
-            不要复用另一台机械臂的标定结果。
+            The follower uses <code class="inline">configs/arms/follower.yaml</code>.
+            After the leader is done, calibrate the follower with the same flow. Each arm must record its own zero pose and dynamic range;
+            do not reuse calibration from the other arm.
           </p>
           <div class="cli-block">
             <div class="cli-toolbar">
@@ -142,94 +141,94 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
           </div>
 
           <p>
-            如果某个关节扫动范围不足，输出会标记为 under-excited。重新标定这台机械臂，
-            并让对应关节覆盖更多安全行程。
+            If a joint was not moved enough, the output marks it as under-excited. Recalibrate that arm
+            and sweep the affected joint through more of its safe travel.
           </p>
 
-          <h3 id="completion-report">输出与排查</h3>
+          <h3 id="completion-report">Output and troubleshooting</h3>
           <p>
-            默认输出面向现场操作：先提示当前角色和交互步骤，完成后汇总配置路径、
-            零位 tick、扫描范围、复查结果和下一步命令。下面是一组成功标定示例；
-            端口、tick 和 safe 范围会随本机硬件和机械臂姿态变化。
+            The default output is designed for live operation: it shows the current role and interaction steps, then summarizes the config path,
+            zero ticks, sweep ranges, post-check result, and next command. The following examples show successful calibration;
+            ports, ticks, and safe ranges vary with local hardware and arm pose.
           </p>
           <details class="cli-result">
-            <summary>查看主臂成功输出</summary>
-            <pre><code>标定机械臂: 主臂
+            <summary>Show successful leader output</summary>
+            <pre><code>Calibrating arm: leader
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
-主臂: 关闭扭矩，进入手动标定。
-主臂: 请按提示摆放物理零位。
+leader: torque disabled; entering manual calibration.
+leader: follow the prompt to place the physical zero pose.
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
-主臂: 零位已记录。
-主臂: 请按提示扫过安全运动范围。
+leader: zero pose recorded.
+leader: follow the prompt to sweep the safe motion range.
 Freely sweep the full range of motion for each joint. Press Enter when done:
-主臂: 配置已保存。
+leader: config saved.
 hardware: disconnecting; closing the Feetech servo port.
 
-标定结果: 成功 (主臂)
-- 主臂: 通过
-  配置: configs/arms/leader.yaml
-  零位: shoulder_pan=2050, shoulder_lift=2139, elbow_flex=2039, wrist_flex=1938, wrist_roll=1977, gripper=2046
-  扫描范围:
+Calibration result: success (leader)
+- leader: pass
+  config: configs/arms/leader.yaml
+  zero: shoulder_pan=2050, shoulder_lift=2139, elbow_flex=2039, wrist_flex=1938, wrist_roll=1977, gripper=2046
+  sweep ranges:
     shoulder_pan: 2653 ticks, safe=[-1.9328, 2.1368] rad
     shoulder_lift: 2381 ticks, safe=[-1.6843, 1.9681] rad
     elbow_flex: 2196 ticks, safe=[-1.8592, 1.5094] rad
     wrist_flex: 2327 ticks, safe=[-1.9512, 1.6183] rad
     wrist_roll: 3792 ticks, safe=[-3.0097, 2.8072] rad
     gripper: 1263 ticks, safe=[-0.0015, 1.9359] rad
-  复查: 通过
-  建议:
-    下一步: soarm-studio calibrate --config configs/session.yaml --role follower
+  recheck: pass
+  suggestion:
+    next: soarm-studio calibrate --config configs/session.yaml --role follower
 
-调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+Debug: add --debug to see the full diagnostic report; add --json to export full JSON.</code></pre>
           </details>
 
           <details class="cli-result">
-            <summary>查看从臂成功输出</summary>
-            <pre><code>标定机械臂: 从臂
+            <summary>Show successful follower output</summary>
+            <pre><code>Calibrating arm: follower
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
-从臂: 关闭扭矩，进入手动标定。
-从臂: 请按提示摆放物理零位。
+follower: torque disabled; entering manual calibration.
+follower: follow the prompt to place the physical zero pose.
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
-从臂: 零位已记录。
-从臂: 请按提示扫过安全运动范围。
+follower: zero pose recorded.
+follower: follow the prompt to sweep the safe motion range.
 Freely sweep the full range of motion for each joint. Press Enter when done:
-从臂: 配置已保存。
+follower: config saved.
 hardware: disconnecting; closing the Feetech servo port.
 
-标定结果: 成功 (从臂)
-- 从臂: 通过
-  配置: configs/arms/follower.yaml
-  零位: shoulder_pan=2089, shoulder_lift=2134, elbow_flex=1998, wrist_flex=1972, wrist_roll=2069, gripper=2048
-  扫描范围:
+Calibration result: success (follower)
+- follower: pass
+  config: configs/arms/follower.yaml
+  zero: shoulder_pan=2089, shoulder_lift=2134, elbow_flex=1998, wrist_flex=1972, wrist_roll=2069, gripper=2048
+  sweep ranges:
     shoulder_pan: 2667 ticks, safe=[-2.0233, 2.0678] rad
     shoulder_lift: 2386 ticks, safe=[-1.7073, 1.9528] rad
     elbow_flex: 2211 ticks, safe=[-1.7242, 1.6674] rad
     wrist_flex: 2409 ticks, safe=[-1.8285, 1.8669] rad
     wrist_roll: 3882 ticks, safe=[-2.9606, 2.9943] rad
     gripper: 1494 ticks, safe=[-0.0169, 2.2749] rad
-  复查: 通过
-  建议:
-    下一步: soarm-studio check --config configs/session.yaml --overwrite
+  recheck: pass
+  suggestion:
+    next: soarm-studio check --config configs/session.yaml --overwrite
 
-调试: 加 --debug 查看完整诊断报告；加 --json 导出完整 JSON。</code></pre>
+Debug: add --debug to see the full diagnostic report; add --json to export full JSON.</code></pre>
           </details>
 
           <p>
-            失败时先看摘要里的“复查”和“建议”；需要专业诊断时再加
-            <code class="inline">--debug</code> 查看完整报告，或加
-            <code class="inline">--json</code> 导出机器可读结果。
-            通信失败通常检查串口、电源、总线和 ID；电压失败先确认该机械臂的实际供电档位和
-            <code class="inline">low_voltage</code> 阈值是否匹配。
+            On failure, read the summary's recheck and suggestion sections first. For deeper diagnostics, add
+            <code class="inline">--debug</code> to see the full report, or add
+            <code class="inline">--json</code> to export machine-readable results.
+            Communication failures usually point to the serial port, power, bus wiring, or IDs. Voltage failures should first be checked against the arm's real supply level and the configured
+            <code class="inline">low_voltage</code> threshold.
           </p>
 
           <div class="callout warn">
             <span class="icon">!</span>
             <div>
-              <strong>标定后再检查一次</strong>
+              <strong>Check once more after calibration</strong>
               <p>
-                主臂和从臂都标定完成后，运行
+                After both leader and follower are calibrated, run
                 <code class="inline">soarm-studio check --config configs/session.yaml --overwrite</code>
-                确认 bindings、软限位、电压和摄像头都正常，再进入遥操作。
+                to confirm bindings, soft limits, voltage, and cameras before teleoperation.
               </p>
             </div>
           </div>
@@ -241,7 +240,7 @@ hardware: disconnecting; closing the Feetech servo port.
             <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
           </div>
           <details class="cli-result">
-            <summary>查看复查成功输出</summary>
+            <summary>Show successful recheck output</summary>
             <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: disconnecting; disabling servo torque before closing the port.
@@ -295,12 +294,12 @@ hardware: disconnecting; disabling servo torque before closing the port.
         <h2>This section</h2>
         <p class="toc-current">Step 2 Calibration</p>
         <a class="toc-level-1" href="#step-2">Overview</a>
-        <a class="toc-level-1" href="#calibrate-arms">标定机械臂</a>
-        <a class="toc-level-2" href="#calibrate-leader">1. 标定主臂</a>
-        <a class="toc-level-2" href="#calibrate-follower">2. 标定从臂</a>
-        <a class="toc-level-2" href="#completion-report">输出与排查</a>
+        <a class="toc-level-1" href="#calibrate-arms">Calibrate arms</a>
+        <a class="toc-level-2" href="#calibrate-leader">1. Calibrate the leader</a>
+        <a class="toc-level-2" href="#calibrate-follower">2. Calibrate the follower</a>
+        <a class="toc-level-2" href="#completion-report">Output and troubleshooting</a>
       </aside>
     </div>
-    <script src="assets/docs.js"></script>
+    <script src="../assets/docs.js"></script>
   </body>
 </html>

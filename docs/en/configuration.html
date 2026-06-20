@@ -3,29 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Quickstart</title>
+    <title>SOARM Studio Docs: Configuration</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Quickstart" />
+    <meta property="og:title" content="SOARM Studio Docs: Configuration" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/quickstart.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/configuration.html" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/docs.css" />
-    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/quickstart.html" />
-    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/quickstart.html" />
-    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/quickstart.html" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/configuration.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/configuration.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img
           class="brand-logo"
-          src="assets/brand/soarm-studio-logo-mark.svg"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
           alt=""
           aria-hidden="true"
         />
@@ -44,8 +44,8 @@
         <label class="language-switcher">
           <span class="sr-only">Language</span>
           <select aria-label="Documentation language" data-language-switcher>
-            <option value="en" data-href="quickstart.html" selected>English</option>
-            <option value="zh-CN" data-href="zh-CN/quickstart.html">中文</option>
+            <option value="en" data-href="configuration.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/configuration.html">中文</option>
           </select>
         </label>
       </div>
@@ -57,16 +57,15 @@
           <h2>Getting Started</h2>
           <a href="index.html">Introduction</a>
           <a href="installation.html">Installation</a>
-          <a class="active" aria-current="page" href="quickstart.html">Quickstart</a>
+          <a href="quickstart.html">Quickstart</a>
         </div>
         <div class="side-section">
           <h2>Core Concepts</h2>
           <a href="architecture.html">Architecture</a>
-          <a href="configuration.html">Configuration</a>
+          <a class="active" aria-current="page" href="configuration.html">Configuration</a>
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="images-and-video.html">Images and video</a>
-          <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -83,52 +82,48 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Quickstart</div>
+        <div class="crumbs">Docs <span>/</span> Configuration</div>
 
-        <section id="quickstart" class="doc-page">
-          <h1>Quickstart</h1>
+        <section id="configuration" class="doc-page">
+          <h1>Configuration</h1>
           <p>
-            The full hardware path is staged. Do not skip directly to teleop or
-            recording. Bring up hardware first, calibrate next, then do free
-            motion tests and dataset capture.
+            Setup writes one runtime config and two per-arm configs. These files
+            are ignored because they depend on your USB ports, camera indexes,
+            and calibrated limits.
           </p>
           <div class="code-title">
-            <span>End-to-end command outline</span>
-            <span>zsh</span>
+            <span>Generated files</span>
+            <span>text</span>
           </div>
-          <pre><code>soarm-studio scan --include-system
-soarm-studio scan --probe-arms
-soarm-studio setup arms \
-  --leader-port /dev/cu.usbmodemLEADER \
-  --follower-port /dev/cu.usbmodemFOLLOWER
-soarm-studio scan --preview-cameras \
-  --camera-indices 0,1,2,3 \
-  --backend avfoundation \
-  --output-dir previews/cameras
-soarm-studio setup cameras \
-  --backend avfoundation \
-  --wrist-index 1 \
-  --third-person-index 0
-soarm-studio check --config configs/session.yaml --overwrite
-soarm-studio calibrate --config configs/session.yaml --role leader
-soarm-studio calibrate --config configs/session.yaml --role follower
-soarm-studio check --config configs/session.yaml --overwrite
-soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
-soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite</code></pre>
+          <pre><code>configs/session.yaml
+configs/arms/leader.yaml
+configs/arms/follower.yaml</code></pre>
+
+          <div class="callout warn">
+            <span class="icon">!</span>
+            <div>
+              <strong>Do not treat examples as runtime state</strong>
+              <p>
+                Files under <code class="inline">configs/sessions/</code> are
+                templates. Use <code class="inline">configs/session.yaml</code>
+                for real runs after <code class="inline">setup</code>.
+              </p>
+            </div>
+          </div>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="installation.html"><span>Previous</span>Installation</a>
-          <a href="architecture.html"><span>Next</span>Architecture</a>
+          <a href="architecture.html"><span>Previous</span>Architecture</a>
+          <a href="calibration-principles.html"><span>Next</span>Calibration principles</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Quickstart</p>
-        <a class="toc-level-1" href="#quickstart">Overview</a>
+        <p class="toc-current">Configuration</p>
+        <a class="toc-level-1" href="#configuration">Overview</a>
       </aside>
     </div>
-    <script src="assets/docs.js"></script>
+    <script src="../assets/docs.js"></script>
   </body>
 </html>

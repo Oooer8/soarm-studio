@@ -3,29 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Publishing</title>
+    <title>SOARM Studio Docs: Images and video</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Publishing" />
+    <meta property="og:title" content="SOARM Studio Docs: Images and video" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/publishing.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/images-and-video.html" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/docs.css" />
-    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/publishing.html" />
-    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/publishing.html" />
-    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/publishing.html" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/images-and-video.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/images-and-video.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img
           class="brand-logo"
-          src="assets/brand/soarm-studio-logo-mark.svg"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
           alt=""
           aria-hidden="true"
         />
@@ -44,8 +44,8 @@
         <label class="language-switcher">
           <span class="sr-only">Language</span>
           <select aria-label="Documentation language" data-language-switcher>
-            <option value="en" data-href="publishing.html" selected>English</option>
-            <option value="zh-CN" data-href="zh-CN/publishing.html">中文</option>
+            <option value="en" data-href="images-and-video.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/images-and-video.html">中文</option>
           </select>
         </label>
       </div>
@@ -65,8 +65,7 @@
           <a href="configuration.html">Configuration</a>
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
-          <a href="images-and-video.html">Images and video</a>
-          <a class="active" aria-current="page" href="publishing.html">Publishing</a>
+          <a class="active" aria-current="page" href="images-and-video.html">Images and video</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -83,41 +82,58 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Publishing</div>
+        <div class="crumbs">Docs <span>/</span> Images and video</div>
 
-        <section id="publishing" class="doc-page">
-          <h1>Publishing on GitHub Pages</h1>
+        <section id="media" class="doc-page">
+          <h1>Images, video, and code examples</h1>
           <p>
-            This documentation site is static. The source lives in
-            <code class="inline">docs/</code> on <code class="inline">main</code>,
-            and GitHub Actions publishes that directory as a Pages artifact.
+            The docs site is ready for future hardware photos, camera previews,
+            calibration videos, dataset screenshots, and longer code examples.
+            Keep media under <code class="inline">docs/assets/</code>.
           </p>
-          <ol>
-            <li>Open the GitHub repository settings for <code class="inline">Oooer8/soarm-studio</code>.</li>
-            <li>In Pages, choose <code class="inline">GitHub Actions</code> as the source.</li>
-            <li>The workflow at <code class="inline">.github/workflows/pages.yml</code> uploads <code class="inline">docs/</code>.</li>
-            <li>The deploy job publishes the artifact to the <code class="inline">github-pages</code> environment.</li>
-          </ol>
-          <p>
-            Future photos, screenshots, and videos should stay under
-            <code class="inline">docs/assets/</code>. Runtime outputs such as
-            camera previews, datasets, and calibration captures remain outside
-            the docs tree unless a curated copy is intentionally added.
-          </p>
+          <div class="media-grid">
+            <div class="media-slot">
+              <div>
+                <strong>Image slot</strong>
+                <p>Use for camera previews, cable labels, and setup photos.</p>
+                <code>docs/assets/images/step-1-preview.jpg</code>
+              </div>
+            </div>
+            <div class="media-slot">
+              <div>
+                <strong>Video slot</strong>
+                <p>Use for calibration zero pose and continuous sweep demos.</p>
+                <code>docs/assets/videos/calibration-sweep.mp4</code>
+              </div>
+            </div>
+          </div>
+          <div class="code-title">
+            <span>Media markup template</span>
+            <span>html</span>
+          </div>
+          <pre><code>&lt;figure&gt;
+  &lt;img src="../assets/images/step-1-preview.jpg" alt="Camera preview showing wrist and third-person views" /&gt;
+  &lt;figcaption&gt;Preview images are the source of truth for camera roles.&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;figure&gt;
+  &lt;video controls src="../assets/videos/calibration-sweep.mp4"&gt;&lt;/video&gt;
+  &lt;figcaption&gt;Move the arm by hand while the SDK records min/max ticks.&lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="images-and-video.html"><span>Previous</span>Images and video</a>
+          <a href="calibration-principles.html"><span>Previous</span>Calibration principles</a>
           <a href="hardware-setup.html"><span>Next</span>Step 1 Hardware setup</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Publishing</p>
-        <a class="toc-level-1" href="#publishing">Overview</a>
+        <p class="toc-current">Images and video</p>
+        <a class="toc-level-1" href="#media">Overview</a>
       </aside>
     </div>
-    <script src="assets/docs.js"></script>
+    <script src="../assets/docs.js"></script>
   </body>
 </html>

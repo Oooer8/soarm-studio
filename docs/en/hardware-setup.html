@@ -12,20 +12,20 @@
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/hardware-setup.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/hardware-setup.html" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/docs.css" />
-    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/hardware-setup.html" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/hardware-setup.html" />
     <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/hardware-setup.html" />
-    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/hardware-setup.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img
           class="brand-logo"
-          src="assets/brand/soarm-studio-logo-mark.svg"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
           alt=""
           aria-hidden="true"
         />
@@ -45,7 +45,7 @@
           <span class="sr-only">Language</span>
           <select aria-label="Documentation language" data-language-switcher>
             <option value="en" data-href="hardware-setup.html" selected>English</option>
-            <option value="zh-CN" data-href="zh-CN/hardware-setup.html">中文</option>
+            <option value="zh-CN" data-href="../zh-CN/hardware-setup.html">中文</option>
           </select>
         </label>
       </div>
@@ -66,7 +66,6 @@
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="images-and-video.html">Images and video</a>
-          <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -88,26 +87,26 @@
         <section id="hardware-setup" class="doc-page">
           <h1>Step 1 Hardware setup</h1>
           <p>
-            第一步先把本机可见的两台机械臂和两路摄像头绑定到
-            <code class="inline">configs/session.yaml</code>。完成后，标定、
-            遥操作和录制都使用这份本机配置。
+            Step 1 binds the two visible arms and two camera streams on this machine into
+            <code class="inline">configs/session.yaml</code>. Calibration,
+            teleoperation, and recording all use this machine-local config after setup.
           </p>
 
-          <p>开始前确认：</p>
+          <p>Before you start:</p>
           <ul>
-            <li>两台机械臂已经装好，电机使用 SOARM 默认 ID 1-6，或准备好自定义 <code class="inline">--ids</code>。</li>
-            <li>机械臂电源、总线和 USB 串口都已连接，电机处于可读取状态。</li>
-            <li>wrist 与 third-person 摄像头都已接入 USB，并放到实际使用位置。</li>
-            <li>操作区域已清空，后续预览和检查时机械臂可以安全上电。</li>
+            <li>Both arms are assembled, and the motors use the SOARM default IDs 1-6, or you have a custom <code class="inline">--ids</code> list ready.</li>
+            <li>Arm power, the servo bus, and USB serial are connected, and the motors are readable.</li>
+            <li>The wrist and third-person cameras are connected over USB and placed where they will be used.</li>
+            <li>The workspace is clear, so the arms can be powered safely during preview and checks.</li>
           </ul>
 
           <div class="tutorial-steps">
             <section class="tutorial-step">
-              <h2 id="scan-hardware">扫描硬件</h2>
+              <h2 id="scan-hardware">Scan hardware</h2>
               <p>
-                先列出当前机器能看到的机械臂串口和 USB 摄像头。串口的
+                First list the arm serial ports and USB cameras visible to this machine. The serial port
                 <code class="inline">serial</code> / <code class="inline">location</code>
-                以及摄像头的 USB 信息会帮助你在后面做角色绑定和排查。
+                fields and camera USB metadata help with role assignment and troubleshooting later.
               </p>
               <div class="cli-block">
                 <div class="cli-toolbar">
@@ -117,7 +116,7 @@
                 <pre><code>soarm-studio scan --include-system</code></pre>
               </div>
               <details class="cli-result">
-                <summary>查看预期输出</summary>
+                <summary>Show expected output</summary>
                 <pre><code>{
   "summary": {
     "arm_ports": 2,
@@ -161,12 +160,12 @@
             </section>
 
             <section class="tutorial-step">
-              <h2 id="arm-setup">配置机械臂</h2>
+              <h2 id="arm-setup">Configure arms</h2>
               <ol class="command-steps">
                 <li>
-                  <h3 id="probe-arms">探测机械臂端口</h3>
+                  <h3 id="probe-arms">Probe arm ports</h3>
                   <p>
-                    在写入角色前，先让 CLI 逐个串口读取默认 ID 1-6，确认两个端口都能连上完整的电机总线。
+                    Before writing roles, ask the CLI to read the default IDs 1-6 on each serial port and confirm both ports can reach a complete motor bus.
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -176,7 +175,7 @@
                     <pre><code>soarm-studio scan --probe-arms</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看预期输出</summary>
+                    <summary>Show expected output</summary>
                     <pre><code>{
   "summary": {
     "ok": true,
@@ -203,16 +202,16 @@
 }</code></pre>
                   </details>
                   <p>
-                    如果 <code class="inline">online_ids</code> 少于
-                    <code class="inline">expected_ids</code>，先检查电源、总线接线、电机 ID 和波特率；如果你改过电机编号，用
-                    <code class="inline">--ids</code> 指定。
+                    If <code class="inline">online_ids</code> has fewer entries than
+                    <code class="inline">expected_ids</code>, check power, bus wiring, motor IDs, and baud rate first. If you changed motor IDs, pass them with
+                    <code class="inline">--ids</code>.
                   </p>
                 </li>
                 <li>
-                  <h3 id="setup-arm-roles">写入机械臂角色</h3>
+                  <h3 id="setup-arm-roles">Write arm roles</h3>
                   <p>
-                    根据实际摆放决定 leader 和 follower，把确认过的两个串口写入本机运行配置。下面示例中
-                    <code class="inline">5A7C121905</code> 是 leader，<code class="inline">5A7C119035</code> 是 follower。
+                    Decide which physical arm is leader and which is follower, then write the verified serial ports into the local runtime config. In this example,
+                    <code class="inline">5A7C121905</code> is the leader and <code class="inline">5A7C119035</code> is the follower.
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -224,7 +223,7 @@
   --follower-port /dev/cu.usbmodem5A7C1190351</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看预期输出</summary>
+                    <summary>Show expected output</summary>
                     <pre><code>{
   "session_config": "configs/session.yaml",
   "arm_configs": {
@@ -239,13 +238,13 @@
             </section>
 
             <section class="tutorial-step">
-              <h2 id="camera-setup">配置摄像头</h2>
+              <h2 id="camera-setup">Configure cameras</h2>
               <ol class="command-steps">
                 <li>
-                  <h3 id="preview-cameras">预览摄像头</h3>
+                  <h3 id="preview-cameras">Preview cameras</h3>
                   <p>
-                    一次预览多个 OpenCV index，保存图片后用画面内容确认 wrist 和 third-person。
-                    macOS 上相同型号摄像头可能同名，所以不要只靠设备名判断。
+                    Preview multiple OpenCV indexes at once, save frames, then use the image content to identify wrist and third-person views.
+                    Cameras of the same model can share the same name on macOS, so do not rely on device names alone.
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -258,7 +257,7 @@
   --output-dir previews/cameras</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看预期输出</summary>
+                    <summary>Show expected output</summary>
                     <pre><code>{
   "summary": {
     "ok": true,
@@ -306,10 +305,10 @@
                   </details>
                 </li>
                 <li>
-                  <h3 id="setup-camera-roles">写入摄像头角色</h3>
+                  <h3 id="setup-camera-roles">Write camera roles</h3>
                   <p>
-                    把确认过的 wrist 和 third-person index 写入
-                    <code class="inline">configs/session.yaml</code>。OpenCV index 可能随插拔、重启或换 USB hub 改变，硬件位置变化后要重新预览。
+                    Write the confirmed wrist and third-person indexes into
+                    <code class="inline">configs/session.yaml</code>. OpenCV indexes can change after unplugging, rebooting, or moving to another USB hub, so preview again after hardware placement changes.
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -322,7 +321,7 @@
   --third-person-index 0</code></pre>
                   </div>
                   <details class="cli-result">
-                    <summary>查看预期输出</summary>
+                    <summary>Show expected output</summary>
                     <pre><code>{
   "session_config": "configs/session.yaml",
   "assigned": {
@@ -351,10 +350,10 @@
             </section>
 
             <section class="tutorial-step">
-              <h2 id="check-readiness">检查并写入配置</h2>
+              <h2 id="check-readiness">Check readiness and write outputs</h2>
               <p>
-                最后用生成的 session 配置重新打开两条 servo bus 和两个摄像头，确认 bindings 和 preflight 都通过。
-                <code class="inline">--overwrite</code> 会刷新检查产物，方便后续标定继续使用。
+                Finally, reopen both servo buses and both cameras through the generated session config, then confirm bindings and preflight pass.
+                <code class="inline">--overwrite</code> refreshes check outputs so calibration can continue from the same config.
               </p>
               <div class="cli-block">
                 <div class="cli-toolbar">
@@ -364,7 +363,7 @@
                 <pre><code>soarm-studio check --config configs/session.yaml --overwrite</code></pre>
               </div>
               <details class="cli-result">
-                <summary>查看预期输出</summary>
+                <summary>Show expected output</summary>
                 <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: disconnecting; disabling servo torque before closing the port.
@@ -425,7 +424,7 @@ hardware: disconnecting; disabling servo torque before closing the port.
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="publishing.html"><span>Previous</span>Publishing</a>
+          <a href="images-and-video.html"><span>Previous</span>Images and video</a>
           <a href="calibration.html"><span>Next</span>Step 2 Calibration</a>
         </nav>
       </main>
@@ -434,16 +433,16 @@ hardware: disconnecting; disabling servo torque before closing the port.
         <h2>This section</h2>
         <p class="toc-current">Step 1 Hardware setup</p>
         <a class="toc-level-1" href="#hardware-setup">Overview</a>
-        <a class="toc-level-1" href="#scan-hardware">扫描硬件</a>
-        <a class="toc-level-1" href="#arm-setup">配置机械臂</a>
-        <a class="toc-level-2" href="#probe-arms">探测机械臂端口</a>
-        <a class="toc-level-2" href="#setup-arm-roles">写入机械臂角色</a>
-        <a class="toc-level-1" href="#camera-setup">配置摄像头</a>
-        <a class="toc-level-2" href="#preview-cameras">预览摄像头</a>
-        <a class="toc-level-2" href="#setup-camera-roles">写入摄像头角色</a>
-        <a class="toc-level-1" href="#check-readiness">检查并写入配置</a>
+        <a class="toc-level-1" href="#scan-hardware">Scan hardware</a>
+        <a class="toc-level-1" href="#arm-setup">Configure arms</a>
+        <a class="toc-level-2" href="#probe-arms">Probe arm ports</a>
+        <a class="toc-level-2" href="#setup-arm-roles">Write arm roles</a>
+        <a class="toc-level-1" href="#camera-setup">Configure cameras</a>
+        <a class="toc-level-2" href="#preview-cameras">Preview cameras</a>
+        <a class="toc-level-2" href="#setup-camera-roles">Write camera roles</a>
+        <a class="toc-level-1" href="#check-readiness">Check readiness and write outputs</a>
       </aside>
     </div>
-    <script src="assets/docs.js"></script>
+    <script src="../assets/docs.js"></script>
   </body>
 </html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs</title>
+    <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta property="og:title" content="SOARM Studio Docs" />
+    <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/index.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/index.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/index.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a href="index.html" aria-current="page">Docs</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="Search placeholder">
+          <span>Search documentation...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">Language</span>
+          <select aria-label="Documentation language" data-language-switcher>
+            <option value="en" data-href="index.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/index.html">中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a class="active" aria-current="page" href="index.html">Introduction</a>
+          <a href="installation.html">Installation</a>
+          <a href="quickstart.html">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="architecture.html">Architecture</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="calibration-principles.html">Calibration principles</a>
+          <a href="teleoperation.html">Teleoperation</a>
+          <a href="images-and-video.html">Images and video</a>
+        </div>
+        <div class="side-section">
+          <h2>TUTORIALS</h2>
+          <a href="hardware-setup.html">Step 1 Hardware setup</a>
+          <a href="calibration.html">Step 2 Calibration</a>
+          <a href="recording.html">Recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a href="cli-reference.html">CLI reference</a>
+          <a href="generated-files.html">Generated files</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> Introduction</div>
+
+        <section id="introduction" class="doc-page">
+          <h1>SOARM Studio documentation</h1>
+          <p class="lead">
+            SOARM Studio is the application layer for dual SOARM bring-up,
+            calibration, teleoperation, and local data collection. It keeps the
+            user workflow clear while delegating low-level arm behavior to
+            <code class="inline">soarm-sdk</code>.
+          </p>
+
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
+              <strong>README vs docs</strong>
+              <p>
+                The README is a short project entry point. These docs are the
+                detailed operating manual for installation, concepts, hardware
+                setup, calibration, recording, media examples, and
+                troubleshooting.
+              </p>
+            </div>
+          </div>
+
+          <div class="cards">
+            <article class="card">
+              <h3 id="recommended-command-path">Recommended command path</h3>
+              <p>
+                Use <code class="inline">scan</code>,
+                <code class="inline">setup</code>,
+                <code class="inline">check</code>,
+                <code class="inline">calibrate</code>,
+                <code class="inline">teleop</code>, and
+                <code class="inline">record</code>. Older duplicate command
+                shapes were removed from the public CLI.
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="one-generated-runtime-config">One generated runtime config</h3>
+              <p>
+                <code class="inline">configs/session.yaml</code> is the local
+                runtime config for one machine. Example configs remain templates
+                under <code class="inline">configs/sessions/</code>.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="https://github.com/Oooer8/soarm-studio#readme"><span>Project</span>README</a>
+          <a href="installation.html"><span>Next</span>Installation</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="This section">
+        <h2>This section</h2>
+        <p class="toc-current">Introduction</p>
+        <a class="toc-level-1" href="#introduction">Overview</a>
+        <a class="toc-level-2" href="#recommended-command-path">Recommended command path</a>
+        <a class="toc-level-2" href="#one-generated-runtime-config">One generated runtime config</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

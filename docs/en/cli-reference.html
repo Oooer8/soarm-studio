@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs: CLI reference</title>
+    <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta property="og:title" content="SOARM Studio Docs: CLI reference" />
+    <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/cli-reference.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/cli-reference.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/cli-reference.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a href="index.html" aria-current="page">Docs</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="Search placeholder">
+          <span>Search documentation...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">Language</span>
+          <select aria-label="Documentation language" data-language-switcher>
+            <option value="en" data-href="cli-reference.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/cli-reference.html">中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a href="index.html">Introduction</a>
+          <a href="installation.html">Installation</a>
+          <a href="quickstart.html">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="architecture.html">Architecture</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="calibration-principles.html">Calibration principles</a>
+          <a href="teleoperation.html">Teleoperation</a>
+          <a href="images-and-video.html">Images and video</a>
+        </div>
+        <div class="side-section">
+          <h2>TUTORIALS</h2>
+          <a href="hardware-setup.html">Step 1 Hardware setup</a>
+          <a href="calibration.html">Step 2 Calibration</a>
+          <a href="recording.html">Recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a class="active" aria-current="page" href="cli-reference.html">CLI reference</a>
+          <a href="generated-files.html">Generated files</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> CLI reference</div>
+
+        <section id="cli" class="doc-page">
+          <h1>CLI reference</h1>
+          <p>The public CLI is intentionally small.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>scan</code></td>
+                  <td>Find ports, cameras, and optional previews.</td>
+                </tr>
+                <tr>
+                  <td><code>setup</code></td>
+                  <td>Save arm and camera roles into runtime config.</td>
+                </tr>
+                <tr>
+                  <td><code>check</code></td>
+                  <td>Verify bindings and readiness.</td>
+                </tr>
+                <tr>
+                  <td><code>calibrate</code></td>
+                  <td>Run interactive zero and continuous range capture.</td>
+                </tr>
+                <tr>
+                  <td><code>teleop</code></td>
+                  <td>Run leader-to-follower control and print loop metrics.</td>
+                </tr>
+                <tr>
+                  <td><code>record</code></td>
+                  <td>Record local episodes and sidecars.</td>
+                </tr>
+                <tr>
+                  <td><code>dataset</code></td>
+                  <td>Inspect, validate, or export local datasets.</td>
+                </tr>
+                <tr>
+                  <td><code>web</code></td>
+                  <td>Run the local browser UI.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="recording.html"><span>Previous</span>Recording</a>
+          <a href="generated-files.html"><span>Next</span>Generated files</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="This section">
+        <h2>This section</h2>
+        <p class="toc-current">CLI reference</p>
+        <a class="toc-level-1" href="#cli">Overview</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

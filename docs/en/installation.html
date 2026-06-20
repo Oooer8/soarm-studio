@@ -3,29 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Configuration</title>
+    <title>SOARM Studio Docs: Installation</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Configuration" />
+    <meta property="og:title" content="SOARM Studio Docs: Installation" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
       content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/configuration.html" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/installation.html" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" href="assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/docs.css" />
-    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/configuration.html" />
-    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/configuration.html" />
-    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/configuration.html" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/installation.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/installation.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
         <img
           class="brand-logo"
-          src="assets/brand/soarm-studio-logo-mark.svg"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
           alt=""
           aria-hidden="true"
         />
@@ -44,8 +44,8 @@
         <label class="language-switcher">
           <span class="sr-only">Language</span>
           <select aria-label="Documentation language" data-language-switcher>
-            <option value="en" data-href="configuration.html" selected>English</option>
-            <option value="zh-CN" data-href="zh-CN/configuration.html">中文</option>
+            <option value="en" data-href="installation.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/installation.html">中文</option>
           </select>
         </label>
       </div>
@@ -56,17 +56,16 @@
         <div class="side-section">
           <h2>Getting Started</h2>
           <a href="index.html">Introduction</a>
-          <a href="installation.html">Installation</a>
+          <a class="active" aria-current="page" href="installation.html">Installation</a>
           <a href="quickstart.html">Quickstart</a>
         </div>
         <div class="side-section">
           <h2>Core Concepts</h2>
           <a href="architecture.html">Architecture</a>
-          <a class="active" aria-current="page" href="configuration.html">Configuration</a>
+          <a href="configuration.html">Configuration</a>
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="images-and-video.html">Images and video</a>
-          <a href="publishing.html">Publishing</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -83,48 +82,42 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Configuration</div>
+        <div class="crumbs">Docs <span>/</span> Installation</div>
 
-        <section id="configuration" class="doc-page">
-          <h1>Configuration</h1>
+        <section id="installation" class="doc-page">
+          <h1>Installation</h1>
           <p>
-            Setup writes one runtime config and two per-arm configs. These files
-            are ignored because they depend on your USB ports, camera indexes,
-            and calibrated limits.
+            The conda environment installs SOARM Studio in editable mode and pulls
+            <code class="inline">soarm-sdk</code> from the GitHub dependency declared
+            by the hardware extra.
           </p>
           <div class="code-title">
-            <span>Generated files</span>
-            <span>text</span>
+            <span>Install the environment</span>
+            <span>zsh</span>
           </div>
-          <pre><code>configs/session.yaml
-configs/arms/leader.yaml
-configs/arms/follower.yaml</code></pre>
+          <pre><code>conda env create -f environment.yml
+conda activate soarm-studio</code></pre>
 
-          <div class="callout warn">
-            <span class="icon">!</span>
-            <div>
-              <strong>Do not treat examples as runtime state</strong>
-              <p>
-                Files under <code class="inline">configs/sessions/</code> are
-                templates. Use <code class="inline">configs/session.yaml</code>
-                for real runs after <code class="inline">setup</code>.
-              </p>
-            </div>
+          <div class="code-title">
+            <span>Validate the local install</span>
+            <span>zsh</span>
           </div>
+          <pre><code>soarm-studio --help
+soarm-studio check --config configs/sessions/mock.yaml --overwrite</code></pre>
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="architecture.html"><span>Previous</span>Architecture</a>
-          <a href="calibration-principles.html"><span>Next</span>Calibration principles</a>
+          <a href="index.html"><span>Previous</span>Introduction</a>
+          <a href="quickstart.html"><span>Next</span>Quickstart</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Configuration</p>
-        <a class="toc-level-1" href="#configuration">Overview</a>
+        <p class="toc-current">Installation</p>
+        <a class="toc-level-1" href="#installation">Overview</a>
       </aside>
     </div>
-    <script src="assets/docs.js"></script>
+    <script src="../assets/docs.js"></script>
   </body>
 </html>
