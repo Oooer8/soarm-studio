@@ -4,11 +4,15 @@
 
 # SOARM Studio
 
-SOARM Studio exists beside LeRobot for the parts of SOARM operation where a
-robot-specific workflow matters most: hardware bring-up, port assignment,
-readiness checks, calibration, low-latency leader-to-follower teleoperation,
-and local recording quality. LeRobot remains the target ecosystem for dataset
-compatibility, training, policy deployment, and sharing.
+SOARM Studio is the local control and data-capture workspace for SOARM arms.
+It brings the physical setup into a repeatable workflow: hardware bring-up,
+leader/follower role binding, readiness checks, calibration, low-latency
+teleoperation, dataset recording, and recording-quality review.
+
+Studio sits beside LeRobot rather than replacing it. Studio focuses on making
+the arm trustworthy on the table; LeRobot remains the broader robot-learning
+ecosystem for dataset tooling, training, policy deployment, Hugging Face Hub
+workflows, and sharing.
 
 The runtime path stays direct:
 
@@ -17,8 +21,13 @@ leader arm -> teleop loop -> SDK direct joint stream -> follower arm
                          -> synchronized samples -> LeRobot-v3-compatible files
 ```
 
-Use Studio to make the arm trustworthy on the table; use LeRobot to carry the
-resulting data and policies into the broader robot-learning stack.
+Compared with using LeRobot directly for SOARM operation, Studio is stronger in
+three local-control dimensions: sample quality, because it records real capture
+timing and quality sidecars; control stability, because it owns SOARM-specific
+preflight, binding, calibration, and runtime checks; and soft real-time control,
+because target updates are kept separate from the fixed-rate arm output stream.
+LeRobot is still stronger as the mature training and dataset ecosystem that
+Studio records toward.
 
 ## Documentation
 

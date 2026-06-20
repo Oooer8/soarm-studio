@@ -88,44 +88,109 @@
         <section id="introduction" class="doc-page">
           <h1>SOARM Studio documentation</h1>
           <p class="lead">
-            SOARM Studio exists beside LeRobot for the parts of SOARM operation
-            where a robot-specific workflow matters most: hardware bring-up,
-            port assignment, readiness checks, calibration, low-latency
-            leader-to-follower teleoperation, and local recording quality.
+            SOARM Studio is the local control and data-capture workspace for
+            SOARM arms. It turns a physical leader/follower setup into a
+            repeatable workflow for hardware bring-up, readiness checks,
+            calibration, low-latency teleoperation, dataset recording, and
+            recording-quality review.
           </p>
 
           <div class="callout">
             <span class="icon">i</span>
             <div>
-              <strong>Studio and LeRobot</strong>
+              <strong>Positioning</strong>
               <p>
-                Studio makes the arm trustworthy on the table. LeRobot remains
-                the target ecosystem for dataset compatibility, training,
-                policy deployment, and sharing.
+                Studio makes the SOARM hardware trustworthy on the table.
+                LeRobot remains the broader robot-learning ecosystem for
+                standard datasets, training, policy deployment, Hugging Face Hub
+                workflows, and sharing.
               </p>
             </div>
           </div>
 
+          <h2 id="ecosystem">Position and foundation</h2>
           <div class="cards">
             <article class="card">
-              <h3 id="studio-advantage">Where Studio helps</h3>
+              <h3>Ecosystem role</h3>
               <p>
-                Studio keeps SOARM setup explicit and local: scan devices,
-                bind leader and follower roles, run preflight checks, calibrate
-                each arm, then stream leader targets through the SDK-owned joint
-                controller while recording synchronized samples and quality
-                sidecars.
+                Studio is the SOARM-specific application layer before data and
+                policies enter the learning stack. It records toward LeRobot
+                compatibility, but keeps hardware setup, operation, and local
+                diagnostics close to the arm.
               </p>
             </article>
             <article class="card">
-              <h3 id="lerobot-advantage">Where LeRobot helps</h3>
+              <h3>Implemented foundation</h3>
               <p>
-                LeRobot is the broader robot-learning stack: standard dataset
-                tooling, Hugging Face Hub workflows, policy training, policy
-                rollout, visualization, and community hardware conventions.
-                Studio records toward that ecosystem instead of replacing it.
+                The core workflow covers device discovery, role binding,
+                preflight checks, calibration, leader-to-follower teleoperation,
+                latest-frame camera capture, synchronized recording, local
+                dataset output, and per-episode quality summaries.
               </p>
             </article>
+          </div>
+
+          <h2 id="comparison">Studio and LeRobot</h2>
+          <p>
+            For SOARM body control and motion-control workflows, Studio is
+            optimized for trustworthy local operation. LeRobot is optimized for
+            the larger learning ecosystem. The two are complementary, but their
+            strengths are different.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dimension</th>
+                  <th>Stronger choice</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Sample quality</td>
+                  <td>Studio</td>
+                  <td>
+                    Studio records real capture timing, camera latency and frame
+                    age, dropped or stale camera indicators, and quality
+                    sidecars. LeRobot provides the standard dataset ecosystem,
+                    but its general recording path is less focused on
+                    SOARM-specific timing accountability.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Control stability</td>
+                  <td>Studio for SOARM operation</td>
+                  <td>
+                    Studio owns the SOARM setup path: port assignment,
+                    preflight, calibration, runtime checks, and guarded local
+                    recording. LeRobot is stronger as a mature cross-robot data
+                    and policy stack.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Real-time behavior</td>
+                  <td>Studio</td>
+                  <td>
+                    Studio separates target updates from the fixed-rate arm
+                    output stream and avoids blocking the control loop on fresh
+                    camera capture. LeRobot keeps observation, action, sending,
+                    recording, and display closer to one main loop, so command
+                    cadence depends more on full-loop load.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Training ecosystem</td>
+                  <td>LeRobot</td>
+                  <td>
+                    LeRobot remains the better place for standardized dataset
+                    tooling, policy training, policy deployment, Hub workflows,
+                    and community conventions. Studio is designed to feed that
+                    ecosystem with better local SOARM sessions.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -139,8 +204,8 @@
         <h2>This section</h2>
         <p class="toc-current">Introduction</p>
         <a class="toc-level-1" href="#introduction">Overview</a>
-        <a class="toc-level-2" href="#studio-advantage">Where Studio helps</a>
-        <a class="toc-level-2" href="#lerobot-advantage">Where LeRobot helps</a>
+        <a class="toc-level-2" href="#ecosystem">Position and foundation</a>
+        <a class="toc-level-2" href="#comparison">Studio and LeRobot</a>
       </aside>
     </div>
     <script src="../assets/docs.js"></script>

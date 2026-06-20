@@ -88,32 +88,79 @@
         <section id="introduction" class="doc-page">
           <h1>SOARM Studio 文档</h1>
           <p class="lead">
-            SOARM Studio 放在 LeRobot 旁边，是为了补上 SOARM 运行中最需要本体化工作流的部分：硬件启动、串口分配、状态预检、机械臂标定、低延迟主从遥操作，以及本地录制质量检查。
+            SOARM Studio 是面向 SOARM 机械臂本体运行和数据采集的本地工作台。它把 leader/follower 机械臂从硬件启动、状态预检、标定、低延迟遥操作，到数据集录制和质量检查，组织成一条可重复执行的工作流。
           </p>
 
           <div class="callout">
             <span class="icon">i</span>
             <div>
-              <strong>Studio 与 LeRobot</strong>
+              <strong>定位</strong>
               <p>
-                Studio 负责让桌面上的机械臂先变得可信、可诊断、可稳定遥操作；LeRobot 仍然是数据集兼容、训练、策略部署和共享的目标生态。
+                Studio 负责让桌面上的 SOARM 机械臂先变得可信、可诊断、可稳定遥操作；LeRobot 仍然是标准数据集、策略训练、策略部署、Hugging Face Hub 工作流和共享协作的更大机器人学习生态。
               </p>
             </div>
           </div>
 
+          <h2 id="ecosystem">生态定位和基础能力</h2>
           <div class="cards">
             <article class="card">
-              <h3 id="studio-advantage">Studio 的优势</h3>
+              <h3>生态中的定位</h3>
               <p>
-                Studio 把 SOARM 的本地流程做清楚：扫描设备，绑定 leader 和 follower，运行预检，分别标定两只机械臂，再把 leader 目标送入 SDK 持有的关节流控制器，同时记录同步样本和质量侧车。
+                Studio 是数据和策略进入学习栈之前的 SOARM 专用应用层。它面向 LeRobot 兼容格式录制数据，但把硬件启动、运行、诊断和本地质量控制留在离机械臂最近的位置。
               </p>
             </article>
             <article class="card">
-              <h3 id="lerobot-advantage">LeRobot 的优势</h3>
+              <h3>已经实现的基础能力</h3>
               <p>
-                LeRobot 是更大的机器人学习栈：标准数据集工具、Hugging Face Hub 工作流、策略训练、策略部署、可视化和社区硬件约定。Studio 面向这个生态录制数据，而不是替代它。
+                核心流程包括设备发现、角色绑定、预检、标定、leader-to-follower 遥操作、最新帧相机采集、同步录制、本地数据集输出，以及 episode 级别的质量摘要。
               </p>
             </article>
+          </div>
+
+          <h2 id="comparison">Studio 与 LeRobot</h2>
+          <p>
+            如果问题聚焦在 SOARM 机械臂的本体控制和运控层面，Studio 更偏向可信的本地运行；LeRobot 更偏向通用机器人学习生态。二者互补，但优势不在同一个层面。
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>维度</th>
+                  <th>更适合</th>
+                  <th>原因</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>采样质量</td>
+                  <td>Studio</td>
+                  <td>
+                    Studio 记录真实采样时间、相机读取延迟、画面帧龄、丢帧或陈旧帧状态，并生成质量 sidecar。LeRobot 的优势是标准数据集生态，但通用录制链路对 SOARM 专用时序质量的表达更轻。
+                  </td>
+                </tr>
+                <tr>
+                  <td>控制稳定性</td>
+                  <td>SOARM 本体运行更适合 Studio</td>
+                  <td>
+                    Studio 覆盖 SOARM 的本地运行路径：端口分配、状态预检、机械臂标定、运行期检查和带保护的本地录制。LeRobot 更强的是跨机器人数据和策略生态的成熟度。
+                  </td>
+                </tr>
+                <tr>
+                  <td>实时性</td>
+                  <td>Studio</td>
+                  <td>
+                    Studio 将目标更新和固定频率的机械臂输出流解耦，并避免控制循环被相机新帧采集阻塞。LeRobot 的观测、动作、发送、录制和显示更接近一个主循环，动作节奏更容易受整条循环负载影响。
+                  </td>
+                </tr>
+                <tr>
+                  <td>训练生态</td>
+                  <td>LeRobot</td>
+                  <td>
+                    LeRobot 仍然更适合标准数据集工具、策略训练、策略部署、Hub 工作流和社区约定。Studio 的目标是为这个生态提供质量更可控的 SOARM 本地会话。
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -127,8 +174,8 @@
         <h2>本节</h2>
         <p class="toc-current">介绍</p>
         <a class="toc-level-1" href="#introduction">概览</a>
-        <a class="toc-level-2" href="#studio-advantage">Studio 的优势</a>
-        <a class="toc-level-2" href="#lerobot-advantage">LeRobot 的优势</a>
+        <a class="toc-level-2" href="#ecosystem">生态定位和基础能力</a>
+        <a class="toc-level-2" href="#comparison">Studio 与 LeRobot</a>
       </aside>
     </div>
     <script src="../assets/docs.js"></script>
