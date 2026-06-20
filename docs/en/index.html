@@ -88,44 +88,42 @@
         <section id="introduction" class="doc-page">
           <h1>SOARM Studio documentation</h1>
           <p class="lead">
-            SOARM Studio is the application layer for dual SOARM bring-up,
-            calibration, teleoperation, and local data collection. It keeps the
-            user workflow clear while delegating low-level arm behavior to
-            <code class="inline">soarm-sdk</code>.
+            SOARM Studio exists beside LeRobot for the parts of SOARM operation
+            where a robot-specific workflow matters most: hardware bring-up,
+            port assignment, readiness checks, calibration, low-latency
+            leader-to-follower teleoperation, and local recording quality.
           </p>
 
           <div class="callout">
             <span class="icon">i</span>
             <div>
-              <strong>README vs docs</strong>
+              <strong>Studio and LeRobot</strong>
               <p>
-                The README is a short project entry point. These docs are the
-                detailed operating manual for installation, concepts, hardware
-                setup, calibration, recording, media examples, and
-                troubleshooting.
+                Studio makes the arm trustworthy on the table. LeRobot remains
+                the target ecosystem for dataset compatibility, training,
+                policy deployment, and sharing.
               </p>
             </div>
           </div>
 
           <div class="cards">
             <article class="card">
-              <h3 id="recommended-command-path">Recommended command path</h3>
+              <h3 id="studio-advantage">Where Studio helps</h3>
               <p>
-                Use <code class="inline">scan</code>,
-                <code class="inline">setup</code>,
-                <code class="inline">check</code>,
-                <code class="inline">calibrate</code>,
-                <code class="inline">teleop</code>, and
-                <code class="inline">record</code>. Older duplicate command
-                shapes were removed from the public CLI.
+                Studio keeps SOARM setup explicit and local: scan devices,
+                bind leader and follower roles, run preflight checks, calibrate
+                each arm, then stream leader targets through the SDK-owned joint
+                controller while recording synchronized samples and quality
+                sidecars.
               </p>
             </article>
             <article class="card">
-              <h3 id="one-generated-runtime-config">One generated runtime config</h3>
+              <h3 id="lerobot-advantage">Where LeRobot helps</h3>
               <p>
-                <code class="inline">configs/session.yaml</code> is the local
-                runtime config for one machine. Example configs remain templates
-                under <code class="inline">configs/sessions/</code>.
+                LeRobot is the broader robot-learning stack: standard dataset
+                tooling, Hugging Face Hub workflows, policy training, policy
+                rollout, visualization, and community hardware conventions.
+                Studio records toward that ecosystem instead of replacing it.
               </p>
             </article>
           </div>
@@ -141,8 +139,8 @@
         <h2>This section</h2>
         <p class="toc-current">Introduction</p>
         <a class="toc-level-1" href="#introduction">Overview</a>
-        <a class="toc-level-2" href="#recommended-command-path">Recommended command path</a>
-        <a class="toc-level-2" href="#one-generated-runtime-config">One generated runtime config</a>
+        <a class="toc-level-2" href="#studio-advantage">Where Studio helps</a>
+        <a class="toc-level-2" href="#lerobot-advantage">Where LeRobot helps</a>
       </aside>
     </div>
     <script src="../assets/docs.js"></script>

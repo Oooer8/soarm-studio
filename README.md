@@ -4,9 +4,11 @@
 
 # SOARM Studio
 
-SOARM Studio is a thin application layer above `soarm-sdk` for dual-arm
-hardware setup, calibration, teleoperation, and local LeRobot-v3-style data
-recording.
+SOARM Studio exists beside LeRobot for the parts of SOARM operation where a
+robot-specific workflow matters most: hardware bring-up, port assignment,
+readiness checks, calibration, low-latency leader-to-follower teleoperation,
+and local recording quality. LeRobot remains the target ecosystem for dataset
+compatibility, training, policy deployment, and sharing.
 
 The runtime path stays direct:
 
@@ -14,6 +16,9 @@ The runtime path stays direct:
 leader arm -> teleop loop -> SDK direct joint stream -> follower arm
                          -> synchronized samples -> LeRobot-v3-compatible files
 ```
+
+Use Studio to make the arm trustworthy on the table; use LeRobot to carry the
+resulting data and policies into the broader robot-learning stack.
 
 ## Documentation
 
