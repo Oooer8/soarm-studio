@@ -518,22 +518,18 @@ li {
 
 .command-steps {
   margin: 14px 0 0;
-  padding-left: 24px;
+  padding-left: 0;
+  list-style: none;
   min-width: 0;
 }
 
 .command-steps > li {
-  padding-left: 4px;
+  padding-left: 0;
   min-width: 0;
 }
 
 .command-steps > li + li {
   margin-top: 28px;
-}
-
-.command-steps > li::marker {
-  color: var(--muted);
-  font-weight: 650;
 }
 
 .cli-block {
