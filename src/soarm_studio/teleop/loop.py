@@ -178,7 +178,6 @@ class TeleopLoop:
                 output_hz=self.stream_output_hz,
                 target_timeout_s=self.stream_target_timeout_s,
                 joint_names=self.joint_names,
-                mode="direct",
             )
         return self._stream
 

@@ -28,7 +28,6 @@ class Arm(Protocol):
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "direct",
     ) -> "JointStream": ...
 
     def stop(self) -> None: ...
@@ -117,14 +116,12 @@ class MockArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "direct",
     ) -> JointStream:
         self._require_connected()
         self.last_stream_options = {
             "output_hz": output_hz,
             "target_timeout_s": target_timeout_s,
             "joint_names": joint_names,
-            "mode": mode,
         }
         return MockJointStream(self)
 
@@ -196,14 +193,13 @@ class SOARMArm:
         output_hz: float | None = None,
         target_timeout_s: float = 0.15,
         joint_names: list[str] | None = None,
-        mode: str = "direct",
     ) -> JointStream:
         return SOARMJointStream(
             self._arm.start_joint_stream(
                 output_hz=output_hz,
                 target_timeout_s=target_timeout_s,
                 joint_names=joint_names,
-                mode=mode,
+                mode="direct",
             )
         )
 

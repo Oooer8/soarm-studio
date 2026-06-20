@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from soarm_studio.hardware.arms import MockArm
+import sys
+import types
+
+from soarm_studio.hardware.arms import MockArm, SOARMArm
 from soarm_studio.teleop import TeleopLoop
 
 
@@ -123,7 +126,7 @@ def test_teleop_run_syncs_start_and_stops_stream() -> None:
     assert loop._stream is None
 
 
-def test_teleop_loop_uses_direct_stream_by_default() -> None:
+def test_teleop_loop_starts_follower_stream_without_mode_surface() -> None:
     joints = ["a", "b"]
     leader = MockArm("leader", joints)
     follower = MockArm("follower", joints)
@@ -139,4 +142,52 @@ def test_teleop_loop_uses_direct_stream_by_default() -> None:
     loop.step()
 
     assert follower.last_stream_options is not None
-    assert follower.last_stream_options["mode"] == "direct"
+    assert follower.last_stream_options == {
+        "output_hz": None,
+        "target_timeout_s": 0.15,
+        "joint_names": joints,
+    }
+
+
+def test_soarm_arm_pins_sdk_stream_to_direct_mode(monkeypatch, tmp_path) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeStream:
+        def update_target(self, targets):
+            calls["target"] = targets
+
+        def stop(self):
+            calls["stopped"] = True
+
+    class FakeArm:
+        def start_joint_stream(self, **kwargs):
+            calls["kwargs"] = kwargs
+            return FakeStream()
+
+    class FakeSOARM:
+        @staticmethod
+        def from_config(path):
+            calls["path"] = path
+            return FakeArm()
+
+    package = types.ModuleType("soarm_sdk")
+    package.SOARM = FakeSOARM
+    monkeypatch.setitem(sys.modules, "soarm_sdk", package)
+
+    arm = SOARMArm("follower", tmp_path / "follower.yaml")
+    stream = arm.start_joint_stream(
+        output_hz=250,
+        target_timeout_s=0.2,
+        joint_names=["a"],
+    )
+    stream.update_target({"a": 0.1})
+    stream.stop()
+
+    assert calls["kwargs"] == {
+        "output_hz": 250,
+        "target_timeout_s": 0.2,
+        "joint_names": ["a"],
+        "mode": "direct",
+    }
+    assert calls["target"] == {"a": 0.1}
+    assert calls["stopped"] is True

@@ -78,11 +78,10 @@
           <p>
             Teleop first aligns the follower to the current leader pose with a
             safety-checked SDK move, then feeds leader targets into the SDK
-            online tracking joint stream. Studio keeps the 30 Hz leader,
+            online direct joint stream. Studio keeps the 30 Hz leader,
             camera, and recording sample contract while
             <code class="inline">soarm-sdk</code> owns fixed-rate follower
-            output, target-velocity feedforward, and velocity/acceleration
-            limiting.
+            output, latest-target writes, joint-limit checks, and timeout hold.
           </p>
           <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
           <p>
