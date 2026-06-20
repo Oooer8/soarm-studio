@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio 文档: 第 1 步硬件设置</title>
+    <title>SOARM Studio 文档: 硬件设置</title>
     <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
-    <meta property="og:title" content="SOARM Studio 文档: 第 1 步硬件设置" />
+    <meta property="og:title" content="SOARM Studio 文档: 硬件设置" />
     <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>教程</h2>
-          <a class="active" aria-current="page" href="hardware-setup.html">第 1 步硬件设置</a>
-          <a href="calibration.html">第 2 步标定</a>
-          <a href="recording.html">录制</a>
+          <a class="active" aria-current="page" href="hardware-setup.html">硬件设置</a>
+          <a href="calibration.html">机械臂标定</a>
+          <a href="recording.html">数据集录制</a>
         </div>
         <div class="side-section">
           <h2>参考</h2>
@@ -82,12 +82,12 @@
       </aside>
 
       <main>
-        <div class="crumbs">文档 <span>/</span> 第 1 步硬件设置</div>
+        <div class="crumbs">文档 <span>/</span> 硬件设置</div>
 
         <section id="hardware-setup" class="doc-page">
-          <h1>第 1 步硬件设置</h1>
+          <h1>硬件设置</h1>
           <p>
-            第一步先把本机可见的两台机械臂和两路摄像头绑定到
+            硬件设置会把本机可见的两台机械臂和两路摄像头绑定到
             <code class="inline">configs/session.yaml</code>。完成后，标定、
             遥操作和录制都使用这份本机配置。
           </p>
@@ -95,7 +95,7 @@
           <p>开始前确认：</p>
           <ul>
             <li>两台机械臂已经装好，电机使用 SOARM 默认 ID 1-6，或准备好自定义 <code class="inline">--ids</code>。</li>
-            <li>机械臂电源、总线和 USB 串口都已连接，电机处于可读取状态。</li>
+            <li>机械臂电源和舵机总线已就绪，USB 串口线可以逐台插拔，电机处于可读取状态。</li>
             <li>wrist 与 third-person 摄像头都已接入 USB，并放到实际使用位置。</li>
             <li>操作区域已清空，后续预览和检查时机械臂可以安全上电。</li>
           </ul>
@@ -163,9 +163,43 @@
               <h2 id="arm-setup">配置机械臂</h2>
               <ol class="command-steps">
                 <li>
-                  <h3 id="probe-arms">探测机械臂端口</h3>
+                  <h3 id="probe-arms">热插拔确认主从臂串口</h3>
                   <p>
-                    在写入角色前，先让 CLI 逐个串口读取默认 ID 1-6，确认两个端口都能连上完整的电机总线。
+                    先让两台机械臂保持连接并完成一次基准扫描，再逐台热插拔机械臂连接并重新扫描。对比每次 <code class="inline">arm_ports</code>，消失后重新出现的 <code class="inline">device</code> 就是刚才热插拔的那台机械臂串口。
+                  </p>
+                  <ol>
+                    <li>两台机械臂都连接时运行下面的扫描，记录两个 <code class="inline">device</code>。</li>
+                    <li>热插拔主臂连接并重新扫描；对比前后列表，确认主臂串口。</li>
+                    <li>主臂恢复连接后，热插拔从臂并重新扫描；确认从臂串口。</li>
+                    <li>重新连接两台机械臂，确认两个串口都重新出现在列表中。</li>
+                  </ol>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">复制</button>
+                    </div>
+                    <pre><code>soarm-studio scan --include-system</code></pre>
+                  </div>
+                  <details class="cli-result">
+                    <summary>查看端口对比示例</summary>
+                    <pre><code>基准扫描:
+  /dev/cu.usbmodem5A7C1219051
+  /dev/cu.usbmodem5A7C1190351
+
+热插拔主臂后:
+  /dev/cu.usbmodem5A7C1190351
+
+确认主臂串口:
+  /dev/cu.usbmodem5A7C1219051</code></pre>
+                  </details>
+                  <p>
+                    从臂按相同方法确认。不要根据端口排序或插入顺序直接猜测角色。
+                  </p>
+                </li>
+                <li>
+                  <h3 id="verify-arm-buses">重新连接并探测机械臂总线</h3>
+                  <p>
+                    两台机械臂重新连接后，读取每个候选串口的默认电机 ID 1-6，确认两个端口都能访问完整总线。
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -210,7 +244,7 @@
                 <li>
                   <h3 id="setup-arm-roles">写入机械臂角色</h3>
                   <p>
-                    根据实际摆放决定 leader 和 follower，把确认过的两个串口写入本机运行配置。下面示例中
+                    把热插拔扫描确认过的两个串口写入本机运行配置。下面示例中
                     <code class="inline">5A7C121905</code> 是 leader，<code class="inline">5A7C119035</code> 是 follower。
                   </p>
                   <div class="cli-block">
@@ -425,17 +459,18 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
         <nav class="footer-nav" aria-label="页脚">
           <a href="images-and-video.html"><span>上一页</span>图片与视频</a>
-          <a href="calibration.html"><span>下一页</span>第 2 步标定</a>
+          <a href="calibration.html"><span>下一页</span>机械臂标定</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="本节">
         <h2>本节</h2>
-        <p class="toc-current">第 1 步硬件设置</p>
+        <p class="toc-current">硬件设置</p>
         <a class="toc-level-1" href="#hardware-setup">概览</a>
         <a class="toc-level-1" href="#scan-hardware">扫描硬件</a>
         <a class="toc-level-1" href="#arm-setup">配置机械臂</a>
-        <a class="toc-level-2" href="#probe-arms">探测机械臂端口</a>
+        <a class="toc-level-2" href="#probe-arms">热插拔确认主从臂串口</a>
+        <a class="toc-level-2" href="#verify-arm-buses">重新连接并探测总线</a>
         <a class="toc-level-2" href="#setup-arm-roles">写入机械臂角色</a>
         <a class="toc-level-1" href="#camera-setup">配置摄像头</a>
         <a class="toc-level-2" href="#preview-cameras">预览摄像头</a>

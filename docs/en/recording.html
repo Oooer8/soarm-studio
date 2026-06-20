@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Recording</title>
+    <title>SOARM Studio Docs: Dataset recording</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Recording" />
+    <meta property="og:title" content="SOARM Studio Docs: Dataset recording" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
-          <a class="active" aria-current="page" href="recording.html">Recording</a>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a class="active" aria-current="page" href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -82,21 +82,91 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Recording</div>
+        <div class="crumbs">Docs <span>/</span> Dataset recording</div>
 
-        <section id="recording" class="doc-page">
-          <h1>Recording</h1>
+        <section id="dataset-recording" class="doc-page">
+          <h1>Dataset recording</h1>
           <p>
-            Recording writes LeRobot-v3-compatible local data plus SOARM Studio
-            sidecars that describe the hardware session and sync quality.
+            Before writing a dataset, run teleop without recording and confirm joint directions, usable ranges, gripper behavior, and loop frequency. Start episode capture only after that check passes.
           </p>
-          <pre><code>soarm-studio record \
+
+          <h2 id="teleop-before-recording">Validate teleop before recording</h2>
+          <p>
+            Complete <a href="calibration.html">Arm calibration</a> and run <code class="inline">check</code> first. Clear the follower workspace, place both arms near safe mid-range poses, then run a 30-second free test. <code class="inline">--free-test</code> repeats readiness checks before the control loop starts.
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 30</code></pre>
+          </div>
+          <ol class="command-steps">
+            <li>
+              <h3 id="operate-the-leader">Operate the leader</h3>
+              <p>
+                Once the command starts, hold the leader and slowly move the shoulder, elbow, and wrist joints one at a time, then open and close the gripper. Confirm the follower moves continuously in the same direction without hitting software limits before trying combined motion.
+              </p>
+            </li>
+            <li>
+              <h3 id="stop-on-abnormal-motion">Stop on abnormal motion</h3>
+              <p>
+                If the follower reverses direction, jumps, approaches a mechanical hard stop, or develops unusual lag, press <code class="inline">Ctrl-C</code> immediately and do not record. Recheck role bindings, calibration ranges, and <code class="inline">check</code> output first.
+              </p>
+            </li>
+            <li>
+              <h3 id="confirm-teleop-output">Confirm teleop output</h3>
+              <p>
+                A healthy run ends in <code class="inline">TELEOP_READY</code>, with <code class="inline">observed_hz</code> close to the configured <code class="inline">target_hz</code>. Proceed to recording only after this passes.
+              </p>
+            </li>
+          </ol>
+
+          <h3 id="diagnose-teleop">Run teleop diagnostics when needed</h3>
+          <p>
+            If loop frequency is low or motion lags, start with debug output. Add <code class="inline">--follower-readback-every 10</code> only when periodic post-command follower state is needed. See <a href="teleoperation.html#reading-output">Teleoperation output</a> for metric definitions.
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 60 \
+  --debug
+
+soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 60 \
+  --debug \
+  --follower-readback-every 10</code></pre>
+          </div>
+
+          <h2 id="record-dataset">Record the dataset</h2>
+          <p>
+            Recording writes LeRobot-v3-compatible local data plus SOARM Studio sidecars describing the hardware session and sync quality. Start with one short episode to verify task text, images, joint data, and output paths before scaling capture.
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">Copy</button>
+            </div>
+            <pre><code>soarm-studio record \
   --config configs/session.yaml \
   --episodes 1 \
   --warmup 1 \
   --seconds 10 \
   --task "pick object" \
   --overwrite</code></pre>
+          </div>
+
+          <h2 id="recording-outputs">Check recording outputs</h2>
           <div class="table-wrap">
             <table>
               <thead>
@@ -124,15 +194,20 @@
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="calibration.html"><span>Previous</span>Step 2 Calibration</a>
+          <a href="calibration.html"><span>Previous</span>Arm calibration</a>
           <a href="cli-reference.html"><span>Next</span>CLI reference</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Recording</p>
-        <a class="toc-level-1" href="#recording">Overview</a>
+        <p class="toc-current">Dataset recording</p>
+        <a class="toc-level-1" href="#dataset-recording">Overview</a>
+        <a class="toc-level-1" href="#teleop-before-recording">Validate teleop</a>
+        <a class="toc-level-2" href="#operate-the-leader">Operate the leader</a>
+        <a class="toc-level-2" href="#diagnose-teleop">Teleop diagnostics</a>
+        <a class="toc-level-1" href="#record-dataset">Record the dataset</a>
+        <a class="toc-level-1" href="#recording-outputs">Check outputs</a>
       </aside>
     </div>
     <script src="../assets/docs.js"></script>

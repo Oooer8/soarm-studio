@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio 文档: 第 2 步标定</title>
+    <title>SOARM Studio 文档: 机械臂标定</title>
     <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
-    <meta property="og:title" content="SOARM Studio 文档: 第 2 步标定" />
+    <meta property="og:title" content="SOARM Studio 文档: 机械臂标定" />
     <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>教程</h2>
-          <a href="hardware-setup.html">第 1 步硬件设置</a>
-          <a class="active" aria-current="page" href="calibration.html">第 2 步标定</a>
-          <a href="recording.html">录制</a>
+          <a href="hardware-setup.html">硬件设置</a>
+          <a class="active" aria-current="page" href="calibration.html">机械臂标定</a>
+          <a href="recording.html">数据集录制</a>
         </div>
         <div class="side-section">
           <h2>参考</h2>
@@ -82,16 +82,16 @@
       </aside>
 
       <main>
-        <div class="crumbs">文档 <span>/</span> 第 2 步标定</div>
+        <div class="crumbs">文档 <span>/</span> 机械臂标定</div>
 
-        <section id="step-2" class="doc-page">
-          <h1>第 2 步标定</h1>
+        <section id="arm-calibration" class="doc-page">
+          <h1>机械臂标定</h1>
           <p>
             标定会先记录物理零位，再在你手动推动机械臂时记录每个关节的可用范围。
             程序会关闭扭矩并读取编码器，不会主动发送运动目标。
           </p>
           <p>
-            先在第 1 步硬件设置中完成端口和摄像头绑定，并运行“检查并写入配置”，
+            先在<a href="hardware-setup.html">硬件设置</a>中完成端口和摄像头绑定，并运行“检查并写入配置”，
             然后按主臂、从臂的顺序分别标定。
             底层模型说明见
             <a href="calibration-principles.html">标定原理</a>。
@@ -285,15 +285,15 @@ hardware: disconnecting; disabling servo torque before closing the port.
         </section>
 
         <nav class="footer-nav" aria-label="页脚">
-          <a href="hardware-setup.html"><span>上一页</span>第 1 步硬件设置</a>
-          <a href="recording.html"><span>下一页</span>录制</a>
+          <a href="hardware-setup.html"><span>上一页</span>硬件设置</a>
+          <a href="recording.html"><span>下一页</span>数据集录制</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="本节">
         <h2>本节</h2>
-        <p class="toc-current">第 2 步标定</p>
-        <a class="toc-level-1" href="#step-2">概览</a>
+        <p class="toc-current">机械臂标定</p>
+        <a class="toc-level-1" href="#arm-calibration">概览</a>
         <a class="toc-level-1" href="#calibrate-arms">标定机械臂</a>
         <a class="toc-level-2" href="#calibrate-leader">1. 标定主臂</a>
         <a class="toc-level-2" href="#calibrate-follower">2. 标定从臂</a>

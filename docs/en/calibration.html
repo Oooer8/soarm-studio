@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Step 2 Calibration</title>
+    <title>SOARM Studio Docs: Arm calibration</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Step 2 Calibration" />
+    <meta property="og:title" content="SOARM Studio Docs: Arm calibration" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a class="active" aria-current="page" href="calibration.html">Step 2 Calibration</a>
-          <a href="recording.html">Recording</a>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a class="active" aria-current="page" href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -82,16 +82,16 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Step 2 Calibration</div>
+        <div class="crumbs">Docs <span>/</span> Arm calibration</div>
 
-        <section id="step-2" class="doc-page">
-          <h1>Step 2 Calibration</h1>
+        <section id="arm-calibration" class="doc-page">
+          <h1>Arm calibration</h1>
           <p>
             Calibration first records the physical zero pose, then records each joint's usable range while you move the arm by hand.
             The program disables torque and reads encoders; it does not command motion.
           </p>
           <p>
-            First complete port and camera binding in Step 1 Hardware setup, then run the readiness check.
+            First complete port and camera binding in <a href="hardware-setup.html">Hardware setup</a>, then run the readiness check.
             Calibrate the leader and follower separately, in that order.
             See
             <a href="calibration-principles.html">Calibration principles</a> for the underlying model.
@@ -285,15 +285,15 @@ hardware: disconnecting; disabling servo torque before closing the port.
         </section>
 
         <nav class="footer-nav" aria-label="Footer">
-          <a href="hardware-setup.html"><span>Previous</span>Step 1 Hardware setup</a>
-          <a href="recording.html"><span>Next</span>Recording</a>
+          <a href="hardware-setup.html"><span>Previous</span>Hardware setup</a>
+          <a href="recording.html"><span>Next</span>Dataset recording</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Step 2 Calibration</p>
-        <a class="toc-level-1" href="#step-2">Overview</a>
+        <p class="toc-current">Arm calibration</p>
+        <a class="toc-level-1" href="#arm-calibration">Overview</a>
         <a class="toc-level-1" href="#calibrate-arms">Calibrate arms</a>
         <a class="toc-level-2" href="#calibrate-leader">1. Calibrate the leader</a>
         <a class="toc-level-2" href="#calibrate-follower">2. Calibrate the follower</a>

@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>教程</h2>
-          <a href="hardware-setup.html">第 1 步硬件设置</a>
-          <a href="calibration.html">第 2 步标定</a>
-          <a href="recording.html">录制</a>
+          <a href="hardware-setup.html">硬件设置</a>
+          <a href="calibration.html">机械臂标定</a>
+          <a href="recording.html">数据集录制</a>
         </div>
         <div class="side-section">
           <h2>参考</h2>
@@ -89,9 +89,8 @@
           <p>
             遥操作是在 SDK direct joint stream 外包裹的一层 30 Hz Studio 侧采样循环。Studio 读取主臂和从臂动作前状态，计算裁剪后的目标，然后把目标发布给 <code class="inline">soarm-sdk</code>。SDK 负责固定频率的从臂输出、最新目标写入、关节限位检查和超时保持。
           </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
           <p>
-            标定完成后使用 <code class="inline">--free-test</code>。它会在启动循环前运行就绪检查。
+            具体上机顺序、主臂操作方法和诊断命令见<a href="recording.html#teleop-before-recording">数据集录制前的遥操作验证</a>；本页只解释控制路径和输出指标。
           </p>
         </section>
 
@@ -140,13 +139,8 @@
             </table>
           </div>
           <p>
-            诊断运行时添加 <code class="inline">--debug</code>:
+            <code class="inline">--debug</code> 和 <code class="inline">--follower-readback-every</code> 的具体运行方式也放在<a href="recording.html#diagnose-teleop">数据集录制教程</a>中，避免概念页与操作页维护两套命令。
           </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug</code></pre>
-          <p>
-            如果要检查命令后的从臂回读，但不想让它进入每帧路径，可以定期采样:
-          </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug --follower-readback-every 10</code></pre>
         </section>
 
         <section id="reading-output" class="doc-page">

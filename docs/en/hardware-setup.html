@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio Docs: Step 1 Hardware setup</title>
+    <title>SOARM Studio Docs: Hardware setup</title>
     <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
-    <meta property="og:title" content="SOARM Studio Docs: Step 1 Hardware setup" />
+    <meta property="og:title" content="SOARM Studio Docs: Hardware setup" />
     <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a class="active" aria-current="page" href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
-          <a href="recording.html">Recording</a>
+          <a class="active" aria-current="page" href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -82,12 +82,12 @@
       </aside>
 
       <main>
-        <div class="crumbs">Docs <span>/</span> Step 1 Hardware setup</div>
+        <div class="crumbs">Docs <span>/</span> Hardware setup</div>
 
         <section id="hardware-setup" class="doc-page">
-          <h1>Step 1 Hardware setup</h1>
+          <h1>Hardware setup</h1>
           <p>
-            Step 1 binds the two visible arms and two camera streams on this machine into
+            Hardware setup binds the two visible arms and two camera streams on this machine into
             <code class="inline">configs/session.yaml</code>. Calibration,
             teleoperation, and recording all use this machine-local config after setup.
           </p>
@@ -95,7 +95,7 @@
           <p>Before you start:</p>
           <ul>
             <li>Both arms are assembled, and the motors use the SOARM default IDs 1-6, or you have a custom <code class="inline">--ids</code> list ready.</li>
-            <li>Arm power, the servo bus, and USB serial are connected, and the motors are readable.</li>
+            <li>Arm power and the servo buses are ready, the USB serial cables can be connected one arm at a time, and the motors are readable.</li>
             <li>The wrist and third-person cameras are connected over USB and placed where they will be used.</li>
             <li>The workspace is clear, so the arms can be powered safely during preview and checks.</li>
           </ul>
@@ -163,9 +163,43 @@
               <h2 id="arm-setup">Configure arms</h2>
               <ol class="command-steps">
                 <li>
-                  <h3 id="probe-arms">Probe arm ports</h3>
+                  <h3 id="probe-arms">Identify roles by hot-plugging</h3>
                   <p>
-                    Before writing roles, ask the CLI to read the default IDs 1-6 on each serial port and confirm both ports can reach a complete motor bus.
+                    Keep both arms connected for a baseline scan, then hot-plug one arm connection at a time and scan again. Compare <code class="inline">arm_ports</code>: the <code class="inline">device</code> that disappears and returns belongs to the arm you hot-plugged.
+                  </p>
+                  <ol>
+                    <li>Run the scan below with both arms connected and record both <code class="inline">device</code> values.</li>
+                    <li>Hot-plug the leader connection and scan again; compare the lists to identify the leader port.</li>
+                    <li>Reconnect the leader, hot-plug the follower, and scan again to identify the follower port.</li>
+                    <li>Reconnect both arms and confirm both serial ports have returned.</li>
+                  </ol>
+                  <div class="cli-block">
+                    <div class="cli-toolbar">
+                      <span>CLI</span>
+                      <button class="copy-button" type="button">Copy</button>
+                    </div>
+                    <pre><code>soarm-studio scan --include-system</code></pre>
+                  </div>
+                  <details class="cli-result">
+                    <summary>Show port comparison example</summary>
+                    <pre><code>Baseline scan:
+  /dev/cu.usbmodem5A7C1219051
+  /dev/cu.usbmodem5A7C1190351
+
+After hot-plugging the leader:
+  /dev/cu.usbmodem5A7C1190351
+
+Confirmed leader port:
+  /dev/cu.usbmodem5A7C1219051</code></pre>
+                  </details>
+                  <p>
+                    Repeat the same comparison for the follower. Do not infer roles from port sort or insertion order.
+                  </p>
+                </li>
+                <li>
+                  <h3 id="verify-arm-buses">Reconnect and probe both arm buses</h3>
+                  <p>
+                    With both arms reconnected, read default motor IDs 1-6 on every candidate serial port and confirm that both complete buses are reachable.
                   </p>
                   <div class="cli-block">
                     <div class="cli-toolbar">
@@ -210,7 +244,7 @@
                 <li>
                   <h3 id="setup-arm-roles">Write arm roles</h3>
                   <p>
-                    Decide which physical arm is leader and which is follower, then write the verified serial ports into the local runtime config. In this example,
+                    Write the two ports confirmed by the hot-plug scans into the local runtime config. In this example,
                     <code class="inline">5A7C121905</code> is the leader and <code class="inline">5A7C119035</code> is the follower.
                   </p>
                   <div class="cli-block">
@@ -425,17 +459,18 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
         <nav class="footer-nav" aria-label="Footer">
           <a href="images-and-video.html"><span>Previous</span>Images and video</a>
-          <a href="calibration.html"><span>Next</span>Step 2 Calibration</a>
+          <a href="calibration.html"><span>Next</span>Arm calibration</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="This section">
         <h2>This section</h2>
-        <p class="toc-current">Step 1 Hardware setup</p>
+        <p class="toc-current">Hardware setup</p>
         <a class="toc-level-1" href="#hardware-setup">Overview</a>
         <a class="toc-level-1" href="#scan-hardware">Scan hardware</a>
         <a class="toc-level-1" href="#arm-setup">Configure arms</a>
-        <a class="toc-level-2" href="#probe-arms">Probe arm ports</a>
+        <a class="toc-level-2" href="#probe-arms">Identify roles by hot-plugging</a>
+        <a class="toc-level-2" href="#verify-arm-buses">Reconnect and probe both buses</a>
         <a class="toc-level-2" href="#setup-arm-roles">Write arm roles</a>
         <a class="toc-level-1" href="#camera-setup">Configure cameras</a>
         <a class="toc-level-2" href="#preview-cameras">Preview cameras</a>

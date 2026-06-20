@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
-          <a href="recording.html">Recording</a>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -94,10 +94,8 @@
             fixed-rate follower output, latest-target writes, joint-limit
             checks, and timeout hold.
           </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 5</code></pre>
           <p>
-            Use <code class="inline">--free-test</code> after calibration. It
-            runs readiness checks before starting the loop.
+            See <a href="recording.html#teleop-before-recording">teleop validation before dataset recording</a> for the concrete arm-handling sequence and diagnostic commands. This page focuses on the control path and output metrics.
           </p>
         </section>
 
@@ -147,14 +145,8 @@
             </table>
           </div>
           <p>
-            For a diagnostic run, add <code class="inline">--debug</code>:
+            The concrete <code class="inline">--debug</code> and <code class="inline">--follower-readback-every</code> runs also live in the <a href="recording.html#diagnose-teleop">dataset recording tutorial</a>, so commands are maintained in one operational page.
           </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug</code></pre>
-          <p>
-            To inspect post-command follower readback without making it part of
-            every frame, sample it periodically:
-          </p>
-          <pre><code>soarm-studio teleop --config configs/session.yaml --free-test --seconds 60 --debug --follower-readback-every 10</code></pre>
         </section>
 
         <section id="reading-output" class="doc-page">

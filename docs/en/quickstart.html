@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
-          <a href="recording.html">Recording</a>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -91,11 +91,19 @@
             recording. Bring up hardware first, calibrate next, then do free
             motion tests and dataset capture.
           </p>
+          <p>
+            Identify the leader and follower ports by comparing scans before and after hot-plugging each arm: record a baseline with both connected, hot-plug each arm and rescan, then reconnect both arms for the bus probe.
+          </p>
           <div class="code-title">
             <span>End-to-end command outline</span>
             <span>zsh</span>
           </div>
           <pre><code>soarm-studio scan --include-system
+# Hot-plug the leader and compare the missing port
+soarm-studio scan --include-system
+# Reconnect the leader, hot-plug the follower, and compare again
+soarm-studio scan --include-system
+# Reconnect both arms and probe both buses
 soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \

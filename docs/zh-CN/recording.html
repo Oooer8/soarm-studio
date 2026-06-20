@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SOARM Studio 文档: 录制</title>
+    <title>SOARM Studio 文档: 数据集录制</title>
     <meta name="description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
-    <meta property="og:title" content="SOARM Studio 文档: 录制" />
+    <meta property="og:title" content="SOARM Studio 文档: 数据集录制" />
     <meta property="og:description" content="SOARM Studio 文档，涵盖安装、硬件设置、标定、遥操作、录制和故障排查。" />
     <meta
       property="og:image"
@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>教程</h2>
-          <a href="hardware-setup.html">第 1 步硬件设置</a>
-          <a href="calibration.html">第 2 步标定</a>
-          <a class="active" aria-current="page" href="recording.html">录制</a>
+          <a href="hardware-setup.html">硬件设置</a>
+          <a href="calibration.html">机械臂标定</a>
+          <a class="active" aria-current="page" href="recording.html">数据集录制</a>
         </div>
         <div class="side-section">
           <h2>参考</h2>
@@ -82,20 +82,91 @@
       </aside>
 
       <main>
-        <div class="crumbs">文档 <span>/</span> 录制</div>
+        <div class="crumbs">文档 <span>/</span> 数据集录制</div>
 
-        <section id="recording" class="doc-page">
-          <h1>录制</h1>
+        <section id="dataset-recording" class="doc-page">
+          <h1>数据集录制</h1>
           <p>
-            录制会写入兼容 LeRobot v3 的本地数据，并附带描述硬件会话和同步质量的 SOARM Studio sidecar。
+            正式录制前先完成一次不写数据集的遥操作验证，确认主从方向、关节范围、夹爪和控制频率都正常，再开始采集 episode。
           </p>
-          <pre><code>soarm-studio record \
+
+          <h2 id="teleop-before-recording">录制前验证遥操作</h2>
+          <p>
+            先完成<a href="calibration.html">机械臂标定</a>并运行 <code class="inline">check</code>。清空从臂工作区，把主臂和从臂放在各自安全的中间姿态，然后运行 30 秒自由测试；<code class="inline">--free-test</code> 会在启动控制循环前再次执行就绪检查。
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">复制</button>
+            </div>
+            <pre><code>soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 30</code></pre>
+          </div>
+          <ol class="command-steps">
+            <li>
+              <h3 id="operate-the-leader">操作主臂</h3>
+              <p>
+                命令启动后握住主臂，依次缓慢移动肩、肘、腕关节，最后开合夹爪。每次只改变一个主要关节，观察从臂是否同向、连续且没有撞到软件限位；确认后再做组合动作。
+              </p>
+            </li>
+            <li>
+              <h3 id="stop-on-abnormal-motion">异常时立即停止</h3>
+              <p>
+                如果从臂方向相反、突然跳变、接近机械硬限位或出现异常延迟，立即按 <code class="inline">Ctrl-C</code>，不要进入录制。先检查角色绑定、标定范围和 <code class="inline">check</code> 输出。
+              </p>
+            </li>
+            <li>
+              <h3 id="confirm-teleop-output">确认遥操作输出</h3>
+              <p>
+                正常结束时状态应为 <code class="inline">TELEOP_READY</code>，<code class="inline">observed_hz</code> 应接近配置的 <code class="inline">target_hz</code>。通过后再录制数据。
+              </p>
+            </li>
+          </ol>
+
+          <h3 id="diagnose-teleop">需要时运行遥操作诊断</h3>
+          <p>
+            频率偏低或动作延迟时，先运行 debug；如果还要周期性读取命令后的从臂状态，再加入 <code class="inline">--follower-readback-every 10</code>。指标含义见<a href="teleoperation.html#reading-output">遥操作输出</a>。
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">复制</button>
+            </div>
+            <pre><code>soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 60 \
+  --debug
+
+soarm-studio teleop \
+  --config configs/session.yaml \
+  --free-test \
+  --seconds 60 \
+  --debug \
+  --follower-readback-every 10</code></pre>
+          </div>
+
+          <h2 id="record-dataset">开始录制数据集</h2>
+          <p>
+            录制会写入兼容 LeRobot v3 的本地数据，并附带描述硬件会话和同步质量的 SOARM Studio sidecar。先用一个短 episode 验证任务文本、画面、关节数据和输出目录，再扩大采集规模。
+          </p>
+          <div class="cli-block">
+            <div class="cli-toolbar">
+              <span>CLI</span>
+              <button class="copy-button" type="button">复制</button>
+            </div>
+            <pre><code>soarm-studio record \
   --config configs/session.yaml \
   --episodes 1 \
   --warmup 1 \
   --seconds 10 \
   --task "pick object" \
   --overwrite</code></pre>
+          </div>
+
+          <h2 id="recording-outputs">检查录制输出</h2>
           <div class="table-wrap">
             <table>
               <thead>
@@ -123,15 +194,20 @@
         </section>
 
         <nav class="footer-nav" aria-label="页脚">
-          <a href="calibration.html"><span>上一页</span>第 2 步标定</a>
+          <a href="calibration.html"><span>上一页</span>机械臂标定</a>
           <a href="cli-reference.html"><span>下一页</span>CLI 参考</a>
         </nav>
       </main>
 
       <aside class="toc" aria-label="本节">
         <h2>本节</h2>
-        <p class="toc-current">录制</p>
-        <a class="toc-level-1" href="#recording">概览</a>
+        <p class="toc-current">数据集录制</p>
+        <a class="toc-level-1" href="#dataset-recording">概览</a>
+        <a class="toc-level-1" href="#teleop-before-recording">录制前验证遥操作</a>
+        <a class="toc-level-2" href="#operate-the-leader">操作主臂</a>
+        <a class="toc-level-2" href="#diagnose-teleop">遥操作诊断</a>
+        <a class="toc-level-1" href="#record-dataset">开始录制</a>
+        <a class="toc-level-1" href="#recording-outputs">检查输出</a>
       </aside>
     </div>
     <script src="../assets/docs.js"></script>

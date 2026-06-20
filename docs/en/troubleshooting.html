@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
-          <a href="hardware-setup.html">Step 1 Hardware setup</a>
-          <a href="calibration.html">Step 2 Calibration</a>
-          <a href="recording.html">Recording</a>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
         </div>
         <div class="side-section">
           <h2>Reference</h2>
@@ -99,6 +99,12 @@
               <p>
                 OpenCV indexes can change. Re-capture previews and re-run
                 <code class="inline">setup cameras</code>.
+              </p>
+            </article>
+            <article class="card">
+              <h3 id="uncertain-arm-role">Leader and follower ports are unclear</h3>
+              <p>
+                Do not guess from device order. Return to <a href="hardware-setup.html#probe-arms">Hardware setup</a>, compare <code class="inline">scan --include-system</code> before and after hot-plugging each arm, then reconnect both arms and run <code class="inline">scan --probe-arms</code>.
               </p>
             </article>
             <article class="card">
@@ -163,6 +169,7 @@
         <a class="toc-level-1" href="#troubleshooting">Overview</a>
         <a class="toc-level-2" href="#camera-preview-fails">Camera preview fails</a>
         <a class="toc-level-2" href="#wrong-camera-role">Wrong camera role</a>
+        <a class="toc-level-2" href="#uncertain-arm-role">Arm roles are unclear</a>
         <a class="toc-level-2" href="#serial-port-denied">Serial port denied</a>
         <a class="toc-level-2" href="#calibration-feels-wrong">Calibration feels wrong</a>
         <a class="toc-level-2" href="#teleop-hz-low">Teleop Hz low</a>

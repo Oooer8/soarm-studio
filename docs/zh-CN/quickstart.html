@@ -69,9 +69,9 @@
         </div>
         <div class="side-section">
           <h2>教程</h2>
-          <a href="hardware-setup.html">第 1 步硬件设置</a>
-          <a href="calibration.html">第 2 步标定</a>
-          <a href="recording.html">录制</a>
+          <a href="hardware-setup.html">硬件设置</a>
+          <a href="calibration.html">机械臂标定</a>
+          <a href="recording.html">数据集录制</a>
         </div>
         <div class="side-section">
           <h2>参考</h2>
@@ -89,11 +89,19 @@
           <p>
             完整硬件路径是分阶段的。不要直接跳到遥操作或录制。先启动硬件，再标定，然后做自由运动测试和数据集采集。
           </p>
+          <p>
+            主从臂串口通过热插拔前后的扫描差异确认：两台都连接时记录基准列表，依次热插拔主臂和从臂并重新扫描，最后重新连接两台机械臂完成总线探测。
+          </p>
           <div class="code-title">
             <span>端到端命令轮廓</span>
             <span>zsh</span>
           </div>
           <pre><code>soarm-studio scan --include-system
+# 热插拔主臂连接后，对比消失的串口
+soarm-studio scan --include-system
+# 主臂恢复后热插拔从臂，再次对比
+soarm-studio scan --include-system
+# 重新连接两台机械臂并探测总线
 soarm-studio scan --probe-arms
 soarm-studio setup arms \
   --leader-port /dev/cu.usbmodemLEADER \
