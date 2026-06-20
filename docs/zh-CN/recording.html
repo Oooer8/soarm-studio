@@ -66,6 +66,7 @@
           <a href="calibration-principles.html">标定原理</a>
           <a href="teleoperation.html">遥操作</a>
           <a href="images-and-video.html">图片与视频</a>
+          <a href="lerobot-dataset-v3.html">LeRobot Dataset v3</a>
         </div>
         <div class="side-section">
           <h2>教程</h2>
@@ -106,26 +107,42 @@
           </div>
           <ol class="command-steps">
             <li>
-              <h3 id="operate-the-leader">操作主臂</h3>
               <p>
                 命令启动后握住主臂，依次缓慢移动肩、肘、腕关节，最后开合夹爪。每次只改变一个主要关节，观察从臂是否同向、连续且没有撞到软件限位；确认后再做组合动作。
               </p>
             </li>
             <li>
-              <h3 id="stop-on-abnormal-motion">异常时立即停止</h3>
               <p>
                 如果从臂方向相反、突然跳变、接近机械硬限位或出现异常延迟，立即按 <code class="inline">Ctrl-C</code>，不要进入录制。先检查角色绑定、标定范围和 <code class="inline">check</code> 输出。
               </p>
             </li>
             <li>
-              <h3 id="confirm-teleop-output">确认遥操作输出</h3>
               <p>
                 正常结束时状态应为 <code class="inline">TELEOP_READY</code>，<code class="inline">observed_hz</code> 应接近配置的 <code class="inline">target_hz</code>。通过后再录制数据。
               </p>
+              <details class="cli-result">
+                <summary>30 秒自由测试健康输出示例</summary>
+                <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+{
+  "session": "dual-soarm",
+  "state": "TELEOP_READY",
+  "metrics": {
+    "iterations": 900,
+    "target_hz": 30,
+    "observed_hz": 30.0,
+    "last_latency_ms": 2.716,
+    "max_latency_ms": 5.434,
+    "elapsed_s": 30.0
+  }
+}
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.</code></pre>
+              </details>
             </li>
           </ol>
 
-          <h3 id="diagnose-teleop">需要时运行遥操作诊断</h3>
+          <h2 id="diagnose-teleop">需要时运行遥操作诊断</h2>
           <p>
             频率偏低或动作延迟时，先运行 debug；如果还要周期性读取命令后的从臂状态，再加入 <code class="inline">--follower-readback-every 10</code>。指标含义见<a href="teleoperation.html#reading-output">遥操作输出</a>。
           </p>
@@ -150,7 +167,7 @@ soarm-studio teleop \
 
           <h2 id="record-dataset">开始录制数据集</h2>
           <p>
-            录制会写入兼容 LeRobot v3 的本地数据，并附带描述硬件会话和同步质量的 SOARM Studio sidecar。先用一个短 episode 验证任务文本、画面、关节数据和输出目录，再扩大采集规模。
+            录制会写入 LeRobot Dataset v3 的本地数据集，并附带描述硬件会话和同步质量的 SOARM Studio sidecar。先用一个短 episode 验证任务文本、画面、关节数据和输出目录，再扩大采集规模。
           </p>
           <div class="cli-block">
             <div class="cli-toolbar">
@@ -204,8 +221,7 @@ soarm-studio teleop \
         <p class="toc-current">数据集录制</p>
         <a class="toc-level-1" href="#dataset-recording">概览</a>
         <a class="toc-level-1" href="#teleop-before-recording">录制前验证遥操作</a>
-        <a class="toc-level-2" href="#operate-the-leader">操作主臂</a>
-        <a class="toc-level-2" href="#diagnose-teleop">遥操作诊断</a>
+        <a class="toc-level-1" href="#diagnose-teleop">遥操作诊断</a>
         <a class="toc-level-1" href="#record-dataset">开始录制</a>
         <a class="toc-level-1" href="#recording-outputs">检查输出</a>
       </aside>

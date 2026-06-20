@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOARM Studio Docs: LeRobot Dataset v3</title>
+    <meta name="description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta property="og:title" content="SOARM Studio Docs: LeRobot Dataset v3" />
+    <meta property="og:description" content="SOARM Studio documentation for installation, hardware setup, calibration, teleoperation, recording, and troubleshooting." />
+    <meta
+      property="og:image"
+      content="https://oooer8.github.io/soarm-studio/assets/brand/soarm-studio-logo-wordmark.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oooer8.github.io/soarm-studio/en/lerobot-dataset-v3.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="../assets/brand/soarm-studio-logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/docs.css" />
+    <link rel="alternate" hreflang="en" href="https://oooer8.github.io/soarm-studio/en/lerobot-dataset-v3.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://oooer8.github.io/soarm-studio/zh-CN/lerobot-dataset-v3.html" />
+    <link rel="alternate" hreflang="x-default" href="https://oooer8.github.io/soarm-studio/" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="../assets/brand/soarm-studio-logo-mark.svg"
+          alt=""
+          aria-hidden="true"
+        />
+        <span>SOARM Studio</span>
+      </div>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a href="index.html" aria-current="page">Docs</a>
+        <a href="https://github.com/Oooer8/soarm-studio#readme">README</a>
+        <a href="https://github.com/Oooer8/soarm-studio">GitHub</a>
+      </nav>
+      <div class="top-actions">
+        <div class="search" aria-label="Search placeholder">
+          <span>Search docs...</span>
+          <kbd>/</kbd>
+        </div>
+        <label class="language-switcher">
+          <span class="sr-only">Language</span>
+          <select aria-label="Documentation language" data-language-switcher>
+            <option value="en" data-href="lerobot-dataset-v3.html" selected>English</option>
+            <option value="zh-CN" data-href="../zh-CN/lerobot-dataset-v3.html">中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Documentation">
+        <div class="side-section">
+          <h2>Getting Started</h2>
+          <a href="index.html">Introduction</a>
+          <a href="installation.html">Installation</a>
+          <a href="quickstart.html">Quickstart</a>
+        </div>
+        <div class="side-section">
+          <h2>Core Concepts</h2>
+          <a href="architecture.html">Architecture</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="calibration-principles.html">Calibration principles</a>
+          <a href="teleoperation.html">Teleoperation</a>
+          <a href="images-and-video.html">Images and video</a>
+          <a class="active" aria-current="page" href="lerobot-dataset-v3.html">LeRobot Dataset v3</a>
+        </div>
+        <div class="side-section">
+          <h2>TUTORIALS</h2>
+          <a href="hardware-setup.html">Hardware setup</a>
+          <a href="calibration.html">Arm calibration</a>
+          <a href="recording.html">Dataset recording</a>
+        </div>
+        <div class="side-section">
+          <h2>Reference</h2>
+          <a href="cli-reference.html">CLI reference</a>
+          <a href="generated-files.html">Generated files</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <main>
+        <div class="crumbs">Docs <span>/</span> LeRobot Dataset v3</div>
+
+        <section id="dataset-v3" class="doc-page">
+          <h1>LeRobot Dataset v3</h1>
+          <p>
+            SOARM Studio records a local LeRobot Dataset v3 dataset. The format separates the episode-level API from the storage layer: low-dimensional state and action data go to Parquet, camera frames are encoded as MP4, and metadata describes schema, statistics, task text, and where each episode lives inside shared files.
+          </p>
+          <p>
+            This page is based on the
+            <a href="https://huggingface.co/docs/lerobot/lerobot-dataset-v3">Hugging Face LeRobotDataset v3.0 docs</a>
+            and the
+            <a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/datasets/utils.py">path templates in the current LeRobot source</a>.
+          </p>
+        </section>
+
+        <section id="format-parts" class="doc-page">
+          <h2>Format Parts</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Part</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tabular data</td>
+                  <td>Frame-by-frame values such as <code class="inline">timestamp</code>, <code class="inline">observation.state</code>, and <code class="inline">action</code> are stored as Parquet files under <code class="inline">data/</code>.</td>
+                </tr>
+                <tr>
+                  <td>Visual data</td>
+                  <td>Each camera becomes an <code class="inline">observation.images.&lt;camera&gt;</code> feature, with MP4 files stored under <code class="inline">videos/</code>.</td>
+                </tr>
+                <tr>
+                  <td>Metadata</td>
+                  <td><code class="inline">meta/info.json</code> stores schema, fps, version, and path templates; <code class="inline">meta/stats.json</code> stores normalization statistics; <code class="inline">meta/episodes/</code> stores episode lengths, tasks, and file offsets.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="local-layout" class="doc-page">
+          <h2>Local Layout</h2>
+          <p>
+            SOARM Studio currently writes a compact local v3 layout. LeRobot v3 is designed so many episodes can be aggregated into larger Parquet/MP4 shards; SOARM starts with one local chunk for straightforward inspection and debugging.
+          </p>
+          <pre><code>datasets/soarm/
+  meta/
+    info.json
+    stats.json
+    tasks.parquet
+    episodes/chunk-000/file-000.parquet
+    soarm_session.json
+    sync_quality.json
+  data/chunk-000/file-000.parquet
+  videos/observation.images.&lt;camera&gt;/chunk-000/file-000.mp4
+  episodes/episode_000000/quality.json</code></pre>
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
+              <strong>Current repo format check</strong>
+              <p>
+                <code class="inline">src/soarm_studio/datasets/lerobot_v3/schema.py</code> uses <code class="inline">codebase_version=v3.0</code> and follows the current LeRobot source templates for <code class="inline">meta/tasks.parquet</code>, <code class="inline">meta/episodes/chunk-000/file-000.parquet</code>, <code class="inline">data/chunk-000/file-000.parquet</code>, and <code class="inline">videos/{video_key}/chunk-000/file-000.mp4</code>. <code class="inline">meta/soarm_session.json</code>, <code class="inline">meta/sync_quality.json</code>, and episode quality files are SOARM-specific sidecars.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="feature-meaning" class="doc-page">
+          <h2>Feature Meaning</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>SOARM meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>observation.state</code></td>
+                  <td>Follower joint positions read before sending the action, ordered by the <code class="inline">joints</code> list in <code class="inline">configs/session.yaml</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>action</code></td>
+                  <td>Target joint positions sent to the follower direct joint stream for the current frame.</td>
+                </tr>
+                <tr>
+                  <td><code>timestamp</code></td>
+                  <td>Episode-relative time. The first frame is 0 seconds, and later frames use the control loop's monotonic clock.</td>
+                </tr>
+                <tr>
+                  <td><code>task_index</code></td>
+                  <td>Integer task ID mapped to task text in <code class="inline">meta/tasks.parquet</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>observation.images.*</code></td>
+                  <td>Enabled wrist, third-person, or other camera video features stored under <code class="inline">videos/</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="images-and-video.html"><span>Previous</span>Images and video</a>
+          <a href="hardware-setup.html"><span>Next</span>Hardware setup</a>
+        </nav>
+      </main>
+
+      <aside class="toc" aria-label="This section">
+        <h2>This section</h2>
+        <p class="toc-current">LeRobot Dataset v3</p>
+        <a class="toc-level-1" href="#dataset-v3">Overview</a>
+        <a class="toc-level-1" href="#format-parts">Format parts</a>
+        <a class="toc-level-1" href="#local-layout">Local layout</a>
+        <a class="toc-level-1" href="#feature-meaning">Feature meaning</a>
+      </aside>
+    </div>
+    <script src="../assets/docs.js"></script>
+  </body>
+</html>

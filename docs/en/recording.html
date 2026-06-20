@@ -66,6 +66,7 @@
           <a href="calibration-principles.html">Calibration principles</a>
           <a href="teleoperation.html">Teleoperation</a>
           <a href="images-and-video.html">Images and video</a>
+          <a href="lerobot-dataset-v3.html">LeRobot Dataset v3</a>
         </div>
         <div class="side-section">
           <h2>TUTORIALS</h2>
@@ -106,26 +107,42 @@
           </div>
           <ol class="command-steps">
             <li>
-              <h3 id="operate-the-leader">Operate the leader</h3>
               <p>
                 Once the command starts, hold the leader and slowly move the shoulder, elbow, and wrist joints one at a time, then open and close the gripper. Confirm the follower moves continuously in the same direction without hitting software limits before trying combined motion.
               </p>
             </li>
             <li>
-              <h3 id="stop-on-abnormal-motion">Stop on abnormal motion</h3>
               <p>
                 If the follower reverses direction, jumps, approaches a mechanical hard stop, or develops unusual lag, press <code class="inline">Ctrl-C</code> immediately and do not record. Recheck role bindings, calibration ranges, and <code class="inline">check</code> output first.
               </p>
             </li>
             <li>
-              <h3 id="confirm-teleop-output">Confirm teleop output</h3>
               <p>
                 A healthy run ends in <code class="inline">TELEOP_READY</code>, with <code class="inline">observed_hz</code> close to the configured <code class="inline">target_hz</code>. Proceed to recording only after this passes.
               </p>
+              <details class="cli-result">
+                <summary>Healthy 30-second free-test output example</summary>
+                <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+{
+  "session": "dual-soarm",
+  "state": "TELEOP_READY",
+  "metrics": {
+    "iterations": 900,
+    "target_hz": 30,
+    "observed_hz": 30.0,
+    "last_latency_ms": 2.716,
+    "max_latency_ms": 5.434,
+    "elapsed_s": 30.0
+  }
+}
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.</code></pre>
+              </details>
             </li>
           </ol>
 
-          <h3 id="diagnose-teleop">Run teleop diagnostics when needed</h3>
+          <h2 id="diagnose-teleop">Run teleop diagnostics when needed</h2>
           <p>
             If loop frequency is low or motion lags, start with debug output. Add <code class="inline">--follower-readback-every 10</code> only when periodic post-command follower state is needed. See <a href="teleoperation.html#reading-output">Teleoperation output</a> for metric definitions.
           </p>
@@ -150,7 +167,7 @@ soarm-studio teleop \
 
           <h2 id="record-dataset">Record the dataset</h2>
           <p>
-            Recording writes LeRobot-v3-compatible local data plus SOARM Studio sidecars describing the hardware session and sync quality. Start with one short episode to verify task text, images, joint data, and output paths before scaling capture.
+            Recording writes a local LeRobot Dataset v3 dataset plus SOARM Studio sidecars describing the hardware session and sync quality. Start with one short episode to verify task text, images, joint data, and output paths before scaling capture.
           </p>
           <div class="cli-block">
             <div class="cli-toolbar">
@@ -204,8 +221,7 @@ soarm-studio teleop \
         <p class="toc-current">Dataset recording</p>
         <a class="toc-level-1" href="#dataset-recording">Overview</a>
         <a class="toc-level-1" href="#teleop-before-recording">Validate teleop</a>
-        <a class="toc-level-2" href="#operate-the-leader">Operate the leader</a>
-        <a class="toc-level-2" href="#diagnose-teleop">Teleop diagnostics</a>
+        <a class="toc-level-1" href="#diagnose-teleop">Teleop diagnostics</a>
         <a class="toc-level-1" href="#record-dataset">Record the dataset</a>
         <a class="toc-level-1" href="#recording-outputs">Check outputs</a>
       </aside>
