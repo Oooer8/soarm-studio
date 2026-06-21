@@ -139,6 +139,51 @@ def test_latest_frame_camera_serves_cached_frame_without_blocking() -> None:
     assert elapsed_ms < 5.0
 
 
+def test_latest_frame_camera_records_episode_history() -> None:
+    class CountingCamera:
+        name = "history"
+        width = 2
+        height = 2
+
+        def __init__(self) -> None:
+            self.connected = False
+            self.frames = 0
+
+        def connect(self) -> None:
+            self.connected = True
+
+        def disconnect(self) -> None:
+            self.connected = False
+
+        def read(self) -> CameraFrame:
+            self.frames += 1
+            pixel = bytes((self.frames % 256, 0, 0))
+            return CameraFrame(
+                name=self.name,
+                width=self.width,
+                height=self.height,
+                rgb=pixel * self.width * self.height,
+            )
+
+    camera = CountingCamera()
+    latest = LatestFrameCamera(camera, fps=60, initial_timeout_s=0.5)
+
+    try:
+        latest.connect()
+        latest.start_history()
+        deadline = time.monotonic() + 1.0
+        while camera.frames < 3 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        history = latest.stop_history()
+    finally:
+        latest.disconnect()
+
+    assert len(history) >= 2
+    assert [frame.monotonic_time_ns for frame in history] == sorted(
+        frame.monotonic_time_ns for frame in history
+    )
+
+
 def test_create_cameras_wraps_opencv_in_latest_frame_camera(monkeypatch) -> None:
     class FakeCapture:
         def isOpened(self) -> bool:

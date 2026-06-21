@@ -178,6 +178,8 @@ class LatestFrameCamera:
         self._thread: threading.Thread | None = None
         self._latest: CameraFrame | None = None
         self._last_error: str | None = None
+        self._record_history = False
+        self._history: list[CameraFrame] = []
 
     def connect(self) -> None:
         self._camera.connect()
@@ -209,6 +211,8 @@ class LatestFrameCamera:
         if self._thread is not None:
             self._thread.join(timeout=1.0)
             self._thread = None
+        with self._lock:
+            self._record_history = False
         self._camera.disconnect()
 
     def read(self) -> CameraFrame:
@@ -220,6 +224,20 @@ class LatestFrameCamera:
                 raise RuntimeError(f"Camera {self.name} has no frame: {error}")
             raise RuntimeError(f"Camera {self.name} has no frame yet")
         return frame
+
+    def start_history(self) -> None:
+        with self._lock:
+            self._history = []
+            if self._latest is not None:
+                self._history.append(self._latest)
+            self._record_history = True
+
+    def stop_history(self) -> list[CameraFrame]:
+        with self._lock:
+            self._record_history = False
+            frames = list(self._history)
+            self._history = []
+        return frames
 
     def _capture_loop(self) -> None:
         period_s = 1.0 / self.fps
@@ -237,6 +255,8 @@ class LatestFrameCamera:
                 with self._lock:
                     self._latest = frame
                     self._last_error = None
+                    if self._record_history:
+                        self._history.append(frame)
                 self._ready.set()
 
             remaining = period_s - (time.monotonic() - started)

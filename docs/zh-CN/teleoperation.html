@@ -370,6 +370,18 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
           <div class="callout">
             <span class="icon">i</span>
             <div>
+              <strong>如何理解 camera_age</strong>
+              <p>
+                <code class="inline">camera_age:*</code> 的计算方式是“当前遥操作循环取到缓存帧时的单调时钟”减去“这帧进入 <code class="inline">CameraFrame</code> 时记录的单调时钟”。它表示 latest-frame 缓存中这张图相对当前控制样本有多旧，而不是 <code class="inline">camera.read()</code> 阻塞了多久。
+              </p>
+              <p>
+                因为主臂、从臂状态和 action 都在同一轮循环中、且在读取相机缓存前刚刚采样，所以 <code class="inline">camera_age</code> 可以近似理解为当前 state/action 与图像帧之间的时间差: 图像通常比当前 state/action 旧一帧左右。当前 OpenCV 路径没有使用硬件曝光时间戳，因此这个值是应用层缓存帧年龄，不是传感器级同步误差。
+              </p>
+            </div>
+          </div>
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
               <strong>示例说明</strong>
               <p>
                 这次运行在 60 秒内完成 1800 个控制样本，没有任何超预算循环步骤。机械臂读取和目标更新低于数毫秒，摄像头读取是缓存 latest-frame 查询，调度器 p95 滞后低于 1 毫秒。camera-age 阶段表示帧新鲜度；30 Hz 摄像头出现约一帧的数值是正常的。

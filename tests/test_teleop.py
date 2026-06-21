@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 import types
 
 from soarm_studio.config import CameraConfig
@@ -159,6 +160,34 @@ def test_teleop_profile_records_phase_latency() -> None:
         "p95_ms",
         "max_ms",
     }
+
+
+def test_teleop_reads_leader_and_follower_before_in_parallel() -> None:
+    joints = ["a", "b"]
+    barrier = threading.Barrier(2)
+
+    class BarrierArm(MockArm):
+        def read_joints(self):
+            barrier.wait(timeout=1.0)
+            return super().read_joints()
+
+    leader = BarrierArm("leader", joints)
+    follower = BarrierArm("follower", joints)
+    leader.connect()
+    follower.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        sync_start=False,
+    )
+    sample = loop.step()
+    loop.close()
+
+    assert sample.leader.positions == {"a": 0.0, "b": 0.0}
+    assert sample.follower_before.positions == {"a": 0.0, "b": 0.0}
 
 
 def test_teleop_profile_records_camera_frame_age() -> None:

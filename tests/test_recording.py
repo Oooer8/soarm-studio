@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
+from soarm_studio.recording.quality import RecordingQualityTracker
+from soarm_studio.recording.session import _write_episode_samples
 from soarm_studio.recording import record_lerobot_episodes
+from soarm_studio.types import CameraFrame, ControlSample, JointSample
 
 
 def test_record_lerobot_episodes_writes_quality_sidecars(tmp_path) -> None:
@@ -32,3 +35,57 @@ def test_record_lerobot_episodes_writes_quality_sidecars(tmp_path) -> None:
     assert quality["frames"] > 0
     assert quality["stale_camera_frames"] == 0
     assert quality["max_camera_age_ms"] == 0.0
+
+
+def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:
+    captured: list[dict] = []
+
+    class FakeEpisode:
+        def add_frame(self, **kwargs) -> None:
+            captured.append(kwargs)
+
+    samples = [
+        _sample(frame_index=0, monotonic_time_ns=1_000_000_000),
+        _sample(frame_index=1, monotonic_time_ns=1_100_000_000),
+    ]
+    early = _frame(monotonic_time_ns=960_000_000, pixel=b"\x01\x00\x00")
+    late = _frame(monotonic_time_ns=1_090_000_000, pixel=b"\x02\x00\x00")
+    quality = RecordingQualityTracker()
+
+    _write_episode_samples(
+        FakeEpisode(),
+        samples,
+        quality,
+        {"wrist": [late, early]},
+    )
+
+    assert captured[0]["images"]["wrist"] is early
+    assert captured[1]["images"]["wrist"] is late
+    assert [item["timestamp"] for item in captured] == [0.0, 0.1]
+    assert quality.to_dict()["max_camera_age_ms"] == 40.0
+
+
+def _sample(*, frame_index: int, monotonic_time_ns: int) -> ControlSample:
+    joints = {"a": float(frame_index)}
+    return ControlSample(
+        frame_index=frame_index,
+        monotonic_time_ns=monotonic_time_ns,
+        leader=JointSample(joints),
+        follower_before=JointSample(joints),
+        action={"a": float(frame_index) + 0.1},
+        follower_after=None,
+        camera_frames={},
+        camera_metrics={},
+        latency_ms=1.0,
+    )
+
+
+def _frame(*, monotonic_time_ns: int, pixel: bytes) -> CameraFrame:
+    return CameraFrame(
+        name="wrist",
+        width=1,
+        height=1,
+        rgb=pixel,
+        timestamp=monotonic_time_ns / 1_000_000_000.0,
+        monotonic_time_ns=monotonic_time_ns,
+    )

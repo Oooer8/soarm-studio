@@ -150,6 +150,7 @@ class HardwareSession:
         on_sample: Callable[[ControlSample], None] | None = None,
         profile: bool = False,
         follower_readback_every: int = 0,
+        sample_cameras: bool = True,
     ) -> TeleopLoop:
         self._require_connected()
         assert self.leader is not None
@@ -166,6 +167,7 @@ class HardwareSession:
             slow_camera_ms=self.config.sync.slow_camera_ms,
             profile=profile,
             follower_readback_every=follower_readback_every,
+            sample_cameras=sample_cameras,
         )
 
     def run_teleop(
@@ -175,11 +177,13 @@ class HardwareSession:
         on_sample=None,
         profile: bool = False,
         follower_readback_every: int = 0,
+        sample_cameras: bool = True,
     ) -> dict:
         loop = self.create_loop(
             on_sample=on_sample,
             profile=profile,
             follower_readback_every=follower_readback_every,
+            sample_cameras=sample_cameras,
         )
         self.state = RuntimeState.TELEOP_RUNNING
         try:

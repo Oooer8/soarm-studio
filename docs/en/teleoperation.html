@@ -379,6 +379,18 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
           <div class="callout">
             <span class="icon">i</span>
             <div>
+              <strong>How to read camera_age</strong>
+              <p>
+                <code class="inline">camera_age:*</code> is computed as the monotonic clock when the teleop loop fetches the cached frame minus the monotonic clock stored on that <code class="inline">CameraFrame</code>. It reports how old the latest-frame cache entry is relative to the current control sample; it does not mean <code class="inline">camera.read()</code> blocked for that long.
+              </p>
+              <p>
+                Because leader state, follower state, and action are sampled in the same loop just before the cached camera fetch, <code class="inline">camera_age</code> can be read as an approximate state/action-to-image offset: the image is usually about one frame older than the current state/action. The OpenCV path does not use a hardware exposure timestamp, so this is application-level cached-frame age rather than sensor-level synchronization error.
+              </p>
+            </div>
+          </div>
+          <div class="callout">
+            <span class="icon">i</span>
+            <div>
               <strong>What the example means</strong>
               <p>
                 The run completed 1800 control samples in 60 seconds with zero
