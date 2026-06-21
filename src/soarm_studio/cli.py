@@ -108,6 +108,11 @@ def main(argv: list[str] | None = None) -> None:
     record.add_argument("--episodes", type=int, default=1)
     record.add_argument("--warmup", type=float, default=0.0)
     record.add_argument("--save-policy", choices=["auto", "manual"], default="auto")
+    record.add_argument(
+        "--debug",
+        action="store_true",
+        help="Write detailed per-episode camera timing sidecars.",
+    )
 
     dataset = subcommands.add_parser("dataset", help="Dataset tools")
     dataset_sub = dataset.add_subparsers(dest="dataset_command", required=True)
@@ -161,6 +166,7 @@ def main(argv: list[str] | None = None) -> None:
             episodes=args.episodes,
             warmup=args.warmup,
             save_policy=args.save_policy,
+            debug=args.debug,
         )
     elif args.command == "dataset":
         _handle_dataset(args)
@@ -361,6 +367,7 @@ def _handle_record(
     episodes: int,
     warmup: float,
     save_policy: str,
+    debug: bool,
 ) -> None:
     if save_policy == "manual":
         raise SystemExit("--save-policy manual is reserved for the Web UI in this version")
@@ -372,6 +379,7 @@ def _handle_record(
             overwrite=overwrite,
             warmup=warmup,
             episodes=episodes,
+            debug=debug,
         )
     )
 

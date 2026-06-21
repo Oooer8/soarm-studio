@@ -295,6 +295,10 @@ class LeRobotV3Writer:
         path = self.root / "episodes" / f"episode_{episode_index:06d}" / "quality.json"
         write_json(quality, path)
 
+    def write_episode_camera_timing(self, episode_index: int, timing: dict) -> None:
+        path = self.root / "episodes" / f"episode_{episode_index:06d}" / "camera_timing.json"
+        write_json(timing, path)
+
 
 def _write_video(path: Path, frames: list[CameraFrame], *, fps: int) -> None:
     if not frames:

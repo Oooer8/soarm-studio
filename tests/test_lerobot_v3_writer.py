@@ -88,7 +88,9 @@ def test_writer_creates_sidecar_metadata(tmp_path) -> None:
         writer.write_session_metadata({"session": "test"})
         writer.write_sync_quality({"summary": {"frames": 0}})
         writer.write_episode_quality(0, {"frames": 0})
+        writer.write_episode_camera_timing(0, {"cameras": {}})
 
     assert json.loads((root / "meta" / "soarm_session.json").read_text())["session"] == "test"
     assert (root / "meta" / "sync_quality.json").exists()
     assert (root / "episodes" / "episode_000000" / "quality.json").exists()
+    assert (root / "episodes" / "episode_000000" / "camera_timing.json").exists()

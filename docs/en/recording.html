@@ -202,6 +202,9 @@ after episode:
           <p>
             This means teleop debug <code class="inline">camera_age:*</code> reports latest-frame preview freshness, while recording quality reports the post-matching sample-to-image offset.
           </p>
+          <p>
+            Normal recording only saves summary quality metrics. Add <code class="inline">--debug</code> to the record command when you need raw per-camera frame timestamps, frame intervals, and per-sample matching offsets; the sidecar is written to <code class="inline">episodes/episode_000000/camera_timing.json</code>.
+          </p>
 
           <h2 id="recording-outputs">Check recording outputs</h2>
           <div class="table-wrap">

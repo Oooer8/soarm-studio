@@ -50,6 +50,7 @@ def record_lerobot_episodes(
     overwrite: bool = False,
     warmup: float = 0.0,
     episodes: int = 1,
+    debug: bool = False,
 ) -> dict:
     writer = create_lerobot_writer(config, overwrite=overwrite)
     saved: list[dict] = []
@@ -86,10 +87,17 @@ def record_lerobot_episodes(
                         sample_cameras=sample_cameras,
                     )
                     frame_histories = _stop_camera_histories(history_recorders)
-                    _write_episode_samples(episode, samples, quality, frame_histories)
+                    camera_timing = _write_episode_samples(
+                        episode,
+                        samples,
+                        quality,
+                        frame_histories,
+                    )
                     episode_index = episode.save()
                     quality_dict = quality.to_dict()
                     writer.write_episode_quality(episode_index, quality_dict)
+                    if debug:
+                        writer.write_episode_camera_timing(episode_index, camera_timing)
                     saved.append(
                         {
                             "episode_index": episode_index,
@@ -124,7 +132,7 @@ def _write_episode_samples(
     samples: list[ControlSample],
     quality: RecordingQualityTracker,
     frame_histories: dict[str, list[CameraFrame]] | None = None,
-) -> None:
+) -> dict:
     histories = {
         name: _camera_history(frames)
         for name, frames in (frame_histories or {}).items()
@@ -142,6 +150,7 @@ def _write_episode_samples(
             timestamp=timestamp,
         )
         quality.observe(matched_sample)
+    return _camera_timing_payload(samples, histories, first_sample_ns)
 
 
 def _start_camera_histories(cameras: dict[str, object]) -> dict[str, _CameraHistoryRecorder]:
@@ -217,18 +226,110 @@ def _sample_with_matched_camera_frames(
 
 
 def _nearest_frame(history: _CameraHistory, monotonic_time_ns: int) -> CameraFrame | None:
+    index = _nearest_frame_index(history, monotonic_time_ns)
+    return None if index is None else history.frames[index]
+
+
+def _nearest_frame_index(history: _CameraHistory, monotonic_time_ns: int) -> int | None:
     if not history.frames:
         return None
     index = bisect_left(history.timestamps_ns, monotonic_time_ns)
     if index <= 0:
-        return history.frames[0]
+        return 0
     if index >= len(history.frames):
-        return history.frames[-1]
+        return len(history.frames) - 1
     before = history.frames[index - 1]
     after = history.frames[index]
     before_delta = abs(monotonic_time_ns - before.monotonic_time_ns)
     after_delta = abs(after.monotonic_time_ns - monotonic_time_ns)
-    return before if before_delta <= after_delta else after
+    return index - 1 if before_delta <= after_delta else index
+
+
+def _camera_timing_payload(
+    samples: list[ControlSample],
+    histories: dict[str, _CameraHistory],
+    first_sample_ns: int | None,
+) -> dict:
+    return {
+        "sample_count": len(samples),
+        "cameras": {
+            name: _camera_timing_for_history(name, history, samples, first_sample_ns)
+            for name, history in histories.items()
+        },
+    }
+
+
+def _camera_timing_for_history(
+    name: str,
+    history: _CameraHistory,
+    samples: list[ControlSample],
+    first_sample_ns: int | None,
+) -> dict:
+    intervals_ms = [
+        (history.timestamps_ns[index] - history.timestamps_ns[index - 1]) / 1_000_000.0
+        for index in range(1, len(history.timestamps_ns))
+    ]
+    matched_samples: list[dict] = []
+    for sample in samples:
+        matched_index = _nearest_frame_index(history, sample.monotonic_time_ns)
+        if matched_index is None:
+            matched_samples.append(
+                {
+                    "sample_frame_index": sample.frame_index,
+                    "sample_time_s": _relative_time_s(sample.monotonic_time_ns, first_sample_ns),
+                    "camera_frame_index": None,
+                    "camera_time_s": None,
+                    "offset_ms": None,
+                }
+            )
+            continue
+        matched = history.frames[matched_index]
+        matched_samples.append(
+            {
+                "sample_frame_index": sample.frame_index,
+                "sample_time_s": _relative_time_s(sample.monotonic_time_ns, first_sample_ns),
+                "camera_frame_index": matched_index,
+                "camera_time_s": _relative_time_s(matched.monotonic_time_ns, first_sample_ns),
+                "offset_ms": round(
+                    abs(sample.monotonic_time_ns - matched.monotonic_time_ns) / 1_000_000.0,
+                    6,
+                ),
+            }
+        )
+    offsets = [
+        item["offset_ms"]
+        for item in matched_samples
+        if item["offset_ms"] is not None
+    ]
+    return {
+        "camera": name,
+        "raw_frame_count": len(history.frames),
+        "raw_timestamps_s": [
+            _relative_time_s(timestamp_ns, first_sample_ns)
+            for timestamp_ns in history.timestamps_ns
+        ],
+        "raw_intervals_ms": [round(value, 6) for value in intervals_ms],
+        "raw_interval_stats_ms": _stats(intervals_ms),
+        "matched_samples": matched_samples,
+        "matched_offset_stats_ms": _stats(offsets),
+    }
+
+
+def _relative_time_s(monotonic_time_ns: int, first_sample_ns: int | None) -> float:
+    if first_sample_ns is None:
+        return 0.0
+    return round((monotonic_time_ns - first_sample_ns) / 1_000_000_000.0, 9)
+
+
+def _stats(values: list[float]) -> dict[str, float | int]:
+    if not values:
+        return {"count": 0, "avg": 0.0, "min": 0.0, "max": 0.0}
+    return {
+        "count": len(values),
+        "avg": round(sum(values) / len(values), 6),
+        "min": round(min(values), 6),
+        "max": round(max(values), 6),
+    }
 
 
 def _quality_summary(episodes: list[dict]) -> dict:
