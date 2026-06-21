@@ -100,17 +100,19 @@
           <p>
             默认实时路径针对确定性的目标发布做了优化:
           </p>
-          <pre><code>leader_read
-  -> follower_before_read
+          <pre><code>leader_read || follower_before_read
   -> target_compute
   -> SDK direct stream update
   -> latest camera frame fetch
   -> sample callbacks
   -> absolute 30 Hz scheduler sleep</code></pre>
+          <p>
+            <code class="inline">leader_read</code> 和 <code class="inline">follower_before_read</code> 在两个读线程中并行执行。Debug 输出里的两个 phase 仍分别报告各自耗时；整体 <code class="inline">last_latency_ms</code> 和 <code class="inline">max_latency_ms</code> 反映等待两路读取都完成后的真实循环墙钟时间，不应把两个 read phase 简单相加。
+          </p>
           <figure class="sequence-diagram" aria-labelledby="teleop-sequence-title-zh">
             <svg role="img" viewBox="0 0 1420 710" aria-describedby="teleop-sequence-desc-zh">
               <title id="teleop-sequence-title-zh">遥操作单周期时序图</title>
-              <desc id="teleop-sequence-desc-zh">图中按生命线展示 30 Hz 遥操作循环的一次 tick，并标注 60 秒 profile 输出中的 p95 延迟: 调度器触发 Studio 循环，Studio 读取主臂和从臂，计算目标，更新 SDK stream，读取缓存相机帧，触发回调，然后等待下一个 tick。</desc>
+              <desc id="teleop-sequence-desc-zh">图中按生命线展示 30 Hz 遥操作循环的一次 tick，并标注 30 秒 profile 输出中的 p95 延迟: 调度器触发 Studio 循环，Studio 并行读取主臂和从臂，计算目标，更新 SDK stream，读取缓存相机帧，触发回调，然后等待下一个 tick。</desc>
               <defs>
                 <marker id="arrow-zh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" />
@@ -119,10 +121,10 @@
                   <path d="M 0 0 L 10 5 L 0 10 z" />
                 </marker>
               </defs>
-              <text class="sequence-title" x="32" y="34">一轮 30 Hz Studio 遥操作循环，标注 60s profile p95</text>
+              <text class="sequence-title" x="32" y="34">一轮 30 Hz Studio 遥操作循环，标注 30s profile p95</text>
               <rect class="sequence-metric-note" x="748" y="16" width="380" height="44" rx="6" />
-              <text class="sequence-metric-text" x="938" y="35" text-anchor="middle">loop last/max 2.980/5.175 ms，budget 33.333 ms，超预算 0</text>
-              <text class="sequence-metric-text" x="938" y="52" text-anchor="middle">sync_start:move 536.963 ms，仅启动前一次</text>
+              <text class="sequence-metric-text" x="938" y="35" text-anchor="middle">loop last/max 1.686/3.732 ms，budget 33.333 ms，超预算 0</text>
+              <text class="sequence-metric-text" x="938" y="52" text-anchor="middle">sync_start:move 537.026 ms，仅启动前一次</text>
               <rect class="sequence-latency-panel" x="1164" y="82" width="238" height="612" rx="8" />
               <text class="sequence-chart-title" x="1283" y="108" text-anchor="middle">右侧 p95 延迟条 (0-40 ms)</text>
               <line class="sequence-chart-axis" x1="1260" y1="132" x2="1356" y2="132" />
@@ -135,31 +137,31 @@
 
               <text class="sequence-bar-label" x="1176" y="157">lag</text>
               <rect class="sequence-latency-bar" x="1260" y="148" width="2.4" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="157" text-anchor="end">0.984</text>
+              <text class="sequence-bar-value" x="1390" y="157" text-anchor="end">1.006</text>
               <text class="sequence-bar-label" x="1176" y="205">leader</text>
-              <rect class="sequence-latency-bar" x="1260" y="196" width="4" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="205" text-anchor="end">1.652</text>
+              <rect class="sequence-latency-bar" x="1260" y="196" width="4.4" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="205" text-anchor="end">1.835</text>
               <text class="sequence-bar-label" x="1176" y="283">follower</text>
-              <rect class="sequence-latency-bar" x="1260" y="274" width="3.6" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="283" text-anchor="end">1.496</text>
+              <rect class="sequence-latency-bar" x="1260" y="274" width="4.3" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="283" text-anchor="end">1.788</text>
               <text class="sequence-bar-label" x="1176" y="379">compute</text>
               <rect class="sequence-latency-bar" x="1260" y="370" width="1" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="379" text-anchor="end">0.015</text>
+              <text class="sequence-bar-value" x="1390" y="379" text-anchor="end">0.017</text>
               <text class="sequence-bar-label" x="1176" y="437">stream</text>
               <rect class="sequence-latency-bar" x="1260" y="428" width="1" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="437" text-anchor="end">0.025</text>
+              <text class="sequence-bar-value" x="1390" y="437" text-anchor="end">0.027</text>
               <text class="sequence-bar-label" x="1176" y="491">cam read</text>
               <rect class="sequence-latency-bar" x="1260" y="482" width="1" height="8" rx="4" />
               <text class="sequence-bar-value" x="1390" y="491" text-anchor="end">0.003/0.002</text>
               <text class="sequence-bar-label" x="1176" y="529">frame age</text>
-              <rect class="sequence-latency-bar freshness" x="1260" y="520" width="94.3" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="529" text-anchor="end">39.297/35.384</text>
+              <rect class="sequence-latency-bar freshness" x="1260" y="520" width="96" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="529" text-anchor="end">37.204/42.493</text>
               <text class="sequence-bar-label" x="1176" y="637">callback</text>
               <rect class="sequence-latency-bar" x="1260" y="628" width="1" height="8" rx="4" />
               <text class="sequence-bar-value" x="1390" y="637" text-anchor="end">0.001</text>
               <text class="sequence-bar-label" x="1176" y="690">sleep</text>
-              <rect class="sequence-latency-bar sleep" x="1260" y="681" width="74.7" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="690" text-anchor="end">31.145</text>
+              <rect class="sequence-latency-bar sleep" x="1260" y="681" width="77.5" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="690" text-anchor="end">32.307</text>
 
               <g class="sequence-participant">
                 <rect x="34" y="62" width="124" height="42" rx="6" />
@@ -203,27 +205,27 @@
 
               <line class="sequence-message" x1="96" y1="138" x2="264" y2="138" />
               <text class="sequence-label" x="180" y="128" text-anchor="middle">tick n</text>
-              <text class="sequence-latency" x="180" y="154" text-anchor="middle">scheduler_lag p95 0.984 ms，max 3.456 ms</text>
+              <text class="sequence-latency" x="180" y="154" text-anchor="middle">scheduler_lag p95 1.006 ms，max 1.723 ms</text>
 
               <line class="sequence-message" x1="276" y1="188" x2="445" y2="188" />
               <text class="sequence-label" x="360" y="178" text-anchor="middle">read_joints()</text>
-              <text class="sequence-latency" x="360" y="202" text-anchor="middle">leader_read p95 1.652 ms，max 2.907 ms</text>
+              <text class="sequence-latency" x="360" y="202" text-anchor="middle">leader_read p95 1.835 ms，max 2.592 ms</text>
               <line class="sequence-return" x1="445" y1="226" x2="276" y2="226" />
               <text class="sequence-label" x="360" y="216" text-anchor="middle">leader_sample</text>
 
               <line class="sequence-message" x1="276" y1="266" x2="615" y2="266" />
               <text class="sequence-label" x="446" y="256" text-anchor="middle">read_joints()</text>
-              <text class="sequence-latency" x="446" y="280" text-anchor="middle">follower_before_read p95 1.496 ms，max 2.030 ms</text>
+              <text class="sequence-latency" x="446" y="280" text-anchor="middle">follower_before_read p95 1.788 ms，max 3.346 ms</text>
               <line class="sequence-return" x1="615" y1="304" x2="276" y2="304" />
               <text class="sequence-label" x="446" y="294" text-anchor="middle">follower_before</text>
 
               <path class="sequence-self" d="M276 342 H338 V382 H276" />
               <text class="sequence-label" x="370" y="358">裁剪相对目标与关节限位</text>
-              <text class="sequence-latency" x="370" y="376">target_compute p95 0.015 ms，max 0.061 ms</text>
+              <text class="sequence-latency" x="370" y="376">target_compute p95 0.017 ms，max 0.098 ms</text>
 
               <line class="sequence-message" x1="276" y1="420" x2="781" y2="420" />
               <text class="sequence-label" x="528" y="410" text-anchor="middle">update_target(action)</text>
-              <text class="sequence-latency" x="528" y="434" text-anchor="middle">stream_update p95 0.025 ms，max 1.465 ms</text>
+              <text class="sequence-latency" x="528" y="434" text-anchor="middle">stream_update p95 0.027 ms，max 1.425 ms</text>
               <rect class="sequence-note" x="810" y="382" width="180" height="60" rx="6" />
               <text class="sequence-note-text" x="900" y="406" text-anchor="middle">SDK 固定频率输出</text>
               <text class="sequence-note-text" x="900" y="426" text-anchor="middle">并处理 timeout hold</text>
@@ -233,7 +235,7 @@
               <text class="sequence-latency" x="613" y="488" text-anchor="middle">camera_read p95: third 0.003 ms / wrist 0.002 ms</text>
               <line class="sequence-return" x1="950" y1="512" x2="276" y2="512" />
               <text class="sequence-label" x="613" y="502" text-anchor="middle">frames + frame_age_ms</text>
-              <text class="sequence-latency" x="613" y="526" text-anchor="middle">camera_age p95: third 39.297 ms / wrist 35.384 ms</text>
+              <text class="sequence-latency" x="613" y="526" text-anchor="middle">camera_age p95: third 37.204 ms / wrist 42.493 ms</text>
 
               <rect class="sequence-opt" x="210" y="532" width="482" height="58" rx="6" />
               <text class="sequence-opt-label" x="228" y="552">opt follower_readback_every N，本次为 0，未执行</text>
@@ -242,15 +244,15 @@
 
               <line class="sequence-message" x1="276" y1="620" x2="1074" y2="620" />
               <text class="sequence-label" x="675" y="610" text-anchor="middle">on_sample(sample) / on_frame(...)</text>
-              <text class="sequence-latency" x="675" y="634" text-anchor="middle">callbacks p95 0.001 ms，max 0.015 ms</text>
+              <text class="sequence-latency" x="675" y="634" text-anchor="middle">callbacks p95 0.001 ms，max 0.004 ms</text>
               <line class="sequence-return" x1="1074" y1="646" x2="276" y2="646" />
 
               <line class="sequence-message" x1="276" y1="678" x2="96" y2="678" />
               <text class="sequence-label" x="186" y="668" text-anchor="middle">observe latency; sleep until tick n+1</text>
-              <text class="sequence-latency" x="186" y="694" text-anchor="middle">sleep p95 31.145 ms，avg 30.271 ms</text>
+              <text class="sequence-latency" x="186" y="694" text-anchor="middle">sleep p95 32.307 ms，avg 31.349 ms</text>
             </svg>
             <figcaption>
-              图中数值来自这次 60 秒 profile 输出；除特别标出的 last、max、avg 外，阶段延迟均取 p95。时序图纵轴保持事件顺序，右侧柱状图用 0-40 ms 线性刻度表达量级。<code class="inline">camera_age:*</code> 表示缓存帧新鲜度，<code class="inline">sleep</code> 是等待下一个绝对 30 Hz tick，不代表动作发布本身的延迟。
+              图中数值来自这次 30 秒 profile 输出；除特别标出的 last、max、avg 外，阶段延迟均取 p95。时序图纵轴保持事件顺序，右侧柱状图用 0-40 ms 线性刻度表达量级。<code class="inline">camera_age:*</code> 表示遥操作 latest-frame 缓存帧新鲜度，<code class="inline">sleep</code> 是等待下一个绝对 30 Hz tick，不代表动作发布本身的延迟。
             </figcaption>
           </figure>
           <div class="table-wrap">
@@ -267,12 +269,16 @@
                   <td>使用 SDK direct joint stream。Studio 只发送最新目标；SDK 处理固定频率输出和超时行为。</td>
                 </tr>
                 <tr>
+                  <td>主从读取</td>
+                  <td><code class="inline">leader_read</code> 与 <code class="inline">follower_before_read</code> 并行执行。两项 phase latency 分别描述各自串口读取耗时，循环总延迟取决于较慢的一路加上后续计算和发布。</td>
+                </tr>
+                <tr>
                   <td>从臂回读</td>
                   <td>不要在每个实时帧读取 <code class="inline">follower_after</code>。控制路径需要 <code class="inline">follower_before</code> 来做状态读取、裁剪和录制。诊断时可以通过 <code class="inline">--follower-readback-every N</code> 开启周期性回读。</td>
                 </tr>
                 <tr>
                   <td>摄像头</td>
-                  <td>OpenCV 摄像头运行在后台 latest-frame 线程中。控制循环只获取缓存帧，因此摄像头 USB 或解码抖动不会阻塞目标发布。</td>
+                  <td>遥操作 debug 路径从后台 latest-frame 线程读取缓存帧，因此摄像头 USB 或解码抖动不会阻塞目标发布。数据集录制时，支持 history 的相机会在 episode 内保存帧历史，episode 结束后再按单调时间戳匹配最近图像。</td>
                 </tr>
                 <tr>
                   <td>调度器</td>
@@ -296,31 +302,31 @@
             成功的遥操作命令会先打印硬件连接日志，然后输出 JSON 指标对象。该 JSON 描述的是 Studio 侧 30 Hz 控制和采样循环，而不是 SDK 内部 direct stream 的输出频率。
           </p>
           <details class="cli-result" open>
-            <summary>稳定 60 秒 debug 输出节选</summary>
+            <summary>稳定 30 秒 debug 输出节选</summary>
             <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 {
   "session": "soarm",
   "state": "TELEOP_READY",
   "metrics": {
-    "iterations": 1800,
+    "iterations": 900,
     "target_hz": 30,
-    "observed_hz": 29.999,
-    "last_latency_ms": 2.98,
-    "max_latency_ms": 5.175,
-    "elapsed_s": 60.001,
+    "observed_hz": 30.0,
+    "last_latency_ms": 1.686,
+    "max_latency_ms": 3.732,
+    "elapsed_s": 30.0,
     "budget_ms": 33.333,
     "over_budget_iterations": 0,
     "phase_latency_ms": {
-      "scheduler_lag": {"p95_ms": 0.984, "max_ms": 3.456},
-      "leader_read": {"p95_ms": 1.652},
-      "follower_before_read": {"p95_ms": 1.496},
-      "stream_update": {"p95_ms": 0.025},
+      "scheduler_lag": {"p95_ms": 1.006, "max_ms": 1.723},
+      "leader_read": {"p95_ms": 1.835},
+      "follower_before_read": {"p95_ms": 1.788},
+      "stream_update": {"p95_ms": 0.027},
       "camera_read:third_person": {"p95_ms": 0.003},
-      "camera_age:third_person": {"p95_ms": 39.297},
+      "camera_age:third_person": {"p95_ms": 37.204},
       "camera_read:wrist": {"p95_ms": 0.002},
-      "camera_age:wrist": {"p95_ms": 35.384},
-      "sleep": {"p95_ms": 31.145}
+      "camera_age:wrist": {"p95_ms": 42.493},
+      "sleep": {"p95_ms": 32.307}
     }
   }
 }
@@ -338,7 +344,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
               <tbody>
                 <tr>
                   <td><code>iterations</code></td>
-                  <td>已完成的 Studio 控制样本数。30 Hz 运行 60 秒时，健康结果应接近 1800。</td>
+                  <td>已完成的 Studio 控制样本数。30 Hz 运行 30 秒时，健康结果应接近 900。</td>
                 </tr>
                 <tr>
                   <td><code>target_hz</code></td>
@@ -350,7 +356,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 </tr>
                 <tr>
                   <td><code>last_latency_ms</code></td>
-                  <td>最后一次循环步骤耗时，包括主臂读取、从臂动作前读取、目标计算、stream 更新、latest-frame 摄像头获取和回调。</td>
+                  <td>最后一次循环步骤耗时，包括并行主臂/从臂动作前读取、目标计算、stream 更新、latest-frame 摄像头获取和回调。</td>
                 </tr>
                 <tr>
                   <td><code>max_latency_ms</code></td>
@@ -362,7 +368,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 </tr>
                 <tr>
                   <td><code>phase_latency_ms</code></td>
-                  <td>仅在使用 <code class="inline">--debug</code> 时出现；会报告每个遥操作阶段的次数、最近值、平均值、p50、p95 和最大延迟。 <code class="inline">camera_read:*</code> 是缓存帧获取成本， <code class="inline">camera_age:*</code> 表示帧新鲜度， <code class="inline">scheduler_lag</code> 是计时漂移。</td>
+                  <td>仅在使用 <code class="inline">--debug</code> 时出现；会报告每个遥操作阶段的次数、最近值、平均值、p50、p95 和最大延迟。 <code class="inline">leader_read</code> 和 <code class="inline">follower_before_read</code> 是并行 phase，不应相加成循环耗时。 <code class="inline">camera_read:*</code> 是缓存帧获取成本， <code class="inline">camera_age:*</code> 表示帧新鲜度， <code class="inline">scheduler_lag</code> 是计时漂移。</td>
                 </tr>
               </tbody>
             </table>
@@ -377,6 +383,9 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
               <p>
                 因为主臂、从臂状态和 action 都在同一轮循环中、且在读取相机缓存前刚刚采样，所以 <code class="inline">camera_age</code> 可以近似理解为当前 state/action 与图像帧之间的时间差: 图像通常比当前 state/action 旧一帧左右。当前 OpenCV 路径没有使用硬件曝光时间戳，因此这个值是应用层缓存帧年龄，不是传感器级同步误差。
               </p>
+              <p>
+                数据集录制路径与遥操作 debug 略有不同: 支持 history 的摄像头会在后台线程记录 episode 内所有帧，Studio 主循环只记录关节状态、action 和单调时间戳；episode 结束后再为每个控制样本匹配最近的相机帧。因此录制质量中的相机 offset 应按匹配后的时间差理解，而不是把遥操作中的 latest-frame <code class="inline">camera_age</code> 直接当成录制同步误差。
+              </p>
             </div>
           </div>
           <div class="callout">
@@ -384,7 +393,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
             <div>
               <strong>示例说明</strong>
               <p>
-                这次运行在 60 秒内完成 1800 个控制样本，没有任何超预算循环步骤。机械臂读取和目标更新低于数毫秒，摄像头读取是缓存 latest-frame 查询，调度器 p95 滞后低于 1 毫秒。camera-age 阶段表示帧新鲜度；30 Hz 摄像头出现约一帧的数值是正常的。
+                这次运行在 30 秒内完成 900 个控制样本，没有任何超预算循环步骤。主臂和从臂动作前状态读取分别约 1.8 ms p95，但它们并行执行，所以循环最慢一步只有 3.732 ms，远低于 33.333 ms 预算。目标计算和 stream 更新几乎可以忽略，摄像头读取是缓存 latest-frame 查询；camera-age 阶段表示遥操作预览帧新鲜度，30 Hz 摄像头出现约一帧的数值是正常的。
               </p>
             </div>
           </div>

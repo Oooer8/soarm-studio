@@ -106,17 +106,19 @@
             The default live path is optimized for deterministic target
             publishing:
           </p>
-          <pre><code>leader_read
-  -> follower_before_read
+          <pre><code>leader_read || follower_before_read
   -> target_compute
   -> SDK direct stream update
   -> latest camera frame fetch
   -> sample callbacks
   -> absolute 30 Hz scheduler sleep</code></pre>
+          <p>
+            <code class="inline">leader_read</code> and <code class="inline">follower_before_read</code> run concurrently on two read threads. Debug output still reports each phase separately; <code class="inline">last_latency_ms</code> and <code class="inline">max_latency_ms</code> describe the joined wall-clock loop time, so the two read phases should not be added together.
+          </p>
           <figure class="sequence-diagram" aria-labelledby="teleop-sequence-title-en">
             <svg role="img" viewBox="0 0 1420 710" aria-describedby="teleop-sequence-desc-en">
               <title id="teleop-sequence-title-en">Sequence diagram for one teleop cycle</title>
-              <desc id="teleop-sequence-desc-en">The diagram shows one 30 Hz teleop tick as lifelines and annotates p95 latency from the 60 second profile output: the scheduler triggers Studio, Studio reads leader and follower state, computes the target, updates the SDK stream, reads cached camera frames, invokes callbacks, and waits for the next tick.</desc>
+              <desc id="teleop-sequence-desc-en">The diagram shows one 30 Hz teleop tick as lifelines and annotates p95 latency from the 30 second profile output: the scheduler triggers Studio, Studio reads leader and follower state concurrently, computes the target, updates the SDK stream, reads cached camera frames, invokes callbacks, and waits for the next tick.</desc>
               <defs>
                 <marker id="arrow-en" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" />
@@ -125,10 +127,10 @@
                   <path d="M 0 0 L 10 5 L 0 10 z" />
                 </marker>
               </defs>
-              <text class="sequence-title" x="32" y="34">One 30 Hz Studio teleop cycle, annotated with 60s profile p95</text>
+              <text class="sequence-title" x="32" y="34">One 30 Hz Studio teleop cycle, annotated with 30s profile p95</text>
               <rect class="sequence-metric-note" x="748" y="16" width="380" height="44" rx="6" />
-              <text class="sequence-metric-text" x="938" y="35" text-anchor="middle">loop last/max 2.980/5.175 ms, budget 33.333 ms, over budget 0</text>
-              <text class="sequence-metric-text" x="938" y="52" text-anchor="middle">sync_start:move 536.963 ms, one time before loop</text>
+              <text class="sequence-metric-text" x="938" y="35" text-anchor="middle">loop last/max 1.686/3.732 ms, budget 33.333 ms, over budget 0</text>
+              <text class="sequence-metric-text" x="938" y="52" text-anchor="middle">sync_start:move 537.026 ms, one time before loop</text>
               <rect class="sequence-latency-panel" x="1164" y="82" width="238" height="612" rx="8" />
               <text class="sequence-chart-title" x="1283" y="108" text-anchor="middle">Right p95 latency bars (0-40 ms)</text>
               <line class="sequence-chart-axis" x1="1260" y1="132" x2="1356" y2="132" />
@@ -141,31 +143,31 @@
 
               <text class="sequence-bar-label" x="1176" y="157">lag</text>
               <rect class="sequence-latency-bar" x="1260" y="148" width="2.4" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="157" text-anchor="end">0.984</text>
+              <text class="sequence-bar-value" x="1390" y="157" text-anchor="end">1.006</text>
               <text class="sequence-bar-label" x="1176" y="205">leader</text>
-              <rect class="sequence-latency-bar" x="1260" y="196" width="4" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="205" text-anchor="end">1.652</text>
+              <rect class="sequence-latency-bar" x="1260" y="196" width="4.4" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="205" text-anchor="end">1.835</text>
               <text class="sequence-bar-label" x="1176" y="283">follower</text>
-              <rect class="sequence-latency-bar" x="1260" y="274" width="3.6" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="283" text-anchor="end">1.496</text>
+              <rect class="sequence-latency-bar" x="1260" y="274" width="4.3" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="283" text-anchor="end">1.788</text>
               <text class="sequence-bar-label" x="1176" y="379">compute</text>
               <rect class="sequence-latency-bar" x="1260" y="370" width="1" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="379" text-anchor="end">0.015</text>
+              <text class="sequence-bar-value" x="1390" y="379" text-anchor="end">0.017</text>
               <text class="sequence-bar-label" x="1176" y="437">stream</text>
               <rect class="sequence-latency-bar" x="1260" y="428" width="1" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="437" text-anchor="end">0.025</text>
+              <text class="sequence-bar-value" x="1390" y="437" text-anchor="end">0.027</text>
               <text class="sequence-bar-label" x="1176" y="491">cam read</text>
               <rect class="sequence-latency-bar" x="1260" y="482" width="1" height="8" rx="4" />
               <text class="sequence-bar-value" x="1390" y="491" text-anchor="end">0.003/0.002</text>
               <text class="sequence-bar-label" x="1176" y="529">frame age</text>
-              <rect class="sequence-latency-bar freshness" x="1260" y="520" width="94.3" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="529" text-anchor="end">39.297/35.384</text>
+              <rect class="sequence-latency-bar freshness" x="1260" y="520" width="96" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="529" text-anchor="end">37.204/42.493</text>
               <text class="sequence-bar-label" x="1176" y="637">callback</text>
               <rect class="sequence-latency-bar" x="1260" y="628" width="1" height="8" rx="4" />
               <text class="sequence-bar-value" x="1390" y="637" text-anchor="end">0.001</text>
               <text class="sequence-bar-label" x="1176" y="690">sleep</text>
-              <rect class="sequence-latency-bar sleep" x="1260" y="681" width="74.7" height="8" rx="4" />
-              <text class="sequence-bar-value" x="1390" y="690" text-anchor="end">31.145</text>
+              <rect class="sequence-latency-bar sleep" x="1260" y="681" width="77.5" height="8" rx="4" />
+              <text class="sequence-bar-value" x="1390" y="690" text-anchor="end">32.307</text>
 
               <g class="sequence-participant">
                 <rect x="34" y="62" width="124" height="42" rx="6" />
@@ -209,27 +211,27 @@
 
               <line class="sequence-message" x1="96" y1="138" x2="264" y2="138" />
               <text class="sequence-label" x="180" y="128" text-anchor="middle">tick n</text>
-              <text class="sequence-latency" x="180" y="154" text-anchor="middle">scheduler_lag p95 0.984 ms, max 3.456 ms</text>
+              <text class="sequence-latency" x="180" y="154" text-anchor="middle">scheduler_lag p95 1.006 ms, max 1.723 ms</text>
 
               <line class="sequence-message" x1="276" y1="188" x2="445" y2="188" />
               <text class="sequence-label" x="360" y="178" text-anchor="middle">read_joints()</text>
-              <text class="sequence-latency" x="360" y="202" text-anchor="middle">leader_read p95 1.652 ms, max 2.907 ms</text>
+              <text class="sequence-latency" x="360" y="202" text-anchor="middle">leader_read p95 1.835 ms, max 2.592 ms</text>
               <line class="sequence-return" x1="445" y1="226" x2="276" y2="226" />
               <text class="sequence-label" x="360" y="216" text-anchor="middle">leader_sample</text>
 
               <line class="sequence-message" x1="276" y1="266" x2="615" y2="266" />
               <text class="sequence-label" x="446" y="256" text-anchor="middle">read_joints()</text>
-              <text class="sequence-latency" x="446" y="280" text-anchor="middle">follower_before_read p95 1.496 ms, max 2.030 ms</text>
+              <text class="sequence-latency" x="446" y="280" text-anchor="middle">follower_before_read p95 1.788 ms, max 3.346 ms</text>
               <line class="sequence-return" x1="615" y1="304" x2="276" y2="304" />
               <text class="sequence-label" x="446" y="294" text-anchor="middle">follower_before</text>
 
               <path class="sequence-self" d="M276 342 H338 V382 H276" />
               <text class="sequence-label" x="370" y="358">clip relative target and joint limits</text>
-              <text class="sequence-latency" x="370" y="376">target_compute p95 0.015 ms, max 0.061 ms</text>
+              <text class="sequence-latency" x="370" y="376">target_compute p95 0.017 ms, max 0.098 ms</text>
 
               <line class="sequence-message" x1="276" y1="420" x2="781" y2="420" />
               <text class="sequence-label" x="528" y="410" text-anchor="middle">update_target(action)</text>
-              <text class="sequence-latency" x="528" y="434" text-anchor="middle">stream_update p95 0.025 ms, max 1.465 ms</text>
+              <text class="sequence-latency" x="528" y="434" text-anchor="middle">stream_update p95 0.027 ms, max 1.425 ms</text>
               <rect class="sequence-note" x="810" y="382" width="180" height="60" rx="6" />
               <text class="sequence-note-text" x="900" y="406" text-anchor="middle">SDK outputs at</text>
               <text class="sequence-note-text" x="900" y="426" text-anchor="middle">fixed rate + timeout hold</text>
@@ -239,7 +241,7 @@
               <text class="sequence-latency" x="613" y="488" text-anchor="middle">camera_read p95: third 0.003 ms / wrist 0.002 ms</text>
               <line class="sequence-return" x1="950" y1="512" x2="276" y2="512" />
               <text class="sequence-label" x="613" y="502" text-anchor="middle">frames + frame_age_ms</text>
-              <text class="sequence-latency" x="613" y="526" text-anchor="middle">camera_age p95: third 39.297 ms / wrist 35.384 ms</text>
+              <text class="sequence-latency" x="613" y="526" text-anchor="middle">camera_age p95: third 37.204 ms / wrist 42.493 ms</text>
 
               <rect class="sequence-opt" x="210" y="532" width="482" height="58" rx="6" />
               <text class="sequence-opt-label" x="228" y="552">opt follower_readback_every N, disabled in this run: 0</text>
@@ -248,15 +250,15 @@
 
               <line class="sequence-message" x1="276" y1="620" x2="1074" y2="620" />
               <text class="sequence-label" x="675" y="610" text-anchor="middle">on_sample(sample) / on_frame(...)</text>
-              <text class="sequence-latency" x="675" y="634" text-anchor="middle">callbacks p95 0.001 ms, max 0.015 ms</text>
+              <text class="sequence-latency" x="675" y="634" text-anchor="middle">callbacks p95 0.001 ms, max 0.004 ms</text>
               <line class="sequence-return" x1="1074" y1="646" x2="276" y2="646" />
 
               <line class="sequence-message" x1="276" y1="678" x2="96" y2="678" />
               <text class="sequence-label" x="186" y="668" text-anchor="middle">observe latency; sleep until tick n+1</text>
-              <text class="sequence-latency" x="186" y="694" text-anchor="middle">sleep p95 31.145 ms, avg 30.271 ms</text>
+              <text class="sequence-latency" x="186" y="694" text-anchor="middle">sleep p95 32.307 ms, avg 31.349 ms</text>
             </svg>
             <figcaption>
-              Values come from this 60 second profile output; phase numbers use p95 unless last, max, or avg is explicitly named. The sequence diagram's vertical axis keeps event order, while the right-side bar chart uses a linear 0-40 ms scale for magnitude. <code class="inline">camera_age:*</code> is cached-frame freshness, and <code class="inline">sleep</code> waits for the next absolute 30 Hz tick rather than representing action-publishing latency.
+              Values come from this 30 second profile output; phase numbers use p95 unless last, max, or avg is explicitly named. The sequence diagram's vertical axis keeps event order, while the right-side bar chart uses a linear 0-40 ms scale for magnitude. <code class="inline">camera_age:*</code> is teleop cached-frame freshness, and <code class="inline">sleep</code> waits for the next absolute 30 Hz tick rather than representing action-publishing latency.
             </figcaption>
           </figure>
           <div class="table-wrap">
@@ -273,12 +275,16 @@
                   <td>Use the SDK direct joint stream. Studio only sends the newest target; the SDK handles fixed-rate output and timeout behavior.</td>
                 </tr>
                 <tr>
+                  <td>Leader/follower reads</td>
+                  <td><code class="inline">leader_read</code> and <code class="inline">follower_before_read</code> run concurrently. Their phase latency values describe each serial-bus read separately; total loop latency is driven by the slower read plus compute and publish work.</td>
+                </tr>
+                <tr>
                   <td>Follower readback</td>
                   <td>Do not read <code class="inline">follower_after</code> every live frame. The control path needs <code class="inline">follower_before</code> for state, clipping, and recording. Readback can be enabled for diagnostics with <code class="inline">--follower-readback-every N</code>.</td>
                 </tr>
                 <tr>
                   <td>Cameras</td>
-                  <td>OpenCV cameras run in background latest-frame threads. The control loop fetches cached frames, so camera USB or decode jitter does not block target publishing.</td>
+                  <td>The teleop debug path reads cached frames from background latest-frame threads, so camera USB or decode jitter does not block target publishing. During dataset recording, cameras that support history keep an episode-local frame history, and frames are matched to control samples by nearest monotonic timestamp after the episode finishes.</td>
                 </tr>
                 <tr>
                   <td>Scheduler</td>
@@ -305,31 +311,31 @@
             stream output rate.
           </p>
           <details class="cli-result" open>
-            <summary>Abridged stable 60 second debug output</summary>
+            <summary>Abridged stable 30 second debug output</summary>
             <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 {
   "session": "soarm",
   "state": "TELEOP_READY",
   "metrics": {
-    "iterations": 1800,
+    "iterations": 900,
     "target_hz": 30,
-    "observed_hz": 29.999,
-    "last_latency_ms": 2.98,
-    "max_latency_ms": 5.175,
-    "elapsed_s": 60.001,
+    "observed_hz": 30.0,
+    "last_latency_ms": 1.686,
+    "max_latency_ms": 3.732,
+    "elapsed_s": 30.0,
     "budget_ms": 33.333,
     "over_budget_iterations": 0,
     "phase_latency_ms": {
-      "scheduler_lag": {"p95_ms": 0.984, "max_ms": 3.456},
-      "leader_read": {"p95_ms": 1.652},
-      "follower_before_read": {"p95_ms": 1.496},
-      "stream_update": {"p95_ms": 0.025},
+      "scheduler_lag": {"p95_ms": 1.006, "max_ms": 1.723},
+      "leader_read": {"p95_ms": 1.835},
+      "follower_before_read": {"p95_ms": 1.788},
+      "stream_update": {"p95_ms": 0.027},
       "camera_read:third_person": {"p95_ms": 0.003},
-      "camera_age:third_person": {"p95_ms": 39.297},
+      "camera_age:third_person": {"p95_ms": 37.204},
       "camera_read:wrist": {"p95_ms": 0.002},
-      "camera_age:wrist": {"p95_ms": 35.384},
-      "sleep": {"p95_ms": 31.145}
+      "camera_age:wrist": {"p95_ms": 42.493},
+      "sleep": {"p95_ms": 32.307}
     }
   }
 }
@@ -347,7 +353,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
               <tbody>
                 <tr>
                   <td><code>iterations</code></td>
-                  <td>How many Studio control samples were completed. At 30 Hz for 60 seconds, a healthy run should be near 1800.</td>
+                  <td>How many Studio control samples were completed. At 30 Hz for 30 seconds, a healthy run should be near 900.</td>
                 </tr>
                 <tr>
                   <td><code>target_hz</code></td>
@@ -359,7 +365,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 </tr>
                 <tr>
                   <td><code>last_latency_ms</code></td>
-                  <td>The time spent in the last loop step, including leader read, follower-before read, target compute, stream update, latest-frame camera fetches, and callbacks.</td>
+                  <td>The time spent in the last loop step, including parallel leader/follower-before reads, target compute, stream update, latest-frame camera fetches, and callbacks.</td>
                 </tr>
                 <tr>
                   <td><code>max_latency_ms</code></td>
@@ -371,7 +377,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 </tr>
                 <tr>
                   <td><code>phase_latency_ms</code></td>
-                  <td>Present only with <code class="inline">--debug</code>; reports count, last, average, p50, p95, and max latency for each teleop phase. <code class="inline">camera_read:*</code> is cached-frame fetch cost, <code class="inline">camera_age:*</code> is frame freshness, and <code class="inline">scheduler_lag</code> is timing drift.</td>
+                  <td>Present only with <code class="inline">--debug</code>; reports count, last, average, p50, p95, and max latency for each teleop phase. <code class="inline">leader_read</code> and <code class="inline">follower_before_read</code> are parallel phases and should not be added together as loop time. <code class="inline">camera_read:*</code> is cached-frame fetch cost, <code class="inline">camera_age:*</code> is frame freshness, and <code class="inline">scheduler_lag</code> is timing drift.</td>
                 </tr>
               </tbody>
             </table>
@@ -386,6 +392,9 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
               <p>
                 Because leader state, follower state, and action are sampled in the same loop just before the cached camera fetch, <code class="inline">camera_age</code> can be read as an approximate state/action-to-image offset: the image is usually about one frame older than the current state/action. The OpenCV path does not use a hardware exposure timestamp, so this is application-level cached-frame age rather than sensor-level synchronization error.
               </p>
+              <p>
+                Dataset recording differs from teleop debug: cameras that support history record all frames in the background during the episode, while the Studio loop records only joint state, action, and monotonic timestamps. After the episode finishes, each control sample is matched to the nearest camera frame by monotonic timestamp. Recording quality should therefore be read as matched timestamp offset, not as the live teleop latest-frame <code class="inline">camera_age</code> value.
+              </p>
             </div>
           </div>
           <div class="callout">
@@ -393,12 +402,14 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
             <div>
               <strong>What the example means</strong>
               <p>
-                The run completed 1800 control samples in 60 seconds with zero
-                over-budget loop steps. Arm reads and target updates are under
-                a few milliseconds, camera reads are cached latest-frame
-                lookups, and scheduler lag stays below one millisecond at p95.
-                The camera-age phases show frame freshness; values around one
-                camera frame are expected for 30 Hz cameras.
+                The run completed 900 control samples in 30 seconds with zero
+                over-budget loop steps. Leader and follower-before reads are
+                each around 1.8 ms at p95, but they run in parallel, so the
+                slowest loop step is only 3.732 ms against a 33.333 ms budget.
+                Target compute and stream update are nearly negligible, camera
+                reads are cached latest-frame lookups, and camera-age phases
+                show teleop preview freshness; values around one camera frame
+                are expected for 30 Hz cameras.
               </p>
             </div>
           </div>

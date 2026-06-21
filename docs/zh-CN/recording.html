@@ -183,6 +183,26 @@ soarm-studio teleop \
   --overwrite</code></pre>
           </div>
 
+          <h2 id="capture-timing">数采时序</h2>
+          <p>
+            录制时，实时循环只负责关节状态、action 和单调时间戳，图像同步在 episode 结束后处理。支持 history 的相机会在后台采集线程里保存 episode 内所有帧；保存数据集前，Studio 会为每个控制样本按 <code class="inline">monotonic_time_ns</code> 匹配最近的相机帧。
+          </p>
+          <pre><code>camera threads:
+  camera.read() @ camera.fps -> episode camera history
+
+Studio loop @ loop_hz:
+  leader_read || follower_before_read
+  -> action
+  -> SDK direct stream update
+  -> append ControlSample(joints, action, timestamp)
+
+after episode:
+  sample.timestamp -> nearest camera frame timestamp
+  -> write LeRobot frame and quality sidecars</code></pre>
+          <p>
+            因此，遥操作 debug 里的 <code class="inline">camera_age:*</code> 表示 latest-frame 预览缓存的新鲜度；录制质量里的相机时间差则表示后处理匹配后的样本到图像 offset。
+          </p>
+
           <h2 id="recording-outputs">检查录制输出</h2>
           <div class="table-wrap">
             <table>
@@ -223,6 +243,7 @@ soarm-studio teleop \
         <a class="toc-level-1" href="#teleop-before-recording">录制前验证遥操作</a>
         <a class="toc-level-1" href="#diagnose-teleop">遥操作诊断</a>
         <a class="toc-level-1" href="#record-dataset">开始录制</a>
+        <a class="toc-level-1" href="#capture-timing">数采时序</a>
         <a class="toc-level-1" href="#recording-outputs">检查输出</a>
       </aside>
     </div>

@@ -183,6 +183,26 @@ soarm-studio teleop \
   --overwrite</code></pre>
           </div>
 
+          <h2 id="capture-timing">Capture timing</h2>
+          <p>
+            During recording, the live loop only records joint state, action, and monotonic timestamps; image synchronization is handled after the episode. Cameras that support history save every frame from their background capture thread during the episode. Before writing the dataset, Studio matches each control sample to the nearest camera frame by <code class="inline">monotonic_time_ns</code>.
+          </p>
+          <pre><code>camera threads:
+  camera.read() @ camera.fps -> episode camera history
+
+Studio loop @ loop_hz:
+  leader_read || follower_before_read
+  -> action
+  -> SDK direct stream update
+  -> append ControlSample(joints, action, timestamp)
+
+after episode:
+  sample.timestamp -> nearest camera frame timestamp
+  -> write LeRobot frame and quality sidecars</code></pre>
+          <p>
+            This means teleop debug <code class="inline">camera_age:*</code> reports latest-frame preview freshness, while recording quality reports the post-matching sample-to-image offset.
+          </p>
+
           <h2 id="recording-outputs">Check recording outputs</h2>
           <div class="table-wrap">
             <table>
@@ -223,6 +243,7 @@ soarm-studio teleop \
         <a class="toc-level-1" href="#teleop-before-recording">Validate teleop</a>
         <a class="toc-level-1" href="#diagnose-teleop">Teleop diagnostics</a>
         <a class="toc-level-1" href="#record-dataset">Record the dataset</a>
+        <a class="toc-level-1" href="#capture-timing">Capture timing</a>
         <a class="toc-level-1" href="#recording-outputs">Check outputs</a>
       </aside>
     </div>
