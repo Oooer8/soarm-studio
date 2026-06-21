@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.hardware.runtime import HardwareSession, preflight_report_to_dict
+from soarm_studio.types import RuntimeState
 
 
 def _mock_session(tmp_path) -> SessionConfig:
@@ -47,3 +48,12 @@ def test_hardware_session_teleop_profile_includes_phase_latency(tmp_path) -> Non
     assert "leader_read" in metrics["phase_latency_ms"]
     assert "follower_after_read" not in metrics["phase_latency_ms"]
     assert metrics["budget_ms"] == 33.333
+
+
+def test_hardware_session_running_loop_owns_runtime_state(tmp_path) -> None:
+    with HardwareSession(_mock_session(tmp_path)) as hardware:
+        with hardware.running_loop(sample_cameras=False) as loop:
+            assert hardware.state == RuntimeState.TELEOP_RUNNING
+            loop.run(steps=0, close_on_finish=False)
+
+        assert hardware.state == RuntimeState.TELEOP_READY

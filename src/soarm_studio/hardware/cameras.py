@@ -225,10 +225,10 @@ class LatestFrameCamera:
             raise RuntimeError(f"Camera {self.name} has no frame yet")
         return frame
 
-    def start_history(self) -> None:
+    def start_history(self, *, seed_latest: bool = False) -> None:
         with self._lock:
             self._history = []
-            if self._latest is not None:
+            if seed_latest and self._latest is not None:
                 self._history.append(self._latest)
             self._record_history = True
 

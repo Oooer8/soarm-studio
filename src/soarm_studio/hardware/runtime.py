@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Callable
 
@@ -170,6 +172,29 @@ class HardwareSession:
             sample_cameras=sample_cameras,
         )
 
+    @contextmanager
+    def running_loop(
+        self,
+        *,
+        on_sample: Callable[[ControlSample], None] | None = None,
+        profile: bool = False,
+        follower_readback_every: int = 0,
+        sample_cameras: bool = True,
+    ) -> Iterator[TeleopLoop]:
+        loop = self.create_loop(
+            on_sample=on_sample,
+            profile=profile,
+            follower_readback_every=follower_readback_every,
+            sample_cameras=sample_cameras,
+        )
+        self.state = RuntimeState.TELEOP_RUNNING
+        try:
+            yield loop
+        finally:
+            loop.close()
+            if self.state != RuntimeState.E_STOP:
+                self.state = RuntimeState.TELEOP_READY
+
     def run_teleop(
         self,
         *,
@@ -179,19 +204,14 @@ class HardwareSession:
         follower_readback_every: int = 0,
         sample_cameras: bool = True,
     ) -> dict:
-        loop = self.create_loop(
+        with self.running_loop(
             on_sample=on_sample,
             profile=profile,
             follower_readback_every=follower_readback_every,
             sample_cameras=sample_cameras,
-        )
-        self.state = RuntimeState.TELEOP_RUNNING
-        try:
+        ) as loop:
             metrics = loop.run(seconds=seconds)
             return metrics.to_dict(include_profile=profile)
-        finally:
-            if self.state != RuntimeState.E_STOP:
-                self.state = RuntimeState.TELEOP_READY
 
     def emergency_stop(self) -> None:
         if self.follower is not None:

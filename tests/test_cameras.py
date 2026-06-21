@@ -170,6 +170,7 @@ def test_latest_frame_camera_records_episode_history() -> None:
 
     try:
         latest.connect()
+        cached = latest.read()
         latest.start_history()
         deadline = time.monotonic() + 1.0
         while camera.frames < 3 and time.monotonic() < deadline:
@@ -179,6 +180,7 @@ def test_latest_frame_camera_records_episode_history() -> None:
         latest.disconnect()
 
     assert len(history) >= 2
+    assert all(frame is not cached for frame in history)
     assert [frame.monotonic_time_ns for frame in history] == sorted(
         frame.monotonic_time_ns for frame in history
     )

@@ -209,7 +209,7 @@ after episode:
             因此，遥操作 debug 里的 <code class="inline">camera_age:*</code> 表示 latest-frame 预览缓存的新鲜度；录制质量里的相机时间差则表示后处理匹配后的样本到图像 offset。
           </p>
           <p>
-            默认录制只保存汇总质量指标。需要查看每个相机的 raw frame timestamp、相邻帧间隔和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。
+            默认录制只保存汇总质量指标。需要查看每个相机的 raw frame timestamp、相邻帧间隔和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。这些 raw camera timestamps 来自 episode history，不包含 warmup 或 <code class="inline">sync_start</code> 期间的缓存帧。
           </p>
 
           <h2 id="recording-outputs">检查录制输出</h2>

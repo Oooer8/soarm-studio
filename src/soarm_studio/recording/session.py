@@ -9,13 +9,15 @@ from soarm_studio.config import SessionConfig
 from soarm_studio.datasets.lerobot_v3 import LeRobotV3Writer
 from soarm_studio.datasets.lerobot_v3.writer import EpisodeWriter
 from soarm_studio.hardware.runtime import HardwareSession
-from soarm_studio.types import CameraFrame, CameraSyncMetric, RuntimeState
+from soarm_studio.types import CameraFrame, CameraSyncMetric
 from soarm_studio.teleop import ControlSample
 
 from .quality import RecordingQualityTracker
 
 
 class _CameraHistoryRecorder(Protocol):
+    def start_history(self, *, seed_latest: bool = False) -> None: ...
+
     def stop_history(self) -> list[CameraFrame]: ...
 
 
@@ -129,31 +131,27 @@ def _run_continuous_recording_loop(
     on_sample: Callable[[ControlSample], None],
     sample_cameras: bool | None = None,
 ) -> tuple[dict, dict[str, list[CameraFrame]]]:
-    loop = hardware.create_loop(on_sample=None, sample_cameras=False)
-    hardware.state = RuntimeState.TELEOP_RUNNING
     history_recorders: dict[str, _CameraHistoryRecorder] = {}
-    try:
-        if warmup > 0:
-            loop.run(seconds=warmup, close_on_finish=False)
-        else:
-            loop.run(steps=0, close_on_finish=False)
-        loop.sync_start = False
-        loop.reset_metrics()
+    with hardware.running_loop(on_sample=None, sample_cameras=False) as loop:
+        try:
+            if warmup > 0:
+                loop.run(seconds=warmup, close_on_finish=False)
+            else:
+                loop.run(steps=0, close_on_finish=False)
+            loop.sync_start = False
+            loop.reset_metrics()
 
-        history_recorders = _start_camera_histories(hardware.cameras)
-        if sample_cameras is None:
-            sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
-        loop.on_sample = on_sample
-        loop.sample_cameras = sample_cameras
-        metrics = loop.run(seconds=seconds, close_on_finish=False)
-        frame_histories = _stop_camera_histories(history_recorders)
-        history_recorders = {}
-        return metrics.to_dict(), frame_histories
-    finally:
-        _stop_camera_histories(history_recorders)
-        loop.close()
-        if hardware.state != RuntimeState.E_STOP:
-            hardware.state = RuntimeState.TELEOP_READY
+            history_recorders = _start_camera_histories(hardware.cameras)
+            if sample_cameras is None:
+                sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
+            loop.on_sample = on_sample
+            loop.sample_cameras = sample_cameras
+            metrics = loop.run(seconds=seconds, close_on_finish=False)
+            frame_histories = _stop_camera_histories(history_recorders)
+            history_recorders = {}
+            return metrics.to_dict(), frame_histories
+        finally:
+            _stop_camera_histories(history_recorders)
 
 
 def _write_episode_samples(
