@@ -686,6 +686,109 @@ figcaption {
   font-size: 13px;
 }
 
+.sequence-diagram {
+  margin: 18px 0 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.sequence-diagram svg {
+  display: block;
+  width: 100%;
+  min-width: 980px;
+  height: auto;
+  background: #fff;
+}
+
+.sequence-diagram marker path {
+  fill: #3f3f46;
+}
+
+.sequence-diagram #return-arrow-zh path,
+.sequence-diagram #return-arrow-en path {
+  fill: #71717a;
+}
+
+.sequence-diagram .sequence-title {
+  fill: var(--fg);
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.sequence-diagram .sequence-participant rect {
+  fill: #155e75;
+}
+
+.sequence-diagram .sequence-participant text {
+  fill: #fff;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.sequence-diagram .sequence-label,
+.sequence-diagram .sequence-note-text,
+.sequence-diagram .sequence-opt-label {
+  fill: #3f3f46;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.sequence-diagram .sequence-opt-label {
+  font-weight: 650;
+}
+
+.sequence-diagram .sequence-lifeline,
+.sequence-diagram .sequence-return {
+  fill: none;
+  stroke: #71717a;
+  stroke-dasharray: 6 6;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.sequence-diagram .sequence-message,
+.sequence-diagram .sequence-self {
+  fill: none;
+  stroke: #3f3f46;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  marker-end: url("#arrow-zh");
+}
+
+.sequence-diagram .sequence-return {
+  marker-end: url("#return-arrow-zh");
+}
+
+.sequence-diagram [aria-labelledby="teleop-sequence-title-en"] .sequence-message,
+.sequence-diagram [aria-labelledby="teleop-sequence-title-en"] .sequence-self {
+  marker-end: url("#arrow-en");
+}
+
+.sequence-diagram [aria-labelledby="teleop-sequence-title-en"] .sequence-return {
+  marker-end: url("#return-arrow-en");
+}
+
+.sequence-diagram .sequence-activation {
+  fill: #f4f4f5;
+  stroke: #a1a1aa;
+}
+
+.sequence-diagram .sequence-note {
+  fill: #f0fdf4;
+  stroke: #86efac;
+}
+
+.sequence-diagram .sequence-opt {
+  fill: rgba(250, 250, 250, 0.88);
+  stroke: #d4d4d8;
+}
+
+.sequence-diagram .sequence-note-text {
+  fill: #166534;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
