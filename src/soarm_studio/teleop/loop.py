@@ -193,6 +193,7 @@ class TeleopLoop:
         seconds: float | None = None,
         steps: int | None = None,
         sleep: bool = True,
+        close_on_finish: bool = True,
     ) -> LoopMetrics:
         if seconds is None and steps is None:
             raise ValueError("Either seconds or steps is required")
@@ -226,10 +227,14 @@ class TeleopLoop:
         finally:
             if self.metrics.finished_at is None:
                 self.metrics.finish()
-            self._stop_stream()
-            self._shutdown_read_executor()
+            if close_on_finish:
+                self._stop_stream()
+                self._shutdown_read_executor()
 
         return self.metrics
+
+    def reset_metrics(self) -> None:
+        self.metrics = LoopMetrics(target_hz=self.hz, profile=self.metrics.profile)
 
     def _ensure_stream(self) -> JointStream:
         if self._stream is None:

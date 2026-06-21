@@ -8,6 +8,7 @@ from soarm_studio.config import CameraConfig
 from soarm_studio.hardware.arms import MockArm, SOARMArm
 from soarm_studio.hardware.cameras import MockCamera
 from soarm_studio.teleop import TeleopLoop
+from soarm_studio.types import JointSample
 
 
 def test_teleop_loop_clips_relative_targets() -> None:
@@ -273,6 +274,57 @@ def test_teleop_run_syncs_start_and_stops_stream() -> None:
     assert metrics.iterations == 1
     assert follower.read_joints().positions == {"a": 1.0, "b": -1.0}
     assert loop._stream is None
+
+
+def test_teleop_run_can_keep_stream_across_warmup_boundary() -> None:
+    joints = ["a", "b"]
+
+    class CountingArm(MockArm):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.move_calls = 0
+            self.stream_starts = 0
+
+        def read_joints(self):
+            if self.name == "leader":
+                return JointSample({"a": 1.0, "b": -1.0})
+            return super().read_joints()
+
+        def move_joints(self, targets, *, duration=None) -> None:
+            self.move_calls += 1
+            super().move_joints(targets, duration=duration)
+
+        def start_joint_stream(self, **kwargs):
+            self.stream_starts += 1
+            return super().start_joint_stream(**kwargs)
+
+    leader = CountingArm("leader", joints)
+    follower = CountingArm("follower", joints)
+    leader.connect()
+    follower.connect()
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        max_relative_target=0.1,
+    )
+    loop.run(steps=1, sleep=False, close_on_finish=False)
+    warmup_stream = loop._stream
+    loop.sync_start = False
+    loop.reset_metrics()
+    samples = []
+    loop.on_sample = samples.append
+    metrics = loop.run(steps=2, sleep=False, close_on_finish=False)
+    episode_stream = loop._stream
+    loop.close()
+
+    assert follower.move_calls == 1
+    assert follower.stream_starts == 1
+    assert warmup_stream is episode_stream
+    assert metrics.iterations == 2
+    assert [sample.frame_index for sample in samples] == [0, 1]
 
 
 def test_teleop_loop_starts_follower_stream_without_mode_surface() -> None:

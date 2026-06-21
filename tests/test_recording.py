@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import soarm_studio.hardware.arms as arms
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.recording.quality import RecordingQualityTracker
 from soarm_studio.recording.session import _write_episode_samples
@@ -63,6 +64,55 @@ def test_record_lerobot_episodes_writes_camera_timing_only_in_debug(tmp_path) ->
     )
     assert timing["sample_count"] > 0
     assert timing["cameras"] == {}
+
+
+def test_record_warmup_and_episode_share_one_stream(monkeypatch, tmp_path) -> None:
+    created: list[arms.MockArm] = []
+
+    class CountingMockArm(arms.MockArm):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.move_calls = 0
+            self.stream_starts = 0
+            created.append(self)
+
+        def read_joints(self):
+            if self.name == "leader":
+                return JointSample({"a": 1.0, "b": -1.0})
+            return super().read_joints()
+
+        def move_joints(self, targets, *, duration=None) -> None:
+            self.move_calls += 1
+            super().move_joints(targets, duration=duration)
+
+        def start_joint_stream(self, **kwargs):
+            self.stream_starts += 1
+            return super().start_joint_stream(**kwargs)
+
+    monkeypatch.setattr(arms, "MockArm", CountingMockArm)
+    root = tmp_path / "dataset"
+    config = SessionConfig(
+        name="test-recording-warmup",
+        loop_hz=30,
+        joints=["a", "b"],
+        leader=ArmEndpointConfig(name="leader", mock=True),
+        follower=ArmEndpointConfig(name="follower", mock=True),
+        cameras={},
+        dataset=DatasetConfig(root=str(root), repo_id="local/test", fps=30),
+    )
+
+    result = record_lerobot_episodes(
+        config,
+        seconds=0.05,
+        warmup=0.05,
+        task="test task",
+        overwrite=True,
+    )
+
+    follower = next(arm for arm in created if arm.name == "follower")
+    assert follower.move_calls == 1
+    assert follower.stream_starts == 1
+    assert 0 < result["episodes"][0]["metrics"]["iterations"] <= 3
 
 
 def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:

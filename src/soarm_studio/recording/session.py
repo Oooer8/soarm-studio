@@ -3,13 +3,13 @@ from __future__ import annotations
 from bisect import bisect_left
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Callable, Protocol
 
 from soarm_studio.config import SessionConfig
 from soarm_studio.datasets.lerobot_v3 import LeRobotV3Writer
 from soarm_studio.datasets.lerobot_v3.writer import EpisodeWriter
 from soarm_studio.hardware.runtime import HardwareSession
-from soarm_studio.types import CameraFrame, CameraSyncMetric
+from soarm_studio.types import CameraFrame, CameraSyncMetric, RuntimeState
 from soarm_studio.teleop import ControlSample
 
 from .quality import RecordingQualityTracker
@@ -67,26 +67,21 @@ def record_lerobot_episodes(
                     "joints": config.joints,
                 }
             )
-            if warmup > 0:
-                hardware.run_teleop(seconds=warmup)
-
             for _ in range(max(1, int(episodes))):
                 quality = RecordingQualityTracker()
                 episode = writer.start_episode(task)
                 samples: list[ControlSample] = []
-                history_recorders = _start_camera_histories(hardware.cameras)
-                sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
 
                 def add_sample(sample: ControlSample) -> None:
                     samples.append(sample)
 
                 try:
-                    metrics = hardware.run_teleop(
+                    metrics, frame_histories = _run_continuous_recording_loop(
+                        hardware,
                         seconds=seconds,
+                        warmup=warmup if not saved else 0.0,
                         on_sample=add_sample,
-                        sample_cameras=sample_cameras,
                     )
-                    frame_histories = _stop_camera_histories(history_recorders)
                     camera_timing = _write_episode_samples(
                         episode,
                         samples,
@@ -107,7 +102,6 @@ def record_lerobot_episodes(
                         }
                     )
                 except Exception:
-                    _stop_camera_histories(history_recorders)
                     episode.discard()
                     raise
 
@@ -125,6 +119,41 @@ def record_lerobot_episodes(
         "episodes": saved,
         "started_at": session_started,
     }
+
+
+def _run_continuous_recording_loop(
+    hardware: HardwareSession,
+    *,
+    seconds: float,
+    warmup: float,
+    on_sample: Callable[[ControlSample], None],
+    sample_cameras: bool | None = None,
+) -> tuple[dict, dict[str, list[CameraFrame]]]:
+    loop = hardware.create_loop(on_sample=None, sample_cameras=False)
+    hardware.state = RuntimeState.TELEOP_RUNNING
+    history_recorders: dict[str, _CameraHistoryRecorder] = {}
+    try:
+        if warmup > 0:
+            loop.run(seconds=warmup, close_on_finish=False)
+        else:
+            loop.run(steps=0, close_on_finish=False)
+        loop.sync_start = False
+        loop.reset_metrics()
+
+        history_recorders = _start_camera_histories(hardware.cameras)
+        if sample_cameras is None:
+            sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
+        loop.on_sample = on_sample
+        loop.sample_cameras = sample_cameras
+        metrics = loop.run(seconds=seconds, close_on_finish=False)
+        frame_histories = _stop_camera_histories(history_recorders)
+        history_recorders = {}
+        return metrics.to_dict(), frame_histories
+    finally:
+        _stop_camera_histories(history_recorders)
+        loop.close()
+        if hardware.state != RuntimeState.E_STOP:
+            hardware.state = RuntimeState.TELEOP_READY
 
 
 def _write_episode_samples(

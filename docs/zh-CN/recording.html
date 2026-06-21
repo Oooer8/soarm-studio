@@ -185,10 +185,16 @@ soarm-studio teleop \
 
           <h2 id="capture-timing">数采时序</h2>
           <p>
-            录制时，实时循环只负责关节状态、action 和单调时间戳，图像同步在 episode 结束后处理。支持 history 的相机会在后台采集线程里保存 episode 内所有帧；保存数据集前，Studio 会为每个控制样本按 <code class="inline">monotonic_time_ns</code> 匹配最近的相机帧。
+            录制时，实时循环只负责关节状态、action 和单调时间戳，图像同步在 episode 结束后处理。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream；支持 history 的相机从 episode 起点开始保存后台采集线程里的帧。保存数据集前，Studio 会为每个控制样本按 <code class="inline">monotonic_time_ns</code> 匹配最近的相机帧。
           </p>
           <pre><code>camera threads:
-  camera.read() @ camera.fps -> episode camera history
+  camera.read() @ camera.fps -> latest frame
+
+warmup:
+  same TeleopLoop, no sample/history collection
+
+episode start:
+  enable episode camera history
 
 Studio loop @ loop_hz:
   leader_read || follower_before_read

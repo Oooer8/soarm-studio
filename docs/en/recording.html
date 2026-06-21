@@ -185,10 +185,16 @@ soarm-studio teleop \
 
           <h2 id="capture-timing">Capture timing</h2>
           <p>
-            During recording, the live loop only records joint state, action, and monotonic timestamps; image synchronization is handled after the episode. Cameras that support history save every frame from their background capture thread during the episode. Before writing the dataset, Studio matches each control sample to the nearest camera frame by <code class="inline">monotonic_time_ns</code>.
+            During recording, the live loop only records joint state, action, and monotonic timestamps; image synchronization is handled after the episode. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Cameras that support history start saving background frames at the episode boundary. Before writing the dataset, Studio matches each control sample to the nearest camera frame by <code class="inline">monotonic_time_ns</code>.
           </p>
           <pre><code>camera threads:
-  camera.read() @ camera.fps -> episode camera history
+  camera.read() @ camera.fps -> latest frame
+
+warmup:
+  same TeleopLoop, no sample/history collection
+
+episode start:
+  enable episode camera history
 
 Studio loop @ loop_hz:
   leader_read || follower_before_read
