@@ -695,7 +695,7 @@ figcaption {
 .sequence-diagram svg {
   display: block;
   width: 100%;
-  min-width: 980px;
+  min-width: 1200px;
   height: auto;
   background: #fff;
 }
@@ -727,6 +727,12 @@ figcaption {
 }
 
 .sequence-diagram .sequence-label,
+.sequence-diagram .sequence-bar-label,
+.sequence-diagram .sequence-bar-value,
+.sequence-diagram .sequence-chart-title,
+.sequence-diagram .sequence-chart-tick,
+.sequence-diagram .sequence-latency,
+.sequence-diagram .sequence-metric-text,
 .sequence-diagram .sequence-note-text,
 .sequence-diagram .sequence-opt-label {
   fill: #3f3f46;
@@ -734,8 +740,26 @@ figcaption {
   font-size: 13px;
 }
 
+.sequence-diagram .sequence-latency,
+.sequence-diagram .sequence-metric-text {
+  fill: #71717a;
+  font-size: 12px;
+}
+
 .sequence-diagram .sequence-opt-label {
   font-weight: 650;
+}
+
+.sequence-diagram .sequence-chart-title,
+.sequence-diagram .sequence-bar-label {
+  font-weight: 600;
+}
+
+.sequence-diagram .sequence-bar-label,
+.sequence-diagram .sequence-bar-value,
+.sequence-diagram .sequence-chart-tick {
+  fill: #71717a;
+  font-size: 11px;
 }
 
 .sequence-diagram .sequence-lifeline,
@@ -780,6 +804,16 @@ figcaption {
   stroke: #86efac;
 }
 
+.sequence-diagram .sequence-latency-panel {
+  fill: #fff;
+  stroke: #e4e4e7;
+}
+
+.sequence-diagram .sequence-metric-note {
+  fill: #fafafa;
+  stroke: #d4d4d8;
+}
+
 .sequence-diagram .sequence-opt {
   fill: rgba(250, 250, 250, 0.88);
   stroke: #d4d4d8;
@@ -787,6 +821,24 @@ figcaption {
 
 .sequence-diagram .sequence-note-text {
   fill: #166534;
+}
+
+.sequence-diagram .sequence-chart-axis {
+  stroke: #a1a1aa;
+  stroke-linecap: round;
+  stroke-width: 1;
+}
+
+.sequence-diagram .sequence-latency-bar {
+  fill: #155e75;
+}
+
+.sequence-diagram .sequence-latency-bar.freshness {
+  fill: #166534;
+}
+
+.sequence-diagram .sequence-latency-bar.sleep {
+  fill: #854d0e;
 }
 
 .table-wrap {
