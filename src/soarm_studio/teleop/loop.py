@@ -59,6 +59,7 @@ class TeleopLoop:
         self.sleep_spin_s = min(0.0005, self.sleep_guard_s)
         self.paused = False
         self.stop_requested = False
+        self.stop_reason: str | None = None
         self.metrics = LoopMetrics(target_hz=hz, profile=profile)
         self._stream: JointStream | None = None
         self._read_executor: ThreadPoolExecutor | None = None

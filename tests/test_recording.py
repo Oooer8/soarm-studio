@@ -144,6 +144,57 @@ def test_record_lerobot_episodes_marks_early_stop(tmp_path) -> None:
     assert metrics["iterations"] == 1
 
 
+def test_record_lerobot_episodes_can_retry_from_recording_context(tmp_path) -> None:
+    root = tmp_path / "dataset"
+    config = SessionConfig(
+        name="test-recording-context-retry",
+        loop_hz=30,
+        joints=["a", "b"],
+        leader=ArmEndpointConfig(name="leader", mock=True, scripted=True),
+        follower=ArmEndpointConfig(name="follower", mock=True, max_relative_target=0.1),
+        cameras={},
+        dataset=DatasetConfig(root=str(root), repo_id="local/test", fps=30),
+    )
+    requested_retry = False
+    decisions: list[str] = []
+
+    @contextmanager
+    def retry_after_first_sample(loop: object):
+        nonlocal requested_retry
+        original_on_sample = loop.on_sample
+
+        def wrapped_on_sample(sample) -> None:
+            nonlocal requested_retry
+            original_on_sample(sample)
+            if not requested_retry:
+                requested_retry = True
+                loop.stop_reason = "retry"
+                loop.stop_requested = True
+
+        loop.on_sample = wrapped_on_sample
+        yield
+
+    def after_episode(info) -> str:
+        decision = "retry" if info.metrics.get("stop_reason") == "retry" else "save"
+        decisions.append(decision)
+        return decision
+
+    result = record_lerobot_episodes(
+        config,
+        seconds=0.05,
+        task="test task",
+        overwrite=True,
+        controls=RecordingControls(
+            after_episode=after_episode,
+            recording_context=retry_after_first_sample,
+        ),
+    )
+
+    assert decisions == ["retry", "save"]
+    assert result["episodes"][0]["episode_index"] == 0
+    assert result["episodes"][0]["attempt"] == 2
+
+
 def test_record_warmup_and_episode_share_one_stream(monkeypatch, tmp_path) -> None:
     created: list[arms.MockArm] = []
 

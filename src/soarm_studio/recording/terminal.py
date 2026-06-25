@@ -18,6 +18,9 @@ from .session import (
     RecordingLoopControl,
 )
 
+KEY_LEFT = "left"
+KEY_RIGHT = "right"
+
 
 @contextmanager
 def _raw_mode() -> Iterator[None]:
@@ -34,17 +37,29 @@ def _raw_mode() -> Iterator[None]:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 
-def _read_key_nonblocking(timeout: float = 0.0) -> str | None:
-    """Read a single key from stdin without blocking.
-
-    Returns the character pressed, or None if no key was pressed within *timeout*.
-    """
+def _read_raw_char(timeout: float = 0.0) -> str | None:
     if not sys.stdin.isatty():
         return None
     readable, _, _ = select.select([sys.stdin], [], [], timeout)
     if readable:
         return sys.stdin.read(1)
     return None
+
+
+def _read_key_nonblocking(timeout: float = 0.0) -> str | None:
+    """Read a key token from stdin without blocking."""
+    key = _read_raw_char(timeout)
+    if key != "\x1b":
+        return key
+    second = _read_raw_char(0.05)
+    if second != "[":
+        return key
+    third = _read_raw_char(0.05)
+    if third == "D":
+        return KEY_LEFT
+    if third == "C":
+        return KEY_RIGHT
+    return key
 
 
 def countdown(seconds: int, message: str = "") -> None:
@@ -77,7 +92,12 @@ def countdown(seconds: int, message: str = "") -> None:
         sys.stdout.flush()
 
 
-def wait_for_key(prompt: str, valid_keys: str, *, default: str | None = None) -> str:
+def wait_for_key(
+    prompt: str,
+    valid_keys: str | tuple[str, ...] | set[str],
+    *,
+    default: str | None = None,
+) -> str:
     """Wait for the user to press one of the valid keys.
 
     Parameters
@@ -94,6 +114,7 @@ def wait_for_key(prompt: str, valid_keys: str, *, default: str | None = None) ->
     The key that was pressed (lowercase).
     """
     print(prompt, end="", flush=True)
+    valid = set(valid_keys) if not isinstance(valid_keys, str) else set(valid_keys)
     if not sys.stdin.isatty():
         if default is None:
             raise RuntimeError("interactive prompt requires a TTY")
@@ -108,7 +129,7 @@ def wait_for_key(prompt: str, valid_keys: str, *, default: str | None = None) ->
                 print()
                 return default
             key_lower = key.lower()
-            if key_lower in valid_keys:
+            if key_lower in valid:
                 print()
                 return key_lower
 
@@ -116,22 +137,31 @@ def wait_for_key(prompt: str, valid_keys: str, *, default: str | None = None) ->
 class KeyboardListener:
     """Background thread that listens for keyboard input during recording.
 
-    The listener runs a background thread that polls stdin for key presses.
-    When a target key (default ``'q'``) is detected, ``stop_requested`` is set to ``True``
-    and the optional ``on_stop`` callback is called.
+    The listener polls stdin for key presses. When a configured key is detected,
+    ``stop_requested`` is set to ``True`` and the matching callback is called.
 
     Usage::
 
-        listener = KeyboardListener()
+        listener = KeyboardListener(key_actions={"left": on_left})
         listener.start()
         # ... do work, periodically check listener.stop_requested ...
         listener.stop()
     """
 
-    def __init__(self, stop_key: str = "q", on_stop: Callable[[], None] | None = None) -> None:
-        self.stop_key = stop_key.lower()
+    def __init__(
+        self,
+        stop_key: str | None = "q",
+        on_stop: Callable[[], None] | None = None,
+        key_actions: dict[str, Callable[[], None]] | None = None,
+    ) -> None:
+        self.stop_key = None if stop_key is None else stop_key.lower()
         self.on_stop = on_stop
+        self.key_actions = {
+            key.lower(): action
+            for key, action in (key_actions or {}).items()
+        }
         self.stop_requested = False
+        self.last_key: str | None = None
         self._thread: threading.Thread | None = None
         self._running = False
 
@@ -141,6 +171,7 @@ class KeyboardListener:
             return
         self._running = True
         self.stop_requested = False
+        self.last_key = None
         self._thread = threading.Thread(target=self._listen, daemon=True, name="key-listener")
         self._thread.start()
 
@@ -152,7 +183,7 @@ class KeyboardListener:
             self._thread = None
 
     def _listen(self) -> None:
-        """Poll stdin for the stop key."""
+        """Poll stdin for configured keys."""
         if not sys.stdin.isatty():
             return
         fd = sys.stdin.fileno()
@@ -161,13 +192,26 @@ class KeyboardListener:
             tty.setcbreak(fd)
             while self._running:
                 key = _read_key_nonblocking(timeout=0.1)
-                if key is not None and key.lower() == self.stop_key:
-                    self.stop_requested = True
-                    if self.on_stop is not None:
-                        self.on_stop()
+                if key is None:
+                    continue
+                key_lower = key.lower()
+                if self.stop_key is not None and key_lower == self.stop_key:
+                    self._trigger(key_lower)
+                    return
+                action = self.key_actions.get(key_lower)
+                if action is not None:
+                    self._trigger(key_lower, action=action)
                     return
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    def _trigger(self, key: str, *, action: Callable[[], None] | None = None) -> None:
+        self.stop_requested = True
+        self.last_key = key
+        if action is not None:
+            action()
+        elif self.on_stop is not None:
+            self.on_stop()
 
 
 def create_manual_recording_controls() -> RecordingControls:
@@ -186,7 +230,7 @@ def create_manual_recording_controls() -> RecordingControls:
             print(f"会先 warmup {info.warmup:g}s，然后录制最多 {info.seconds:g}s。")
         else:
             print(f"录制最多 {info.seconds:g}s。")
-        key = wait_for_key("摆好起始姿态后按 Enter 开始，按 q 结束录制会话: ", "q", default="s")
+        key = wait_for_key("摆好起始姿态后按 Enter 开始，按 q 放弃录制会话: ", "q", default="s")
         if key == "q":
             return False
         countdown(3, "准备开始录制。")
@@ -195,6 +239,10 @@ def create_manual_recording_controls() -> RecordingControls:
     def after_episode(info: EpisodeResultInfo) -> EpisodeDecision:
         frames = int(info.quality.get("frames", 0))
         elapsed_s = float(info.metrics.get("elapsed_s", 0.0))
+        stop_reason = str(info.metrics.get("stop_reason") or "")
+        if stop_reason == "retry":
+            print("已请求重新录制，本次采集会丢弃。")
+            return "retry"
         suffix = "，已提前结束" if info.metrics.get("stopped_early") else ""
         print(
             f"Episode {info.episode_number}/{info.total_episodes} "
@@ -202,32 +250,44 @@ def create_manual_recording_controls() -> RecordingControls:
         )
         if frames <= 0:
             key = wait_for_key(
-                "没有采集到帧。按 Enter 重录，按 q 丢弃并结束录制会话: ",
-                "q",
-                default="r",
+                "没有采集到帧。按右方向键舍弃并重新录制: ",
+                (KEY_RIGHT,),
             )
-            return "abort" if key == "q" else "retry"
+            return "retry" if key == KEY_RIGHT else "abort"
         key = wait_for_key(
-            "按 Enter 保存；按 r 重录这个 episode；按 q 丢弃并结束录制会话: ",
-            "rq",
-            default="s",
+            "按左方向键保存并进入下一集；按右方向键舍弃并重新录制: ",
+            (KEY_LEFT, KEY_RIGHT),
         )
-        return {"s": "save", "r": "retry", "q": "abort"}[key]
+        return "save" if key == KEY_LEFT else "retry"
 
     @contextmanager
     def recording_context(loop: RecordingLoopControl) -> Iterator[None]:
-        print("录制中：按 q 可提前结束当前 episode。")
+        print("录制中：按左方向键提前结束并进入选择；按右方向键舍弃并重新录制。")
+
+        def request_select() -> None:
+            loop.stop_reason = "select"
+            loop.stop_requested = True
+
+        def request_retry() -> None:
+            loop.stop_reason = "retry"
+            loop.stop_requested = True
+
         listener = KeyboardListener(
-            stop_key="q",
-            on_stop=lambda: setattr(loop, "stop_requested", True),
+            stop_key=None,
+            key_actions={
+                KEY_LEFT: request_select,
+                KEY_RIGHT: request_retry,
+            },
         )
         listener.start()
         try:
             yield
         finally:
             listener.stop()
-            if listener.stop_requested:
+            if listener.last_key == KEY_LEFT:
                 print("已收到提前结束请求，本 episode 已停止采集。")
+            elif listener.last_key == KEY_RIGHT:
+                print("已收到重新录制请求，本 episode 已停止采集。")
 
     return RecordingControls(
         before_episode=before_episode,

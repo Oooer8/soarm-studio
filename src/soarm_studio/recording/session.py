@@ -25,6 +25,7 @@ class _CameraHistoryRecorder(Protocol):
 
 class RecordingLoopControl(Protocol):
     stop_requested: bool
+    stop_reason: str | None
 
 
 EpisodeDecision = Literal["save", "retry", "abort"]
@@ -237,6 +238,7 @@ def _run_continuous_recording_loop(
             loop.on_sample = on_sample
             loop.sample_cameras = sample_cameras
             loop.stop_requested = False
+            loop.stop_reason = None
             context = nullcontext() if recording_context is None else recording_context(loop)
             with context:
                 metrics = loop.run(seconds=seconds, close_on_finish=False)
@@ -245,6 +247,8 @@ def _run_continuous_recording_loop(
             metrics_dict = metrics.to_dict()
             if getattr(loop, "stop_requested", False):
                 metrics_dict["stopped_early"] = True
+            if getattr(loop, "stop_reason", None) is not None:
+                metrics_dict["stop_reason"] = loop.stop_reason
             return metrics_dict, frame_histories
         finally:
             _stop_camera_histories(history_recorders)
