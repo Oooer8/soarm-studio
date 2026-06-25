@@ -106,6 +106,7 @@ def assign_camera_roles(
     height: int = 480,
     fps: int = 30,
     backend: str = "auto",
+    fourcc: str | None = None,
     use_detected_match: bool = True,
 ) -> dict[str, Any]:
     if wrist_index is None and third_person_index is None:
@@ -124,6 +125,7 @@ def assign_camera_roles(
             height=height,
             fps=fps,
             backend=backend,
+            fourcc=fourcc,
             detected=detected,
         )
         assigned["wrist"] = cameras["wrist"]
@@ -134,6 +136,7 @@ def assign_camera_roles(
             height=height,
             fps=fps,
             backend=backend,
+            fourcc=fourcc,
             detected=detected,
         )
         assigned["third_person"] = cameras["third_person"]
@@ -281,9 +284,10 @@ def _camera_role_config(
     height: int,
     fps: int,
     backend: str,
+    fourcc: str | None,
     detected: list[CameraDeviceInfo],
 ) -> dict[str, Any]:
-    return {
+    config = {
         "enabled": True,
         "kind": "opencv",
         "device": int(index),
@@ -293,6 +297,9 @@ def _camera_role_config(
         "backend": backend,
         "match": _camera_match_for_index(index, detected),
     }
+    if fourcc is not None:
+        config["fourcc"] = fourcc.strip().upper()
+    return config
 
 
 def _camera_match_for_index(index: int, detected: list[CameraDeviceInfo]) -> dict[str, Any]:

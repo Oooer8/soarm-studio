@@ -76,9 +76,11 @@ soarm-studio setup arms \
 soarm-studio scan --preview-cameras \
   --camera-indices 0,1,2,3 \
   --backend v4l2 \
+  --fourcc MJPG \
   --output-dir previews/cameras
 soarm-studio setup cameras \
   --backend v4l2 \
+  --fourcc MJPG \
   --wrist-index 1 \
   --third-person-index 0
 soarm-studio check --config configs/session.yaml --overwrite

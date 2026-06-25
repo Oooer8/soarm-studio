@@ -276,6 +276,7 @@
                     <pre><code>soarm-studio scan --preview-cameras \
   --camera-indices 0,1,2,3 \
   --backend v4l2 \
+  --fourcc MJPG \
   --output-dir previews/cameras</code></pre>
                   </div>
                   <details class="cli-result">
@@ -339,6 +340,7 @@
                     </div>
                     <pre><code>soarm-studio setup cameras \
   --backend v4l2 \
+  --fourcc MJPG \
   --wrist-index 1 \
   --third-person-index 0</code></pre>
                   </div>
@@ -352,14 +354,16 @@
       "backend": "v4l2",
       "width": 640,
       "height": 480,
-      "fps": 30
+      "fps": 30,
+      "fourcc": "MJPG"
     },
     "third_person": {
       "device": 0,
       "backend": "v4l2",
       "width": 640,
       "height": 480,
-      "fps": 30
+      "fps": 30,
+      "fourcc": "MJPG"
     }
   },
   "warnings": [

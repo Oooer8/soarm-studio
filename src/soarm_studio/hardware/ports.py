@@ -177,7 +177,7 @@ def _build_info(item: dict[str, Any], devices: set[str]) -> SerialPortInfo:
         name=name,
         basename=basename,
         connection=connection,
-        preferred_for_connection=connection == "callout" and role_hint != "system",
+        preferred_for_connection=connection in {"callout", "linux-tty"} and role_hint != "system",
         soarm_candidate=role_hint == "usb-serial" and connection in {"callout", "linux-tty"},
         paired_device=paired_device,
         description=item.get("description"),

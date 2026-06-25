@@ -162,6 +162,7 @@ def test_assign_camera_roles_writes_wrist_and_third_person(tmp_path) -> None:
         width=320,
         height=240,
         fps=15,
+        fourcc="mjpg",
         use_detected_match=False,
     )
 
@@ -172,6 +173,8 @@ def test_assign_camera_roles_writes_wrist_and_third_person(tmp_path) -> None:
     assert session["cameras"]["third_person"]["width"] == 320
     assert session["cameras"]["third_person"]["height"] == 240
     assert session["cameras"]["third_person"]["fps"] == 15
+    assert session["cameras"]["third_person"]["fourcc"] == "MJPG"
+    assert session["cameras"]["wrist"]["fourcc"] == "MJPG"
     assert result["assigned"]["wrist"]["kind"] == "opencv"
 
 

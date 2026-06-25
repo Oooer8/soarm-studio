@@ -30,6 +30,14 @@ def test_port_info_prefers_cu_side() -> None:
     assert tty.role_hint == "usb-serial"
 
 
+def test_port_info_prefers_linux_tty_devices() -> None:
+    info = _build_info({"device": "/dev/ttyACM0", "name": "ttyACM0"}, {"/dev/ttyACM0"})
+
+    assert info.connection == "linux-tty"
+    assert info.preferred_for_connection is True
+    assert info.soarm_candidate is True
+
+
 def test_port_info_filters_system_hint() -> None:
     info = _build_info(
         {"device": "/dev/cu.Bluetooth-Incoming-Port", "name": "cu.Bluetooth-Incoming-Port"},

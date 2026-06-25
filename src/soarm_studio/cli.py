@@ -51,8 +51,14 @@ def main(argv: list[str] | None = None) -> None:
     scan.add_argument("--output-dir", default="previews/cameras")
     scan.add_argument("--width", type=int, default=640)
     scan.add_argument("--height", type=int, default=480)
+    scan.add_argument("--fps", type=int, default=30)
     scan.add_argument("--frames", type=int, default=5)
     scan.add_argument("--backend", choices=CAMERA_BACKENDS, default="auto")
+    scan.add_argument(
+        "--fourcc",
+        default=None,
+        help="Optional four-character camera pixel format request, for example MJPG or YUYV.",
+    )
 
     setup = subcommands.add_parser("setup", help="Save arm or camera role assignments")
     setup_sub = setup.add_subparsers(dest="setup_target", required=True)
@@ -219,6 +225,11 @@ def _add_camera_setup_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--backend", choices=CAMERA_BACKENDS, default="auto")
+    parser.add_argument(
+        "--fourcc",
+        default=None,
+        help="Optional four-character camera pixel format request, for example MJPG or YUYV.",
+    )
     parser.add_argument("--no-detected-match", action="store_true")
 
 
@@ -252,8 +263,10 @@ def _handle_scan(args) -> None:
                 output_dir=args.output_dir,
                 width=args.width,
                 height=args.height,
+                fps=args.fps,
                 frames=args.frames,
                 backend=args.backend,
+                fourcc=args.fourcc,
             )
         except RuntimeError as exc:
             raise SystemExit(str(exc)) from exc
@@ -352,6 +365,7 @@ def _handle_assign(args) -> None:
                 height=args.height,
                 fps=args.fps,
                 backend=args.backend,
+                fourcc=args.fourcc,
                 use_detected_match=not args.no_detected_match,
             )
             _print_json(_compact_camera_assignment(result))
@@ -797,6 +811,7 @@ def _compact_camera_assignment(result: dict[str, Any]) -> dict[str, Any]:
                 "width": camera.get("width"),
                 "height": camera.get("height"),
                 "fps": camera.get("fps"),
+                "fourcc": camera.get("fourcc"),
                 "match": camera.get("match") or None,
             }
         )

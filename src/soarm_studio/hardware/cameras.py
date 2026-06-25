@@ -485,8 +485,10 @@ def preview_camera_devices(
     output_dir: str | Path,
     width: int = 640,
     height: int = 480,
+    fps: int = 30,
     frames: int = 5,
     backend: str = "auto",
+    fourcc: str | None = None,
 ) -> list[CameraPreviewInfo]:
     try:
         import cv2  # type: ignore
@@ -504,13 +506,26 @@ def preview_camera_devices(
             preview: CameraPreviewInfo | None = None
             failures: list[str] = []
             for backend_name, backend_api in backends:
-                capture = _open_video_capture(cv2, int(index), backend_api)
+                params = _capture_open_params(
+                    cv2,
+                    width=width,
+                    height=height,
+                    fps=fps,
+                    fourcc=fourcc,
+                )
+                capture = _open_video_capture(cv2, int(index), backend_api, params=params)
                 try:
                     if not capture.isOpened():
                         failures.append(f"{backend_name}: camera did not open")
                         continue
-                    capture.set(cv2.CAP_PROP_FRAME_WIDTH, int(width))
-                    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, int(height))
+                    _configure_capture(
+                        cv2,
+                        capture,
+                        width=width,
+                        height=height,
+                        fps=fps,
+                        fourcc=fourcc,
+                    )
 
                     frame = None
                     for _ in range(frame_count):
