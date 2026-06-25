@@ -332,6 +332,28 @@ def test_timing_calibration_from_warmup_estimates_joint_lead_and_camera_shift() 
     assert calibration.camera_receive_to_exposure_shift_ns == {"wrist": -50_000_000}
 
 
+def test_timing_calibration_from_warmup_uses_dominant_timing_bucket() -> None:
+    samples = [
+        _sample(frame_index=0, monotonic_time_ns=1_000_000_000, joint_estimated_offset_ns=24_000_000),
+        _sample(frame_index=1, monotonic_time_ns=1_100_000_000, joint_estimated_offset_ns=25_000_000),
+        _sample(frame_index=2, monotonic_time_ns=1_200_000_000, joint_estimated_offset_ns=2_900_000),
+        _sample(frame_index=3, monotonic_time_ns=1_300_000_000, joint_estimated_offset_ns=3_000_000),
+        _sample(frame_index=4, monotonic_time_ns=1_400_000_000, joint_estimated_offset_ns=3_100_000),
+    ]
+    frames = [
+        _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+        _frame(monotonic_time_ns=1_150_000_000, pixel=b"\x02\x00\x00"),
+        _frame(monotonic_time_ns=1_250_000_000, pixel=b"\x03\x00\x00"),
+        _frame(monotonic_time_ns=1_350_000_000, pixel=b"\x04\x00\x00"),
+        _frame(monotonic_time_ns=1_450_000_000, pixel=b"\x05\x00\x00"),
+    ]
+
+    calibration = timing_calibration_from_warmup(samples, {"wrist": frames})
+
+    assert calibration.joint_read_lead_ns == 3_000_000
+    assert calibration.camera_receive_to_exposure_shift_ns == {"wrist": -50_000_000}
+
+
 def test_timing_calibration_from_warmup_ignores_insufficient_camera_history() -> None:
     calibration = timing_calibration_from_warmup(
         [],

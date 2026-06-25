@@ -35,6 +35,9 @@ class _CameraHistory:
     receive_to_exposure_shift_ns: int = 0
 
 
+_WARMUP_TIMING_BUCKET_NS = 1_000_000
+
+
 def write_episode_samples(
     episode: EpisodeFrameWriter,
     samples: list[ControlSample],
@@ -140,7 +143,7 @@ def _joint_read_lead_from_warmup(samples: list[ControlSample]) -> int:
         offsets_ns.append(estimated_sample_ns - sample.monotonic_time_ns)
     if not offsets_ns:
         return 0
-    lead_ns = int(_median(offsets_ns))
+    lead_ns = _dominant_timing_ns(offsets_ns)
     return max(0, lead_ns)
 
 
@@ -155,7 +158,7 @@ def _camera_receive_to_exposure_shift_ns(timestamps_ns: list[int]) -> int:
     ]
     if not intervals_ns:
         return 0
-    return -int(_median(intervals_ns) / 2.0)
+    return -int(_dominant_timing_ns(intervals_ns) / 2.0)
 
 
 def _sample_with_matched_camera_frames(
@@ -388,6 +391,30 @@ def _median(values: list[int]) -> float:
     if count % 2:
         return float(ordered[middle])
     return (ordered[middle - 1] + ordered[middle]) / 2.0
+
+
+def _dominant_timing_ns(
+    values: list[int],
+    *,
+    bucket_ns: int = _WARMUP_TIMING_BUCKET_NS,
+) -> int:
+    if not values:
+        return 0
+    if bucket_ns <= 0:
+        return int(_median(values))
+    buckets: dict[int, list[int]] = {}
+    for value in values:
+        bucket = round(value / bucket_ns)
+        buckets.setdefault(bucket, []).append(value)
+    global_median = _median(values)
+    max_count = max(len(bucket_values) for bucket_values in buckets.values())
+    if max_count <= 1:
+        return int(global_median)
+    selected_bucket_values = min(
+        (bucket_values for bucket_values in buckets.values() if len(bucket_values) == max_count),
+        key=lambda bucket_values: abs(_median(bucket_values) - global_median),
+    )
+    return int(_median(selected_bucket_values))
 
 
 def _observed_fps(timestamps_ns: list[int]) -> float:

@@ -239,7 +239,7 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
           <h2 id="capture-timing">数采时序</h2>
           <p>
-            录制以 Studio 的目标 <code class="inline">loop tick</code> 作为唯一时间轴。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream。warmup 会自动估计 joint 读取提前量，以及相机“收到帧”到“估计曝光时刻”的偏移；用户通常只需要保留 <code class="inline">--warmup 1</code>，不用手动配置额外 offset。
+            录制以 Studio 的目标 <code class="inline">loop tick</code> 作为唯一时间轴。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream。warmup 会按 1 ms 分桶取稳定主峰，自动估计 joint 读取提前量，以及相机“收到帧”到“估计曝光时刻”的偏移；用户通常只需要保留 <code class="inline">--warmup 1</code>，不用手动配置额外 offset。
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
