@@ -408,8 +408,14 @@ def _handle_record(
     save_policy: str,
     debug: bool,
 ) -> None:
+    controls = None
     if save_policy == "manual":
-        raise SystemExit("--save-policy manual is reserved for the Web UI in this version")
+        from .recording.terminal import create_manual_recording_controls
+
+        try:
+            controls = create_manual_recording_controls()
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
     _print_json(
         record_lerobot_episodes(
             config,
@@ -419,6 +425,7 @@ def _handle_record(
             warmup=warmup,
             episodes=episodes,
             debug=debug,
+            controls=controls,
         )
     )
 

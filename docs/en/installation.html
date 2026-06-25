@@ -98,9 +98,10 @@
           </div>
           <pre><code>sudo apt update
 sudo apt install -y git v4l-utils libusb-1.0-0 libusb-1.0-0-dev libgl1 libglib2.0-0
-sudo usermod -aG dialout,video "$USER"</code></pre>
+sudo usermod -aG dialout,video "$USER"
+newgrp dialout</code></pre>
           <p>
-            Log out and back in after changing groups so serial and camera device permissions take effect.
+            Do not add a space inside <code class="inline">dialout,video</code>. <code class="inline">newgrp dialout</code> gives the current terminal immediate serial access; logging out and back in is still the clean way to refresh both serial and camera device permissions.
           </p>
           <div class="code-title">
             <span>Install the environment</span>

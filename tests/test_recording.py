@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 
 import soarm_studio.hardware.arms as arms
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.recording.quality import RecordingQualityTracker
-from soarm_studio.recording.session import _start_camera_histories, _write_episode_samples
+from soarm_studio.recording.session import (
+    RecordingControls,
+    _start_camera_histories,
+    _write_episode_samples,
+)
 from soarm_studio.recording import record_lerobot_episodes
 from soarm_studio.types import CameraFrame, ControlSample, JointSample
 
@@ -64,6 +69,79 @@ def test_record_lerobot_episodes_writes_camera_timing_only_in_debug(tmp_path) ->
     )
     assert timing["sample_count"] > 0
     assert timing["cameras"] == {}
+
+
+def test_record_lerobot_episodes_can_retry_current_episode(tmp_path) -> None:
+    root = tmp_path / "dataset"
+    config = SessionConfig(
+        name="test-recording-retry",
+        loop_hz=30,
+        joints=["a", "b"],
+        leader=ArmEndpointConfig(name="leader", mock=True, scripted=True),
+        follower=ArmEndpointConfig(name="follower", mock=True, max_relative_target=0.1),
+        cameras={},
+        dataset=DatasetConfig(root=str(root), repo_id="local/test", fps=30),
+    )
+    seen_attempts: list[int] = []
+    decisions = iter(["retry", "save"])
+
+    def before_episode(info) -> bool:
+        seen_attempts.append(int(info.attempt))
+        return True
+
+    result = record_lerobot_episodes(
+        config,
+        seconds=0.05,
+        task="test task",
+        overwrite=True,
+        controls=RecordingControls(
+            before_episode=before_episode,
+            after_episode=lambda info: next(decisions),
+        ),
+    )
+
+    assert seen_attempts == [1, 2]
+    assert result["episodes"][0]["episode_index"] == 0
+    assert result["episodes"][0]["episode_number"] == 1
+    assert result["episodes"][0]["attempt"] == 2
+    assert (root / "episodes" / "episode_000000" / "quality.json").exists()
+    assert not (root / "episodes" / "episode_000001").exists()
+
+
+def test_record_lerobot_episodes_marks_early_stop(tmp_path) -> None:
+    root = tmp_path / "dataset"
+    config = SessionConfig(
+        name="test-recording-stop",
+        loop_hz=30,
+        joints=["a", "b"],
+        leader=ArmEndpointConfig(name="leader", mock=True, scripted=True),
+        follower=ArmEndpointConfig(name="follower", mock=True, max_relative_target=0.1),
+        cameras={},
+        dataset=DatasetConfig(root=str(root), repo_id="local/test", fps=30),
+    )
+
+    @contextmanager
+    def stop_after_first_sample(loop: object):
+        original_on_sample = loop.on_sample
+
+        def wrapped_on_sample(sample) -> None:
+            original_on_sample(sample)
+            loop.stop_requested = True
+
+        loop.on_sample = wrapped_on_sample
+        yield
+
+    result = record_lerobot_episodes(
+        config,
+        seconds=1.0,
+        task="test task",
+        overwrite=True,
+        controls=RecordingControls(recording_context=stop_after_first_sample),
+    )
+
+    metrics = result["episodes"][0]["metrics"]
+    assert metrics["stopped_early"] is True
+    assert metrics["iterations"] == 1
 
 
 def test_record_warmup_and_episode_share_one_stream(monkeypatch, tmp_path) -> None:

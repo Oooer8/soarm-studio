@@ -180,8 +180,62 @@ soarm-studio teleop \
   --warmup 1 \
   --seconds 10 \
   --task "pick object" \
-  --overwrite</code></pre>
+  --overwrite \
+  --save-policy manual</code></pre>
           </div>
+          <p>
+            加上 <code class="inline">--save-policy manual</code> 后，每个 episode 开始前都会等待确认。录制过程中按 <code class="inline">q</code> 可以提前结束当前 episode；录完后按 Enter 保存，按 <code class="inline">r</code> 丢弃并重新录制这个 episode，按 <code class="inline">q</code> 丢弃并结束本次录制会话。
+          </p>
+          <details class="cli-result">
+            <summary>10 秒硬件录制成功输出示例</summary>
+            <pre><code>soarm-studio record \
+  --config configs/session.yaml \
+  --episodes 1 \
+  --warmup 1 \
+  --seconds 10 \
+  --task "pick object" \
+  --overwrite \
+  --save-policy manual
+
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.
+{
+  "dataset": "datasets/soarm",
+  "task": "pick object",
+  "episodes": [
+    {
+      "episode_index": 0,
+      "episode_number": 1,
+      "attempt": 1,
+      "task": "pick object",
+      "metrics": {
+        "iterations": 600,
+        "target_hz": 60,
+        "observed_hz": 60.0,
+        "last_latency_ms": 2.224,
+        "max_latency_ms": 2.824,
+        "elapsed_s": 10.0
+      },
+      "quality": {
+        "frames": 600,
+        "dropped_camera_frames": 0,
+        "stale_camera_frames": 0,
+        "max_loop_latency_ms": 2.7824759999930393,
+        "max_camera_latency_ms": 0.0,
+        "max_camera_age_ms": 0.0,
+        "warnings": []
+      }
+    }
+  ],
+  "started_at": "2026-06-25T11:35:57.494268+00:00",
+  "aborted": false
+}</code></pre>
+          </details>
+          <p>
+            对于 60 Hz 配置，10 秒 episode 应接近 <code class="inline">600</code> 次循环和 <code class="inline">600</code> 帧；<code class="inline">dropped_camera_frames</code>、<code class="inline">stale_camera_frames</code> 为 <code class="inline">0</code> 且 <code class="inline">warnings</code> 为空，表示这次 smoke test 可以作为继续扩大采集前的健康基线。
+          </p>
 
           <h2 id="capture-timing">数采时序</h2>
           <p>

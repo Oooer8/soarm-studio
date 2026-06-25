@@ -58,6 +58,7 @@ class TeleopLoop:
         self.sleep_guard_s = min(0.004, self.dt * 0.25)
         self.sleep_spin_s = min(0.0005, self.sleep_guard_s)
         self.paused = False
+        self.stop_requested = False
         self.metrics = LoopMetrics(target_hz=hz, profile=profile)
         self._stream: JointStream | None = None
         self._read_executor: ThreadPoolExecutor | None = None
@@ -206,6 +207,8 @@ class TeleopLoop:
             deadline = None if seconds is None else self.metrics.started_at + seconds
             next_tick = self.metrics.started_at
             while True:
+                if self.stop_requested:
+                    break
                 if steps is not None and self.metrics.iterations >= steps:
                     break
                 if deadline is not None and time.monotonic() >= deadline:

@@ -180,8 +180,62 @@ soarm-studio teleop \
   --warmup 1 \
   --seconds 10 \
   --task "pick object" \
-  --overwrite</code></pre>
+  --overwrite \
+  --save-policy manual</code></pre>
           </div>
+          <p>
+            With <code class="inline">--save-policy manual</code>, each episode waits for confirmation before it starts. During capture, press <code class="inline">q</code> to end the current episode early. After capture, press Enter to save, <code class="inline">r</code> to discard and record the same episode again, or <code class="inline">q</code> to discard and stop the session.
+          </p>
+          <details class="cli-result">
+            <summary>Successful 10-second hardware recording output example</summary>
+            <pre><code>soarm-studio record \
+  --config configs/session.yaml \
+  --episodes 1 \
+  --warmup 1 \
+  --seconds 10 \
+  --task "pick object" \
+  --overwrite \
+  --save-policy manual
+
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: disconnecting; disabling servo torque before closing the port.
+hardware: disconnecting; disabling servo torque before closing the port.
+{
+  "dataset": "datasets/soarm",
+  "task": "pick object",
+  "episodes": [
+    {
+      "episode_index": 0,
+      "episode_number": 1,
+      "attempt": 1,
+      "task": "pick object",
+      "metrics": {
+        "iterations": 600,
+        "target_hz": 60,
+        "observed_hz": 60.0,
+        "last_latency_ms": 2.224,
+        "max_latency_ms": 2.824,
+        "elapsed_s": 10.0
+      },
+      "quality": {
+        "frames": 600,
+        "dropped_camera_frames": 0,
+        "stale_camera_frames": 0,
+        "max_loop_latency_ms": 2.7824759999930393,
+        "max_camera_latency_ms": 0.0,
+        "max_camera_age_ms": 0.0,
+        "warnings": []
+      }
+    }
+  ],
+  "started_at": "2026-06-25T11:35:57.494268+00:00",
+  "aborted": false
+}</code></pre>
+          </details>
+          <p>
+            With a 60 Hz config, a 10-second episode should be close to <code class="inline">600</code> loop iterations and <code class="inline">600</code> frames. <code class="inline">dropped_camera_frames</code>, <code class="inline">stale_camera_frames</code>, and <code class="inline">warnings</code> should stay at zero or empty before scaling collection.
+          </p>
 
           <h2 id="capture-timing">Capture timing</h2>
           <p>

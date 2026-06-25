@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from bisect import bisect_left
+from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Callable, Protocol
+from typing import Literal, Protocol
 
 from soarm_studio.config import SessionConfig
 from soarm_studio.datasets.lerobot_v3 import LeRobotV3Writer
@@ -19,6 +21,40 @@ class _CameraHistoryRecorder(Protocol):
     def start_history(self, *, seed_latest: bool = False) -> None: ...
 
     def stop_history(self) -> list[CameraFrame]: ...
+
+
+class RecordingLoopControl(Protocol):
+    stop_requested: bool
+
+
+EpisodeDecision = Literal["save", "retry", "abort"]
+
+
+@dataclass(frozen=True)
+class EpisodeStartInfo:
+    episode_number: int
+    total_episodes: int
+    attempt: int
+    task: str
+    seconds: float
+    warmup: float
+
+
+@dataclass(frozen=True)
+class EpisodeResultInfo:
+    episode_number: int
+    total_episodes: int
+    attempt: int
+    task: str
+    metrics: dict
+    quality: dict
+
+
+@dataclass(frozen=True)
+class RecordingControls:
+    before_episode: Callable[[EpisodeStartInfo], bool] | None = None
+    after_episode: Callable[[EpisodeResultInfo], EpisodeDecision] | None = None
+    recording_context: Callable[[RecordingLoopControl], AbstractContextManager[None]] | None = None
 
 
 @dataclass(frozen=True)
@@ -53,10 +89,14 @@ def record_lerobot_episodes(
     warmup: float = 0.0,
     episodes: int = 1,
     debug: bool = False,
+    controls: RecordingControls | None = None,
 ) -> dict:
+    controls = controls or RecordingControls()
     writer = create_lerobot_writer(config, overwrite=overwrite)
     saved: list[dict] = []
     session_started = datetime.now(timezone.utc).isoformat()
+    total_episodes = max(1, int(episodes))
+    aborted = False
     try:
         with HardwareSession(config) as hardware:
             writer.write_session_metadata(
@@ -69,7 +109,25 @@ def record_lerobot_episodes(
                     "joints": config.joints,
                 }
             )
-            for _ in range(max(1, int(episodes))):
+            attempt = 0
+            while len(saved) < total_episodes:
+                episode_number = len(saved) + 1
+                attempt += 1
+                episode_info = EpisodeStartInfo(
+                    episode_number=episode_number,
+                    total_episodes=total_episodes,
+                    attempt=attempt,
+                    task=task,
+                    seconds=seconds,
+                    warmup=warmup if not saved else 0.0,
+                )
+                if (
+                    controls.before_episode is not None
+                    and not controls.before_episode(episode_info)
+                ):
+                    aborted = True
+                    break
+
                 quality = RecordingQualityTracker()
                 episode = writer.start_episode(task)
                 samples: list[ControlSample] = []
@@ -83,6 +141,7 @@ def record_lerobot_episodes(
                         seconds=seconds,
                         warmup=warmup if not saved else 0.0,
                         on_sample=add_sample,
+                        recording_context=controls.recording_context,
                     )
                     camera_timing = _write_episode_samples(
                         episode,
@@ -90,19 +149,47 @@ def record_lerobot_episodes(
                         quality,
                         frame_histories,
                     )
-                    episode_index = episode.save()
                     quality_dict = quality.to_dict()
+                    pending = EpisodeResultInfo(
+                        episode_number=episode_number,
+                        total_episodes=total_episodes,
+                        attempt=attempt,
+                        task=task,
+                        metrics=metrics,
+                        quality=quality_dict,
+                    )
+                    decision = (
+                        "save"
+                        if controls.after_episode is None
+                        else controls.after_episode(pending)
+                    )
+                    if decision == "retry":
+                        episode.discard()
+                        continue
+                    if decision == "abort":
+                        episode.discard()
+                        aborted = True
+                        break
+                    if decision != "save":
+                        raise ValueError(
+                            "after_episode must return 'save', 'retry', or 'abort'"
+                        )
+
+                    episode_index = episode.save()
                     writer.write_episode_quality(episode_index, quality_dict)
                     if debug:
                         writer.write_episode_camera_timing(episode_index, camera_timing)
                     saved.append(
                         {
                             "episode_index": episode_index,
+                            "episode_number": episode_number,
+                            "attempt": attempt,
                             "task": task,
                             "metrics": metrics,
                             "quality": quality_dict,
                         }
                     )
+                    attempt = 0
                 except Exception:
                     episode.discard()
                     raise
@@ -111,6 +198,7 @@ def record_lerobot_episodes(
                 {
                     "episodes": saved,
                     "summary": _quality_summary(saved),
+                    "aborted": aborted,
                 }
             )
     finally:
@@ -120,6 +208,7 @@ def record_lerobot_episodes(
         "task": task,
         "episodes": saved,
         "started_at": session_started,
+        "aborted": aborted,
     }
 
 
@@ -130,6 +219,7 @@ def _run_continuous_recording_loop(
     warmup: float,
     on_sample: Callable[[ControlSample], None],
     sample_cameras: bool | None = None,
+    recording_context: Callable[[RecordingLoopControl], AbstractContextManager[None]] | None = None,
 ) -> tuple[dict, dict[str, list[CameraFrame]]]:
     history_recorders: dict[str, _CameraHistoryRecorder] = {}
     with hardware.running_loop(on_sample=None, sample_cameras=False) as loop:
@@ -146,10 +236,16 @@ def _run_continuous_recording_loop(
                 sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
             loop.on_sample = on_sample
             loop.sample_cameras = sample_cameras
-            metrics = loop.run(seconds=seconds, close_on_finish=False)
+            loop.stop_requested = False
+            context = nullcontext() if recording_context is None else recording_context(loop)
+            with context:
+                metrics = loop.run(seconds=seconds, close_on_finish=False)
             frame_histories = _stop_camera_histories(history_recorders)
             history_recorders = {}
-            return metrics.to_dict(), frame_histories
+            metrics_dict = metrics.to_dict()
+            if getattr(loop, "stop_requested", False):
+                metrics_dict["stopped_early"] = True
+            return metrics_dict, frame_histories
         finally:
             _stop_camera_histories(history_recorders)
 

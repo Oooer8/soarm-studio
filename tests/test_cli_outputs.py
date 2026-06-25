@@ -339,6 +339,24 @@ def test_teleop_rejects_legacy_profile_flag(capsys) -> None:
     assert "unrecognized arguments: --profile" in capsys.readouterr().err
 
 
+def test_record_manual_requires_interactive_terminal(tmp_path) -> None:
+    config_path = tmp_path / "session.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "name": "test",
+                "leader": {"mock": True},
+                "follower": {"mock": True},
+            }
+        )
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["record", "--config", str(config_path), "--save-policy", "manual"])
+
+    assert str(exc.value) == "--save-policy manual requires an interactive terminal"
+
+
 def test_calibrate_json_preserves_machine_readable_result(tmp_path, monkeypatch, capsys) -> None:
     config_path = tmp_path / "session.json"
     config_path.write_text(

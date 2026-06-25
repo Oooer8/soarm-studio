@@ -88,8 +88,13 @@ soarm-studio calibrate --config configs/session.yaml --role leader
 soarm-studio calibrate --config configs/session.yaml --role follower
 soarm-studio check --config configs/session.yaml --overwrite
 soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
-soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite
+soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite --save-policy manual
 ```
+
+In manual recording mode, each episode waits for confirmation before it starts.
+Press `q` while recording to end the current episode early, then press Enter to
+save it, `r` to discard and record that episode again, or `q` to discard it and
+stop the recording session.
 
 On macOS, use the `/dev/cu.usbmodem*` or `/dev/cu.usbserial*` ports reported
 by `scan`, and use `--backend avfoundation` for camera preview/setup when the

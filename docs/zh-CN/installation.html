@@ -96,9 +96,10 @@
           </div>
           <pre><code>sudo apt update
 sudo apt install -y git v4l-utils libusb-1.0-0 libusb-1.0-0-dev libgl1 libglib2.0-0
-sudo usermod -aG dialout,video "$USER"</code></pre>
+sudo usermod -aG dialout,video "$USER"
+newgrp dialout</code></pre>
           <p>
-            修改用户组后需要退出并重新登录，让串口和摄像头设备权限生效。
+            <code class="inline">dialout,video</code> 中间不要加空格。<code class="inline">newgrp dialout</code> 可以让当前终端立刻获得串口权限；完整退出并重新登录后，串口和摄像头设备权限都会生效。
           </p>
           <div class="code-title">
             <span>安装环境</span>
