@@ -199,7 +199,7 @@ class SOARMArm:
                 output_hz=output_hz,
                 target_timeout_s=target_timeout_s,
                 joint_names=joint_names,
-                mode="direct",
+                mode="arrival",
             )
         )
 
