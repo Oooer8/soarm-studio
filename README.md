@@ -45,6 +45,18 @@ code blocks, diagrams, and hardware walkthrough media under `docs/assets/`.
 
 ## Install
 
+On Ubuntu, install the system packages used by OpenCV, serial devices, and UVC
+camera access first:
+
+```bash
+sudo apt update
+sudo apt install -y git v4l-utils libusb-1.0-0 libusb-1.0-0-dev libgl1 libglib2.0-0
+sudo usermod -aG dialout,video "$USER"
+```
+
+Log out and back in after changing groups so `/dev/ttyACM*`, `/dev/ttyUSB*`,
+and `/dev/video*` permissions take effect.
+
 ```bash
 conda env create -f environment.yml
 conda activate soarm-studio
@@ -59,14 +71,14 @@ The provided environment installs SOARM Studio in editable mode and pulls
 soarm-studio scan --include-system
 soarm-studio scan --probe-arms
 soarm-studio setup arms \
-  --leader-port /dev/cu.usbmodemLEADER \
-  --follower-port /dev/cu.usbmodemFOLLOWER
+  --leader-port /dev/ttyACM0 \
+  --follower-port /dev/ttyACM1
 soarm-studio scan --preview-cameras \
   --camera-indices 0,1,2,3 \
-  --backend avfoundation \
+  --backend v4l2 \
   --output-dir previews/cameras
 soarm-studio setup cameras \
-  --backend avfoundation \
+  --backend v4l2 \
   --wrist-index 1 \
   --third-person-index 0
 soarm-studio check --config configs/session.yaml --overwrite
@@ -76,6 +88,10 @@ soarm-studio check --config configs/session.yaml --overwrite
 soarm-studio teleop --config configs/session.yaml --free-test --seconds 5
 soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seconds 10 --task "pick object" --overwrite
 ```
+
+On macOS, use the `/dev/cu.usbmodem*` or `/dev/cu.usbserial*` ports reported
+by `scan`, and use `--backend avfoundation` for camera preview/setup when the
+automatic backend does not pick the right camera path.
 
 Generated machine-local files are ignored by git:
 

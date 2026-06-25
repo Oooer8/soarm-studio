@@ -91,8 +91,10 @@
             <article class="card">
               <h3 id="camera-preview-fails">Camera preview fails</h3>
               <p>
-                On macOS, grant Camera permission to the terminal application.
-                Then re-run <code class="inline">scan --preview-cameras</code>.
+                On Ubuntu, confirm the camera appears as <code class="inline">/dev/video*</code>,
+                keep your user in the <code class="inline">video</code> group, and try
+                <code class="inline">--backend v4l2</code>. On macOS, grant Camera permission
+                to the terminal application.
               </p>
             </article>
             <article class="card">
@@ -111,9 +113,10 @@
             <article class="card">
               <h3 id="serial-port-denied">Serial port denied</h3>
               <p>
-                Verify the terminal has permission to open
-                <code class="inline">/dev/cu.*</code> and no other process owns
-                the same port.
+                On Ubuntu, add the user to <code class="inline">dialout</code>, log out and
+                back in, then verify no other process owns <code class="inline">/dev/ttyACM*</code>
+                or <code class="inline">/dev/ttyUSB*</code>. On macOS, verify the terminal can
+                open <code class="inline">/dev/cu.*</code>.
               </p>
             </article>
             <article class="card">

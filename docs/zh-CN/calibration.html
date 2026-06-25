@@ -155,7 +155,7 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
           <details class="cli-result">
             <summary>查看主臂成功输出</summary>
             <pre><code>标定机械臂: 主臂
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 主臂: 关闭扭矩，进入手动标定。
 主臂: 请按提示摆放物理零位。
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
@@ -186,7 +186,7 @@ hardware: disconnecting; closing the Feetech servo port.
           <details class="cli-result">
             <summary>查看从臂成功输出</summary>
             <pre><code>标定机械臂: 从臂
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 从臂: 关闭扭矩，进入手动标定。
 从臂: 请按提示摆放物理零位。
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
@@ -242,8 +242,8 @@ hardware: disconnecting; closing the Feetech servo port.
           </div>
           <details class="cli-result">
             <summary>查看复查成功输出</summary>
-            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: disconnecting; disabling servo torque before closing the port.
 hardware: disconnecting; disabling servo torque before closing the port.
 {
@@ -251,14 +251,14 @@ hardware: disconnecting; disabling servo torque before closing the port.
   "bindings": {
     "leader": {
       "kind": "arm",
-      "device": "/dev/cu.usbmodem5A7C1219051",
+      "device": "/dev/ttyACM0",
       "config": "configs/arms/leader.yaml",
       "ok": true,
       "expected_ids": [1, 2, 3, 4, 5, 6]
     },
     "follower": {
       "kind": "arm",
-      "device": "/dev/cu.usbmodem5A7C1190351",
+      "device": "/dev/ttyACM1",
       "config": "configs/arms/follower.yaml",
       "ok": true,
       "expected_ids": [1, 2, 3, 4, 5, 6]

@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import sys
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
+import soarm_studio.hardware.cameras as camera_module
 from soarm_studio.config import CameraConfig
 from soarm_studio.hardware.cameras import (
     LatestFrameCamera,
+    _camera_backend_candidates,
     _camera_infos_from_ioreg,
+    _detect_linux_video_devices,
+    probe_camera_fps,
+    probe_uvc_camera_fps,
     preview_camera_devices,
 )
 from soarm_studio.types import CameraFrame
@@ -96,6 +102,75 @@ def test_preview_camera_devices_writes_preview_images(tmp_path, monkeypatch) -> 
     assert (tmp_path / "camera_0.jpg").read_bytes() == b"fake-jpeg"
     assert previews[1].ok is False
     assert previews[1].error == "default: camera did not open"
+
+
+def test_auto_backend_prefers_v4l2_on_linux(monkeypatch) -> None:
+    fake_cv2 = SimpleNamespace(CAP_ANY=0, CAP_V4L2=200)
+    monkeypatch.setattr(camera_module.sys, "platform", "linux")
+
+    assert _camera_backend_candidates(fake_cv2, "auto") == [("v4l2", 200), ("default", None)]
+    assert _camera_backend_candidates(fake_cv2, "v4l2") == [("v4l2", 200)]
+
+
+def test_linux_camera_detection_lists_video_devices(monkeypatch) -> None:
+    monkeypatch.setattr(camera_module.sys, "platform", "linux")
+
+    def fake_glob(self, pattern):
+        assert str(self) == "/dev"
+        assert pattern == "video*"
+        return [Path("/dev/video2"), Path("/dev/video0")]
+
+    monkeypatch.setattr(Path, "glob", fake_glob)
+    monkeypatch.setattr(camera_module, "_read_text", lambda _path: None)
+
+    devices = _detect_linux_video_devices()
+
+    assert [device.name for device in devices] == ["video0", "video2"]
+    assert [device.source for device in devices] == ["v4l2", "v4l2"]
+    assert [device.opencv_index for device in devices] == [0, 2]
+
+
+def test_probe_camera_fps_reports_actual_capture_rate(monkeypatch) -> None:
+    class FakeCapture:
+        def __init__(self, *_args) -> None:
+            self.frames = 0
+            self.props = {
+                3: 640.0,
+                4: 480.0,
+                5: 60.0,
+            }
+
+        def isOpened(self) -> bool:
+            return True
+
+        def set(self, prop, value) -> None:
+            self.props[prop] = float(value)
+
+        def get(self, prop) -> float:
+            return self.props.get(prop, 0.0)
+
+        def read(self):
+            self.frames += 1
+            return self.frames <= 3, object()
+
+        def release(self) -> None:
+            return None
+
+    fake_cv2 = SimpleNamespace(
+        VideoCapture=FakeCapture,
+        CAP_ANY=0,
+        CAP_PROP_FRAME_WIDTH=3,
+        CAP_PROP_FRAME_HEIGHT=4,
+        CAP_PROP_FPS=5,
+    )
+    monkeypatch.setitem(sys.modules, "cv2", fake_cv2)
+
+    results = probe_camera_fps([0], width=640, height=480, fps=60, seconds=0.1)
+
+    assert len(results) == 1
+    assert results[0].opened is True
+    assert results[0].actual_fps == 60.0
+    assert results[0].frames == 3
 
 
 def test_latest_frame_camera_serves_cached_frame_without_blocking() -> None:
@@ -188,11 +263,17 @@ def test_latest_frame_camera_records_episode_history() -> None:
 
 def test_create_cameras_wraps_opencv_in_latest_frame_camera(monkeypatch) -> None:
     class FakeCapture:
+        def __init__(self) -> None:
+            self.props = {}
+
         def isOpened(self) -> bool:
             return True
 
-        def set(self, _prop, _value) -> None:
-            return None
+        def set(self, prop, value) -> None:
+            self.props[prop] = value
+
+        def get(self, prop) -> float:
+            return float(self.props.get(prop, 0.0))
 
         def read(self):
             return True, SimpleNamespace(shape=(2, 2, 3), tobytes=lambda: b"\x00" * 12)
@@ -232,3 +313,65 @@ def test_create_cameras_wraps_opencv_in_latest_frame_camera(monkeypatch) -> None
         assert camera.read().name == "wrist"
     finally:
         camera.disconnect()
+
+
+def test_create_cameras_wraps_uvc_in_latest_frame_camera(monkeypatch) -> None:
+    import numpy as np
+
+    class FakeFrame:
+        rgb = np.zeros((2, 2, 3), dtype=np.uint8)
+
+    class FakeCapture:
+        def __init__(self, uid: str) -> None:
+            self.uid = uid
+            self.name = "fake-uvc"
+            self.available_modes = [SimpleNamespace(width=2, height=2, fps=60, format_native=7)]
+            self.frame_mode = None
+            self.bandwidth_factor = 0.0
+
+        def get_frame_robust(self):
+            return FakeFrame()
+
+        def close(self) -> None:
+            return None
+
+    fake_uvc = SimpleNamespace(
+        device_list=lambda: [{"uid": "1:4", "name": "fake-uvc"}],
+        Capture=FakeCapture,
+    )
+    monkeypatch.setitem(sys.modules, "uvc", fake_uvc)
+
+    from soarm_studio.hardware.cameras import create_cameras
+
+    cameras = create_cameras(
+        {
+            "wrist": CameraConfig(
+                name="wrist",
+                kind="uvc",
+                device=0,
+                width=2,
+                height=2,
+                fps=60,
+            )
+        }
+    )
+
+    camera = cameras["wrist"]
+    assert isinstance(camera, LatestFrameCamera)
+    camera.connect()
+    try:
+        assert camera.read().name == "wrist"
+        assert getattr(camera._camera._capture.frame_mode, "format_native") == 7
+    finally:
+        camera.disconnect()
+
+
+def test_probe_uvc_camera_fps_reports_init_failure(monkeypatch) -> None:
+    fake_uvc = SimpleNamespace(device_list=lambda: None)
+    monkeypatch.setitem(sys.modules, "uvc", fake_uvc)
+
+    results = probe_uvc_camera_fps([0], width=2, height=2, fps=60, seconds=0.1)
+
+    assert len(results) == 1
+    assert results[0].opened is False
+    assert "libuvc could not initialize" in (results[0].error or "")

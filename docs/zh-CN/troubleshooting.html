@@ -91,7 +91,7 @@
             <article class="card">
               <h3 id="camera-preview-fails">摄像头预览失败</h3>
               <p>
-                在 macOS 上，为终端应用授予相机权限，然后重新运行 <code class="inline">scan --preview-cameras</code>。
+                Ubuntu 上先确认摄像头出现在 <code class="inline">/dev/video*</code>，当前用户在 <code class="inline">video</code> 组内，并尝试 <code class="inline">--backend v4l2</code>。macOS 上则为终端应用授予相机权限。
               </p>
             </article>
             <article class="card">
@@ -110,8 +110,7 @@
             <article class="card">
               <h3 id="serial-port-denied">串口访问被拒绝</h3>
               <p>
-                确认终端有权限打开
-                <code class="inline">/dev/cu.*</code> ，并且没有其他进程占用同一个端口。
+                Ubuntu 上把用户加入 <code class="inline">dialout</code> 组，退出并重新登录，然后确认没有其他进程占用 <code class="inline">/dev/ttyACM*</code> 或 <code class="inline">/dev/ttyUSB*</code>。macOS 上确认终端能打开 <code class="inline">/dev/cu.*</code>。
               </p>
             </article>
             <article class="card">

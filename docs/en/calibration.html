@@ -155,7 +155,7 @@ Freely sweep the full range of motion for each joint. Press Enter when done:</co
           <details class="cli-result">
             <summary>Show successful leader output</summary>
             <pre><code>Calibrating arm: leader
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 leader: torque disabled; entering manual calibration.
 leader: follow the prompt to place the physical zero pose.
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
@@ -186,7 +186,7 @@ Debug: add --debug to see the full diagnostic report; add --json to export full 
           <details class="cli-result">
             <summary>Show successful follower output</summary>
             <pre><code>Calibrating arm: follower
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 follower: torque disabled; entering manual calibration.
 follower: follow the prompt to place the physical zero pose.
 Place every joint in the physical zero pose, then press Enter to record zero ticks:
@@ -242,8 +242,8 @@ Debug: add --debug to see the full diagnostic report; add --json to export full 
           </div>
           <details class="cli-result">
             <summary>Show successful recheck output</summary>
-            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1219051, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
-hardware: connecting to Feetech servo bus (port=/dev/cu.usbmodem5A7C1190351, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+            <pre><code>hardware: connecting to Feetech servo bus (port=/dev/ttyACM0, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
+hardware: connecting to Feetech servo bus (port=/dev/ttyACM1, baudrate=1000000, ids=[1, 2, 3, 4, 5, 6])
 hardware: disconnecting; disabling servo torque before closing the port.
 hardware: disconnecting; disabling servo torque before closing the port.
 {
@@ -251,14 +251,14 @@ hardware: disconnecting; disabling servo torque before closing the port.
   "bindings": {
     "leader": {
       "kind": "arm",
-      "device": "/dev/cu.usbmodem5A7C1219051",
+      "device": "/dev/ttyACM0",
       "config": "configs/arms/leader.yaml",
       "ok": true,
       "expected_ids": [1, 2, 3, 4, 5, 6]
     },
     "follower": {
       "kind": "arm",
-      "device": "/dev/cu.usbmodem5A7C1190351",
+      "device": "/dev/ttyACM1",
       "config": "configs/arms/follower.yaml",
       "ok": true,
       "expected_ids": [1, 2, 3, 4, 5, 6]

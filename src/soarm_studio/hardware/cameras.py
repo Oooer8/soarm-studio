@@ -63,6 +63,49 @@ class CameraPreviewInfo:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class CameraCaptureInfo:
+    name: str
+    device: int | str | None
+    backend: str
+    requested_width: int
+    requested_height: int
+    requested_fps: int
+    requested_fourcc: str | None
+    actual_width: float | None = None
+    actual_height: float | None = None
+    actual_fps: float | None = None
+    actual_fourcc: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class CameraFpsProbeResult:
+    index: int
+    backend: str
+    requested_width: int
+    requested_height: int
+    requested_fps: int
+    requested_fourcc: str | None
+    opened: bool
+    actual_width: float | None = None
+    actual_height: float | None = None
+    actual_fps: float | None = None
+    actual_fourcc: str | None = None
+    frames: int = 0
+    elapsed_s: float = 0.0
+    observed_fps: float = 0.0
+    interval_avg_ms: float | None = None
+    interval_min_ms: float | None = None
+    interval_max_ms: float | None = None
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 class MockCamera:
     def __init__(self, config: CameraConfig) -> None:
         self.name = config.name
@@ -102,7 +145,9 @@ class OpenCVCamera:
         self.fps = config.fps
         self.device = 0 if config.device is None else config.device
         self.backend = config.backend
+        self.fourcc = config.fourcc
         self._capture = None
+        self._capture_info: CameraCaptureInfo | None = None
 
     def connect(self) -> None:
         try:
@@ -117,14 +162,35 @@ class OpenCVCamera:
         )
         failures: list[str] = []
         for backend_name, backend_api in _camera_backend_candidates(cv2, self.backend):
-            capture = _open_video_capture(cv2, device, backend_api)
+            params = _capture_open_params(
+                cv2,
+                width=self.width,
+                height=self.height,
+                fps=self.fps,
+                fourcc=self.fourcc,
+            )
+            capture = _open_video_capture(cv2, device, backend_api, params=params)
             if capture.isOpened():
                 self._capture = capture
-                self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                fps_prop = getattr(cv2, "CAP_PROP_FPS", None)
-                if fps_prop is not None:
-                    self._capture.set(fps_prop, self.fps)
+                _configure_capture(
+                    cv2,
+                    self._capture,
+                    width=self.width,
+                    height=self.height,
+                    fps=self.fps,
+                    fourcc=self.fourcc,
+                )
+                self._capture_info = _capture_info(
+                    cv2,
+                    self._capture,
+                    name=self.name,
+                    device=self.device,
+                    backend=backend_name,
+                    requested_width=self.width,
+                    requested_height=self.height,
+                    requested_fps=self.fps,
+                    requested_fourcc=self.fourcc,
+                )
                 return
             failures.append(f"{backend_name}: camera did not open")
             capture.release()
@@ -134,6 +200,12 @@ class OpenCVCamera:
         if self._capture is not None:
             self._capture.release()
             self._capture = None
+        self._capture_info = None
+
+    def capture_info(self) -> dict[str, Any] | None:
+        if self._capture_info is None:
+            return None
+        return self._capture_info.to_dict()
 
     def read(self) -> CameraFrame:
         if self._capture is None:
@@ -147,6 +219,99 @@ class OpenCVCamera:
             raise RuntimeError("OpenCV is required for real camera capture") from exc
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        height, width = rgb.shape[:2]
+        return CameraFrame(
+            self.name,
+            int(width),
+            int(height),
+            rgb.tobytes(),
+            time.time(),
+            time.monotonic_ns(),
+        )
+
+
+class UVCCamera:
+    def __init__(self, config: CameraConfig) -> None:
+        self.name = config.name
+        self.width = config.width
+        self.height = config.height
+        self.fps = config.fps
+        self.device = config.device
+        self.bandwidth_factor = float(config.match.get("bandwidth_factor", 2.0))
+        self._uvc = None
+        self._capture = None
+        self._capture_info: CameraCaptureInfo | None = None
+
+    def connect(self) -> None:
+        try:
+            import uvc  # type: ignore
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "pupil-labs-uvc is required for kind='uvc'. "
+                "Install it with: python -m pip install pupil-labs-uvc"
+            ) from exc
+
+        self._uvc = uvc
+        devices = _uvc_device_list(uvc)
+        if not devices:
+            raise RuntimeError("No UVC devices were found by libuvc")
+        device = _select_uvc_device(devices, self.device)
+        try:
+            capture = uvc.Capture(device["uid"])
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to open UVC camera via libuvc. On Ubuntu, check USB device "
+                "permissions or udev rules and close other camera apps. On macOS, "
+                "libusb may need elevated access because it cannot use the Apple UVC driver "
+                f"as a normal user: {exc}"
+            ) from exc
+
+        capture.bandwidth_factor = self.bandwidth_factor
+        mode = _select_uvc_mode(capture.available_modes, self.width, self.height, self.fps)
+        if mode is None:
+            available = ", ".join(str(item) for item in capture.available_modes)
+            capture.close()
+            raise RuntimeError(
+                f"UVC camera {self.name!r} does not expose "
+                f"{self.width}x{self.height}@{self.fps}; available modes: {available}"
+            )
+        try:
+            capture.frame_mode = mode
+        except Exception:
+            capture.close()
+            raise
+
+        self._capture = capture
+        self._capture_info = CameraCaptureInfo(
+            name=self.name,
+            device=device.get("uid", self.device),
+            backend="uvc",
+            requested_width=self.width,
+            requested_height=self.height,
+            requested_fps=self.fps,
+            requested_fourcc="MJPG",
+            actual_width=float(_uvc_mode_width(mode)),
+            actual_height=float(_uvc_mode_height(mode)),
+            actual_fps=float(_uvc_mode_fps(mode)),
+            actual_fourcc="MJPG",
+        )
+
+    def disconnect(self) -> None:
+        if self._capture is not None:
+            self._capture.close()
+            self._capture = None
+        self._capture_info = None
+
+    def capture_info(self) -> dict[str, Any] | None:
+        if self._capture_info is None:
+            return None
+        return self._capture_info.to_dict()
+
+    def read(self) -> CameraFrame:
+        if self._capture is None:
+            raise RuntimeError(f"UVC camera {self.name} is not connected")
+        frame = self._capture.get_frame_robust()
+        rgb = _uvc_frame_rgb(frame)
         height, width = rgb.shape[:2]
         return CameraFrame(
             self.name,
@@ -239,6 +404,12 @@ class LatestFrameCamera:
             self._history = []
         return frames
 
+    def capture_info(self) -> dict[str, Any] | None:
+        capture_info = getattr(self._camera, "capture_info", None)
+        if not callable(capture_info):
+            return None
+        return capture_info()
+
     def _capture_loop(self) -> None:
         period_s = 1.0 / self.fps
         while not self._stop.is_set():
@@ -280,6 +451,8 @@ def create_camera(config: CameraConfig) -> Camera:
         return MockCamera(config)
     if config.kind == "opencv":
         return LatestFrameCamera(OpenCVCamera(config), fps=config.fps)
+    if config.kind == "uvc":
+        return LatestFrameCamera(UVCCamera(config), fps=config.fps)
     raise ValueError(f"Unsupported camera kind for {config.name}: {config.kind}")
 
 
@@ -289,8 +462,11 @@ def detect_camera_devices(
     probe_opencv: bool = False,
 ) -> list[CameraDeviceInfo]:
     devices = _detect_macos_usb_cameras()
+    devices.extend(_detect_linux_video_devices())
     if probe_opencv:
         for index in _detect_opencv_camera_indexes(max_devices):
+            if any(device.opencv_index == index for device in devices):
+                continue
             devices.append(
                 CameraDeviceInfo(
                     name=f"opencv:{index}",
@@ -374,6 +550,329 @@ def preview_camera_devices(
     return previews
 
 
+def probe_camera_fps(
+    indices: list[int],
+    *,
+    width: int = 640,
+    height: int = 480,
+    fps: int = 60,
+    seconds: float = 2.0,
+    backend: str = "auto",
+    fourcc: str | None = None,
+) -> list[CameraFpsProbeResult]:
+    try:
+        import cv2  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("OpenCV is required for camera FPS probing") from exc
+
+    results: list[CameraFpsProbeResult] = []
+    duration = max(0.1, float(seconds))
+    backends = _camera_backend_candidates(cv2, backend)
+    with _suppress_native_stderr():
+        for index in indices:
+            for backend_name, backend_api in backends:
+                params = _capture_open_params(
+                    cv2,
+                    width=width,
+                    height=height,
+                    fps=fps,
+                    fourcc=fourcc,
+                )
+                capture = _open_video_capture(cv2, int(index), backend_api, params=params)
+                try:
+                    if not capture.isOpened():
+                        results.append(
+                            CameraFpsProbeResult(
+                                index=int(index),
+                                backend=backend_name,
+                                requested_width=int(width),
+                                requested_height=int(height),
+                                requested_fps=int(fps),
+                                requested_fourcc=fourcc,
+                                opened=False,
+                                error="camera did not open",
+                            )
+                        )
+                        continue
+                    _configure_capture(
+                        cv2,
+                        capture,
+                        width=width,
+                        height=height,
+                        fps=fps,
+                        fourcc=fourcc,
+                    )
+                    info = _capture_info(
+                        cv2,
+                        capture,
+                        name=f"camera_{index}",
+                        device=int(index),
+                        backend=backend_name,
+                        requested_width=int(width),
+                        requested_height=int(height),
+                        requested_fps=int(fps),
+                        requested_fourcc=fourcc,
+                    )
+                    frames = 0
+                    intervals_ms: list[float] = []
+                    last_frame_at: float | None = None
+                    started = time.monotonic()
+                    deadline = started + duration
+                    while time.monotonic() < deadline:
+                        ok, _frame = capture.read()
+                        now = time.monotonic()
+                        if not ok:
+                            break
+                        frames += 1
+                        if last_frame_at is not None:
+                            intervals_ms.append((now - last_frame_at) * 1000.0)
+                        last_frame_at = now
+                    elapsed = max(0.0, time.monotonic() - started)
+                    results.append(
+                        CameraFpsProbeResult(
+                            index=int(index),
+                            backend=backend_name,
+                            requested_width=int(width),
+                            requested_height=int(height),
+                            requested_fps=int(fps),
+                            requested_fourcc=fourcc,
+                            opened=True,
+                            actual_width=info.actual_width,
+                            actual_height=info.actual_height,
+                            actual_fps=info.actual_fps,
+                            actual_fourcc=info.actual_fourcc,
+                            frames=frames,
+                            elapsed_s=elapsed,
+                            observed_fps=frames / elapsed if elapsed > 0 else 0.0,
+                            interval_avg_ms=(
+                                sum(intervals_ms) / len(intervals_ms) if intervals_ms else None
+                            ),
+                            interval_min_ms=min(intervals_ms) if intervals_ms else None,
+                            interval_max_ms=max(intervals_ms) if intervals_ms else None,
+                            error="camera opened but no frame was read" if frames == 0 else None,
+                        )
+                    )
+                finally:
+                    capture.release()
+    return results
+
+
+def probe_uvc_camera_fps(
+    devices: list[int | str | None],
+    *,
+    width: int = 640,
+    height: int = 480,
+    fps: int = 60,
+    seconds: float = 2.0,
+    bandwidth_factor: float = 2.0,
+) -> list[CameraFpsProbeResult]:
+    try:
+        import uvc  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("pupil-labs-uvc is required for UVC FPS probing") from exc
+
+    try:
+        available_devices = _uvc_device_list(uvc)
+    except Exception as exc:
+        return [
+            CameraFpsProbeResult(
+                index=index,
+                backend="uvc",
+                requested_width=int(width),
+                requested_height=int(height),
+                requested_fps=int(fps),
+                requested_fourcc="MJPG",
+                opened=False,
+                error=str(exc),
+            )
+            for index, _device in enumerate(devices)
+        ]
+    results: list[CameraFpsProbeResult] = []
+    duration = max(0.1, float(seconds))
+    for index, device_selector in enumerate(devices):
+        try:
+            device = _select_uvc_device(available_devices, device_selector)
+        except Exception as exc:
+            results.append(
+                CameraFpsProbeResult(
+                    index=index,
+                    backend="uvc",
+                    requested_width=int(width),
+                    requested_height=int(height),
+                    requested_fps=int(fps),
+                    requested_fourcc="MJPG",
+                    opened=False,
+                    error=str(exc),
+                )
+            )
+            continue
+
+        capture = None
+        try:
+            capture = uvc.Capture(device["uid"])
+            capture.bandwidth_factor = float(bandwidth_factor)
+            mode = _select_uvc_mode(capture.available_modes, width, height, fps)
+            if mode is None:
+                available = ", ".join(str(item) for item in capture.available_modes)
+                raise RuntimeError(
+                    f"UVC device {device.get('uid')} does not expose "
+                    f"{width}x{height}@{fps}; available modes: {available}"
+                )
+            capture.frame_mode = mode
+            frames = 0
+            intervals_ms: list[float] = []
+            last_frame_at: float | None = None
+            started = time.monotonic()
+            deadline = started + duration
+            while time.monotonic() < deadline:
+                try:
+                    capture.get_frame_robust()
+                except TimeoutError:
+                    continue
+                now = time.monotonic()
+                frames += 1
+                if last_frame_at is not None:
+                    intervals_ms.append((now - last_frame_at) * 1000.0)
+                last_frame_at = now
+            elapsed = max(0.0, time.monotonic() - started)
+            results.append(
+                CameraFpsProbeResult(
+                    index=index,
+                    backend="uvc",
+                    requested_width=int(width),
+                    requested_height=int(height),
+                    requested_fps=int(fps),
+                    requested_fourcc="MJPG",
+                    opened=True,
+                    actual_width=float(_uvc_mode_width(mode)),
+                    actual_height=float(_uvc_mode_height(mode)),
+                    actual_fps=float(_uvc_mode_fps(mode)),
+                    actual_fourcc="MJPG",
+                    frames=frames,
+                    elapsed_s=elapsed,
+                    observed_fps=frames / elapsed if elapsed > 0 else 0.0,
+                    interval_avg_ms=(
+                        sum(intervals_ms) / len(intervals_ms) if intervals_ms else None
+                    ),
+                    interval_min_ms=min(intervals_ms) if intervals_ms else None,
+                    interval_max_ms=max(intervals_ms) if intervals_ms else None,
+                    error="camera opened but no frame was read" if frames == 0 else None,
+                )
+            )
+        except Exception as exc:
+            results.append(
+                CameraFpsProbeResult(
+                    index=index,
+                    backend="uvc",
+                    requested_width=int(width),
+                    requested_height=int(height),
+                    requested_fps=int(fps),
+                    requested_fourcc="MJPG",
+                    opened=False,
+                    error=str(exc),
+                )
+            )
+        finally:
+            if capture is not None:
+                capture.close()
+    return results
+
+
+def _select_uvc_device(devices: list[dict], device: int | str | None) -> dict:
+    if device is None:
+        return devices[0]
+    if isinstance(device, int) or str(device).isdigit():
+        index = int(device)
+        if index < 0 or index >= len(devices):
+            raise RuntimeError(f"UVC device index {index} is out of range; found {len(devices)}")
+        return devices[index]
+    requested = str(device)
+    for candidate in devices:
+        if requested in {
+            str(candidate.get("uid")),
+            str(candidate.get("serialNumber")),
+            str(candidate.get("name")),
+        }:
+            return candidate
+    available = ", ".join(
+        f"{item.get('uid')}:{item.get('name')}:{item.get('serialNumber')}" for item in devices
+    )
+    raise RuntimeError(f"UVC device {requested!r} was not found; available devices: {available}")
+
+
+def _uvc_device_list(uvc) -> list[dict]:
+    devices = uvc.device_list()
+    if devices is None:
+        raise RuntimeError(
+            "libuvc could not initialize. On Ubuntu, check libusb installation and USB "
+            "device permissions. On macOS, libusb may not be able to access the camera "
+            "service as the current user."
+        )
+    return list(devices)
+
+
+def _select_uvc_mode(
+    modes,
+    width: int,
+    height: int,
+    fps: int,
+) -> object | None:
+    for mode in modes:
+        if (
+            _uvc_mode_width(mode),
+            _uvc_mode_height(mode),
+            _uvc_mode_fps(mode),
+        ) == (int(width), int(height), int(fps)):
+            return mode
+    return None
+
+
+def _uvc_mode_width(mode) -> int:
+    if hasattr(mode, "width"):
+        return int(mode.width)
+    return int(mode[0])
+
+
+def _uvc_mode_height(mode) -> int:
+    if hasattr(mode, "height"):
+        return int(mode.height)
+    return int(mode[1])
+
+
+def _uvc_mode_fps(mode) -> int:
+    if hasattr(mode, "fps"):
+        return int(mode.fps)
+    return int(mode[2])
+
+
+def _uvc_frame_rgb(frame):
+    try:
+        import cv2  # type: ignore
+        import numpy as np
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("OpenCV and NumPy are required to convert UVC frames to RGB") from exc
+
+    if hasattr(frame, "rgb"):
+        rgb = frame.rgb
+    elif hasattr(frame, "bgr"):
+        rgb = cv2.cvtColor(frame.bgr, cv2.COLOR_BGR2RGB)
+    elif hasattr(frame, "img"):
+        image = frame.img
+        if getattr(image, "ndim", 0) == 2:
+            rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        else:
+            rgb = image
+    elif hasattr(frame, "gray"):
+        rgb = cv2.cvtColor(frame.gray, cv2.COLOR_GRAY2RGB)
+    else:
+        raise RuntimeError("UVC frame did not expose rgb, bgr, img, or gray data")
+
+    array = np.asarray(rgb)
+    if array.ndim != 3 or array.shape[2] != 3:
+        raise RuntimeError(f"Unexpected UVC frame shape: {array.shape}")
+    return array.astype(np.uint8, copy=False)
+
+
 def _camera_backend_candidates(cv2, backend: str) -> list[tuple[str, int | None]]:
     backend = backend.lower().strip()
     if backend == "auto":
@@ -381,6 +880,9 @@ def _camera_backend_candidates(cv2, backend: str) -> list[tuple[str, int | None]
         avfoundation = getattr(cv2, "CAP_AVFOUNDATION", None)
         if sys.platform == "darwin" and avfoundation is not None:
             candidates.append(("avfoundation", int(avfoundation)))
+        v4l2 = getattr(cv2, "CAP_V4L2", None)
+        if sys.platform.startswith("linux") and v4l2 is not None:
+            candidates.append(("v4l2", int(v4l2)))
         candidates.append(("default", None))
         return candidates
     if backend == "default":
@@ -392,10 +894,123 @@ def _camera_backend_candidates(cv2, backend: str) -> list[tuple[str, int | None]
         if avfoundation is None:
             raise RuntimeError("This OpenCV build does not expose CAP_AVFOUNDATION")
         return [("avfoundation", int(avfoundation))]
+    if backend == "v4l2":
+        v4l2 = getattr(cv2, "CAP_V4L2", None)
+        if v4l2 is None:
+            raise RuntimeError("This OpenCV build does not expose CAP_V4L2")
+        return [("v4l2", int(v4l2))]
     raise RuntimeError(f"Unsupported camera backend: {backend}")
 
 
-def _open_video_capture(cv2, index: int, backend_api: int | None):
+def _capture_open_params(
+    cv2,
+    *,
+    width: int,
+    height: int,
+    fps: int,
+    fourcc: str | None,
+) -> list[int | float]:
+    params: list[int | float] = [
+        int(cv2.CAP_PROP_FRAME_WIDTH),
+        int(width),
+        int(cv2.CAP_PROP_FRAME_HEIGHT),
+        int(height),
+    ]
+    fps_prop = getattr(cv2, "CAP_PROP_FPS", None)
+    if fps_prop is not None:
+        params.extend([int(fps_prop), float(fps)])
+    fourcc_prop = getattr(cv2, "CAP_PROP_FOURCC", None)
+    if fourcc_prop is not None and fourcc:
+        params.extend([int(fourcc_prop), _fourcc_value(cv2, fourcc)])
+    return params
+
+
+def _configure_capture(
+    cv2,
+    capture,
+    *,
+    width: int,
+    height: int,
+    fps: int,
+    fourcc: str | None,
+) -> None:
+    fourcc_prop = getattr(cv2, "CAP_PROP_FOURCC", None)
+    if fourcc_prop is not None and fourcc:
+        capture.set(fourcc_prop, _fourcc_value(cv2, fourcc))
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, int(width))
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, int(height))
+    fps_prop = getattr(cv2, "CAP_PROP_FPS", None)
+    if fps_prop is not None:
+        capture.set(fps_prop, float(fps))
+
+
+def _capture_info(
+    cv2,
+    capture,
+    *,
+    name: str,
+    device: int | str | None,
+    backend: str,
+    requested_width: int,
+    requested_height: int,
+    requested_fps: int,
+    requested_fourcc: str | None,
+) -> CameraCaptureInfo:
+    return CameraCaptureInfo(
+        name=name,
+        device=device,
+        backend=backend,
+        requested_width=int(requested_width),
+        requested_height=int(requested_height),
+        requested_fps=int(requested_fps),
+        requested_fourcc=requested_fourcc,
+        actual_width=_capture_get(capture, getattr(cv2, "CAP_PROP_FRAME_WIDTH", None)),
+        actual_height=_capture_get(capture, getattr(cv2, "CAP_PROP_FRAME_HEIGHT", None)),
+        actual_fps=_capture_get(capture, getattr(cv2, "CAP_PROP_FPS", None)),
+        actual_fourcc=_fourcc_string(
+            _capture_get(capture, getattr(cv2, "CAP_PROP_FOURCC", None))
+        ),
+    )
+
+
+def _capture_get(capture, prop: int | None) -> float | None:
+    if prop is None or not hasattr(capture, "get"):
+        return None
+    try:
+        return float(capture.get(prop))
+    except Exception:
+        return None
+
+
+def _fourcc_value(cv2, fourcc: str) -> int:
+    normalized = fourcc.strip().upper()
+    if len(normalized) != 4:
+        raise ValueError("camera fourcc must be a four-character code such as MJPG or YUYV")
+    return int(cv2.VideoWriter_fourcc(*normalized))
+
+
+def _fourcc_string(value: float | None) -> str | None:
+    if value is None:
+        return None
+    integer = int(value)
+    if integer <= 0:
+        return None
+    chars = "".join(chr((integer >> (8 * index)) & 0xFF) for index in range(4))
+    if any(ord(char) < 32 or ord(char) > 126 for char in chars):
+        return str(integer)
+    return chars
+
+
+def _open_video_capture(cv2, index: int | str, backend_api: int | None, *, params=None):
+    if params:
+        try:
+            api = int(getattr(cv2, "CAP_ANY", 0)) if backend_api is None else int(backend_api)
+            capture = cv2.VideoCapture(index, api, params)
+            if capture.isOpened():
+                return capture
+            capture.release()
+        except Exception:
+            pass
     if backend_api is None:
         return cv2.VideoCapture(index)
     return cv2.VideoCapture(index, backend_api)
@@ -417,6 +1032,46 @@ def _detect_macos_usb_cameras() -> list[CameraDeviceInfo]:
     if result.returncode != 0:
         return []
     return _camera_infos_from_ioreg(result.stdout)
+
+
+def _detect_linux_video_devices() -> list[CameraDeviceInfo]:
+    if not sys.platform.startswith("linux"):
+        return []
+    devices: list[CameraDeviceInfo] = []
+    for path in sorted(Path("/dev").glob("video*"), key=_video_device_sort_key):
+        index = _video_device_index(path)
+        if index is None:
+            continue
+        product = _read_text(Path("/sys/class/video4linux") / path.name / "name")
+        devices.append(
+            CameraDeviceInfo(
+                name=product or path.name,
+                source="v4l2",
+                role_hint="video-device",
+                product=product,
+                opencv_index=index,
+                notes=(f"Linux V4L2 device {path}.",),
+            )
+        )
+    return devices
+
+
+def _video_device_sort_key(path: Path) -> tuple[int, str]:
+    index = _video_device_index(path)
+    return (index if index is not None else 1_000_000, path.name)
+
+
+def _video_device_index(path: Path) -> int | None:
+    match = re.fullmatch(r"video(\d+)", path.name)
+    return int(match.group(1)) if match else None
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        text = path.read_text(errors="replace").strip()
+    except OSError:
+        return None
+    return text or None
 
 
 def _detect_opencv_camera_indexes(max_devices: int) -> list[int]:

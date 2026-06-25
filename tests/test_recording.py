@@ -5,7 +5,7 @@ import json
 import soarm_studio.hardware.arms as arms
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.recording.quality import RecordingQualityTracker
-from soarm_studio.recording.session import _write_episode_samples
+from soarm_studio.recording.session import _start_camera_histories, _write_episode_samples
 from soarm_studio.recording import record_lerobot_episodes
 from soarm_studio.types import CameraFrame, ControlSample, JointSample
 
@@ -142,8 +142,28 @@ def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:
     assert [item["timestamp"] for item in captured] == [0.0, 0.1]
     assert quality.to_dict()["max_camera_age_ms"] == 40.0
     assert timing["cameras"]["wrist"]["raw_intervals_ms"] == [130.0]
+    assert timing["cameras"]["wrist"]["raw_observed_fps"] == 7.692308
     assert timing["cameras"]["wrist"]["matched_samples"][0]["camera_frame_index"] == 0
     assert timing["cameras"]["wrist"]["matched_samples"][1]["camera_frame_index"] == 1
+
+
+def test_start_camera_histories_seeds_latest_frame() -> None:
+    class FakeCamera:
+        def __init__(self) -> None:
+            self.seed_latest = None
+
+        def start_history(self, *, seed_latest: bool = False) -> None:
+            self.seed_latest = seed_latest
+
+        def stop_history(self):
+            return []
+
+    camera = FakeCamera()
+
+    recorders = _start_camera_histories({"wrist": camera})
+
+    assert recorders == {"wrist": camera}
+    assert camera.seed_latest is True
 
 
 def _sample(*, frame_index: int, monotonic_time_ns: int) -> ControlSample:

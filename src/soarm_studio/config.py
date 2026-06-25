@@ -41,6 +41,7 @@ class CameraConfig:
     fps: int = 30
     device: int | str | None = None
     backend: str = "auto"
+    fourcc: str | None = None
     match: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -54,6 +55,7 @@ class CameraConfig:
             fps=int(data.get("fps", 30)),
             device=data.get("device"),
             backend=str(data.get("backend", "auto")),
+            fourcc=None if data.get("fourcc") is None else str(data["fourcc"]),
             match=dict(data.get("match") or {}),
         )
 

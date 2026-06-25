@@ -93,6 +93,16 @@
             by the hardware extra.
           </p>
           <div class="code-title">
+            <span>Ubuntu system packages</span>
+            <span>bash</span>
+          </div>
+          <pre><code>sudo apt update
+sudo apt install -y git v4l-utils libusb-1.0-0 libusb-1.0-0-dev libgl1 libglib2.0-0
+sudo usermod -aG dialout,video "$USER"</code></pre>
+          <p>
+            Log out and back in after changing groups so serial and camera device permissions take effect.
+          </p>
+          <div class="code-title">
             <span>Install the environment</span>
             <span>zsh</span>
           </div>

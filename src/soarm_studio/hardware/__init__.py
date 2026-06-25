@@ -3,14 +3,19 @@ from __future__ import annotations
 from .arms import Arm, JointStream, MockArm, SOARMArm, create_arm
 from .cameras import (
     Camera,
+    CameraCaptureInfo,
     CameraDeviceInfo,
+    CameraFpsProbeResult,
     CameraPreviewInfo,
     LatestFrameCamera,
     MockCamera,
     OpenCVCamera,
+    UVCCamera,
     create_camera,
     create_cameras,
     detect_camera_devices,
+    probe_camera_fps,
+    probe_uvc_camera_fps,
     preview_camera_devices,
 )
 from .ports import (
@@ -24,13 +29,16 @@ from .ports import (
 __all__ = [
     "Arm",
     "Camera",
+    "CameraCaptureInfo",
     "CameraDeviceInfo",
+    "CameraFpsProbeResult",
     "CameraPreviewInfo",
     "JointStream",
     "LatestFrameCamera",
     "MockArm",
     "MockCamera",
     "OpenCVCamera",
+    "UVCCamera",
     "SOARMArm",
     "SOARMPortProbe",
     "SerialPortInfo",
@@ -40,6 +48,8 @@ __all__ = [
     "detect_camera_devices",
     "detect_serial_port_paths",
     "detect_serial_ports",
+    "probe_camera_fps",
+    "probe_uvc_camera_fps",
     "preview_camera_devices",
     "probe_soarm_ports",
 ]

@@ -17,6 +17,8 @@ from .config import SessionConfig, load_session_config
 from .datasets.tools import export_rerun_dataset, inspect_dataset, validate_dataset
 from .hardware import (
     detect_camera_devices,
+    probe_camera_fps,
+    probe_uvc_camera_fps,
     preview_camera_devices,
 )
 from .hardware.calibration import CalibrationRole, calibrate_session
@@ -25,7 +27,7 @@ from .hardware.runtime import HardwareSession, preflight_report_to_dict
 from .recording import record_lerobot_episodes
 
 
-CAMERA_BACKENDS = ["auto", "avfoundation", "default", "any"]
+CAMERA_BACKENDS = ["auto", "avfoundation", "v4l2", "default", "any"]
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -114,6 +116,27 @@ def main(argv: list[str] | None = None) -> None:
         help="Write detailed per-episode camera timing sidecars.",
     )
 
+    camera_fps = subcommands.add_parser(
+        "camera-fps",
+        help="Measure actual OpenCV camera frame rate",
+    )
+    camera_fps.add_argument("--config", default=DEFAULT_SESSION_CONFIG)
+    camera_fps.add_argument(
+        "--camera-indices",
+        default=None,
+        help="Comma-separated OpenCV indexes. If omitted, enabled OpenCV cameras from --config are used.",
+    )
+    camera_fps.add_argument("--width", type=int, default=640)
+    camera_fps.add_argument("--height", type=int, default=480)
+    camera_fps.add_argument("--fps", type=int, default=60)
+    camera_fps.add_argument("--seconds", type=float, default=2.0)
+    camera_fps.add_argument("--backend", choices=CAMERA_BACKENDS, default="auto")
+    camera_fps.add_argument(
+        "--fourcc",
+        default=None,
+        help="Optional four-character pixel format request, for example MJPG or YUYV.",
+    )
+
     dataset = subcommands.add_parser("dataset", help="Dataset tools")
     dataset_sub = dataset.add_subparsers(dest="dataset_command", required=True)
     dataset_inspect = dataset_sub.add_parser("inspect")
@@ -168,6 +191,8 @@ def main(argv: list[str] | None = None) -> None:
             save_policy=args.save_policy,
             debug=args.debug,
         )
+    elif args.command == "camera-fps":
+        _handle_camera_fps(args)
     elif args.command == "dataset":
         _handle_dataset(args)
     elif args.command == "web":
@@ -384,6 +409,65 @@ def _handle_record(
     )
 
 
+def _handle_camera_fps(args) -> None:
+    result_payload: list[dict] = []
+    results = []
+    if args.camera_indices is None:
+        config = load_session_config(args.config)
+        for name, camera in config.cameras.items():
+            if not camera.enabled or camera.kind not in {"opencv", "uvc"}:
+                continue
+            if camera.kind == "opencv" and (camera.device is None or not str(camera.device).isdigit()):
+                result_payload.append(
+                    {
+                        "camera": name,
+                        "opened": False,
+                        "error": f"camera device {camera.device!r} is not an OpenCV index",
+                    }
+                )
+                continue
+            if camera.kind == "uvc":
+                camera_results = probe_uvc_camera_fps(
+                    [camera.device],
+                    width=camera.width,
+                    height=camera.height,
+                    fps=camera.fps,
+                    seconds=args.seconds,
+                    bandwidth_factor=float(camera.match.get("bandwidth_factor", 2.0)),
+                )
+            else:
+                camera_results = probe_camera_fps(
+                    [int(camera.device)],
+                    width=camera.width,
+                    height=camera.height,
+                    fps=camera.fps,
+                    seconds=args.seconds,
+                    backend=camera.backend,
+                    fourcc=camera.fourcc,
+                )
+            results.extend(camera_results)
+            for result in camera_results:
+                rounded = _round_camera_probe(result.to_dict())
+                rounded["camera"] = name
+                result_payload.append(rounded)
+    else:
+        results = probe_camera_fps(
+            _parse_indices(args.camera_indices),
+            width=args.width,
+            height=args.height,
+            fps=args.fps,
+            seconds=args.seconds,
+            backend=args.backend,
+            fourcc=args.fourcc,
+        )
+        result_payload = [_round_camera_probe(result.to_dict()) for result in results]
+    payload = {
+        "summary": _camera_fps_summary(results),
+        "results": result_payload,
+    }
+    _print_json(payload)
+
+
 def _handle_dataset(args) -> None:
     root = Path(args.root)
     if args.dataset_command == "inspect":
@@ -431,6 +515,50 @@ def _handle_calibrate(
 
 def _print_json(data: dict) -> None:
     print(json.dumps(data, indent=2))
+
+
+def _camera_fps_summary(results) -> dict:
+    opened = [result for result in results if result.opened]
+    requested_values = sorted({result.requested_fps for result in results})
+    requested_fps: int | list[int] = (
+        requested_values[0] if len(requested_values) == 1 else requested_values
+    )
+    if not opened:
+        return {
+            "ok": False,
+            "opened": 0,
+            "requested_fps": requested_fps,
+            "min_observed_fps": 0.0,
+        }
+    min_observed = min(result.observed_fps for result in opened)
+    ok = all(
+        result.observed_fps >= result.requested_fps - max(1.0, result.requested_fps * 0.1)
+        for result in opened
+    )
+    return {
+        "ok": ok,
+        "opened": len(opened),
+        "requested_fps": requested_fps,
+        "min_observed_fps": round(min_observed, 3),
+    }
+
+
+def _round_camera_probe(result: dict) -> dict:
+    rounded = dict(result)
+    for key in (
+        "actual_width",
+        "actual_height",
+        "actual_fps",
+        "elapsed_s",
+        "observed_fps",
+        "interval_avg_ms",
+        "interval_min_ms",
+        "interval_max_ms",
+    ):
+        value = rounded.get(key)
+        if isinstance(value, float):
+            rounded[key] = round(value, 3)
+    return rounded
 
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
@@ -744,7 +872,10 @@ def _scan_next_steps(arm_ports: list[dict[str, Any]], cameras: list[dict[str, An
     if cameras:
         steps.append("Preview cameras before assigning wrist and third-person roles.")
     else:
-        steps.append("No USB cameras were found; check camera cables and macOS Camera permission.")
+        steps.append(
+            "No USB cameras were found; check camera cables and permissions "
+            "(/dev/video* on Ubuntu, Camera permission on macOS)."
+        )
     return steps
 
 
@@ -765,8 +896,9 @@ def _probe_next_steps(arm_ports: list[dict[str, Any]]) -> list[str]:
         for port in arm_ports
     ):
         return [
-            "This process cannot open the serial port. Run from your normal Terminal in the "
-            "soarm-studio conda env, close apps using the port, and check macOS permissions.",
+            "This process cannot open the serial port. On Ubuntu, add your user to dialout "
+            "and log out/in; on macOS, check Terminal permissions. Also close apps using "
+            "the port and rerun from the soarm-studio env.",
         ]
     return ["Fix failed ports before setup arms; check power, bus wiring, IDs, and baudrate."]
 
@@ -775,8 +907,8 @@ def _camera_preview_next_steps(previews: list[dict[str, Any]]) -> list[str]:
     if any(preview.get("ok") for preview in previews):
         return ["Open the saved preview images, then use the confirmed indexes in setup cameras."]
     return [
-        "No preview frames were saved; check Camera permission, backend, "
-        "and whether another app is using the cameras."
+        "No preview frames were saved; check Camera permission, backend "
+        "(v4l2 on Ubuntu, avfoundation on macOS), and whether another app is using the cameras."
     ]
 
 

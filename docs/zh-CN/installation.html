@@ -91,6 +91,16 @@
             conda 环境会以 editable 模式安装 SOARM Studio，并拉取 hardware extra 中声明的 GitHub 版 <code class="inline">soarm-sdk</code> 依赖。
           </p>
           <div class="code-title">
+            <span>Ubuntu 系统依赖</span>
+            <span>bash</span>
+          </div>
+          <pre><code>sudo apt update
+sudo apt install -y git v4l-utils libusb-1.0-0 libusb-1.0-0-dev libgl1 libglib2.0-0
+sudo usermod -aG dialout,video "$USER"</code></pre>
+          <p>
+            修改用户组后需要退出并重新登录，让串口和摄像头设备权限生效。
+          </p>
+          <div class="code-title">
             <span>安装环境</span>
             <span>zsh</span>
           </div>

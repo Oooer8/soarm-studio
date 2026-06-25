@@ -187,7 +187,7 @@ def _start_camera_histories(cameras: dict[str, object]) -> dict[str, _CameraHist
         stop_history = getattr(camera, "stop_history", None)
         if not callable(start_history) or not callable(stop_history):
             continue
-        start_history()
+        start_history(seed_latest=True)
         recorders[name] = camera
     return recorders
 
@@ -331,6 +331,7 @@ def _camera_timing_for_history(
     return {
         "camera": name,
         "raw_frame_count": len(history.frames),
+        "raw_observed_fps": _observed_fps(history.timestamps_ns),
         "raw_timestamps_s": [
             _relative_time_s(timestamp_ns, first_sample_ns)
             for timestamp_ns in history.timestamps_ns
@@ -340,6 +341,15 @@ def _camera_timing_for_history(
         "matched_samples": matched_samples,
         "matched_offset_stats_ms": _stats(offsets),
     }
+
+
+def _observed_fps(timestamps_ns: list[int]) -> float:
+    if len(timestamps_ns) < 2:
+        return 0.0
+    elapsed_s = (timestamps_ns[-1] - timestamps_ns[0]) / 1_000_000_000.0
+    if elapsed_s <= 0:
+        return 0.0
+    return round((len(timestamps_ns) - 1) / elapsed_s, 6)
 
 
 def _relative_time_s(monotonic_time_ns: int, first_sample_ns: int | None) -> float:

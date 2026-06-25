@@ -206,8 +206,9 @@ def test_probe_arms_output_guides_serial_permission_error(monkeypatch, capsys) -
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["next_steps"] == [
-        "This process cannot open the serial port. Run from your normal Terminal in the "
-        "soarm-studio conda env, close apps using the port, and check macOS permissions.",
+        "This process cannot open the serial port. On Ubuntu, add your user to dialout "
+        "and log out/in; on macOS, check Terminal permissions. Also close apps using "
+        "the port and rerun from the soarm-studio env.",
     ]
 
 
