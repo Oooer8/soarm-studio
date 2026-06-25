@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from dataclasses import replace
 import time
 from typing import Callable
 
@@ -31,6 +32,7 @@ class TeleopLoop:
         follower_readback_every: int = 0,
         parallel_arm_reads: bool = True,
         sample_cameras: bool = True,
+        sensor_read_lead_s: float = 0.0,
     ) -> None:
         self.leader = leader
         self.follower = follower
@@ -55,6 +57,7 @@ class TeleopLoop:
             raise ValueError("follower_readback_every must be >= 0")
         self.parallel_arm_reads = bool(parallel_arm_reads)
         self.sample_cameras = bool(sample_cameras)
+        self.sensor_read_lead_s = max(0.0, float(sensor_read_lead_s))
         self.sleep_guard_s = min(0.004, self.dt * 0.25)
         self.sleep_spin_s = min(0.0005, self.sleep_guard_s)
         self.paused = False
@@ -95,9 +98,10 @@ class TeleopLoop:
         self._stop_stream()
         self._shutdown_read_executor()
 
-    def step(self) -> ControlSample:
+    def step(self, *, target_tick_ns: int | None = None) -> ControlSample:
         started = time.monotonic()
         started_ns = time.monotonic_ns()
+        target_tick_ns = started_ns if target_tick_ns is None else int(target_tick_ns)
         frame_index = self.metrics.iterations
 
         leader_sample, follower_before = self._read_arm_pair(
@@ -159,12 +163,12 @@ class TeleopLoop:
         follower_after = None
         if self._should_read_follower_after(frame_index):
             with self._phase("follower_after_read"):
-                follower_after = self.follower.read_joints()
+                follower_after, _latency_s = self._timed_read_joints(self.follower)
             self._require_joint_keys("follower_after", follower_after.positions)
         latency_ms = (time.monotonic() - started) * 1000.0
         sample = ControlSample(
             frame_index=frame_index,
-            monotonic_time_ns=started_ns,
+            monotonic_time_ns=target_tick_ns,
             leader=leader_sample,
             follower_before=follower_before,
             action=action,
@@ -172,6 +176,7 @@ class TeleopLoop:
             camera_frames=frames,
             camera_metrics=camera_metrics,
             latency_ms=latency_ms,
+            step_start_monotonic_time_ns=started_ns,
         )
 
         with self._phase("callbacks"):
@@ -204,9 +209,9 @@ class TeleopLoop:
                 self._sync_start_to_leader()
 
             self.metrics.started_at = time.monotonic()
+            started_at_ns = time.monotonic_ns()
             self.metrics.finished_at = None
             deadline = None if seconds is None else self.metrics.started_at + seconds
-            next_tick = self.metrics.started_at
             while True:
                 if self.stop_requested:
                     break
@@ -214,20 +219,20 @@ class TeleopLoop:
                     break
                 if deadline is not None and time.monotonic() >= deadline:
                     break
+                frame_index = self.metrics.iterations
+                target_tick = self.metrics.started_at + frame_index * self.dt
+                target_tick_ns = started_at_ns + int(round(frame_index * self.dt * 1_000_000_000))
+                read_start = target_tick - self.sensor_read_lead_s
+
+                if sleep and read_start > time.monotonic():
+                    with self._phase("sleep"):
+                        self._sleep_until(read_start)
 
                 self.metrics.observe_phase(
                     "scheduler_lag",
-                    max(0.0, time.monotonic() - next_tick),
+                    max(0.0, time.monotonic() - read_start),
                 )
-                self.step()
-                if sleep:
-                    next_tick += self.dt
-                    if steps is not None and self.metrics.iterations >= steps:
-                        continue
-                    sleep_until = next_tick if deadline is None else min(next_tick, deadline)
-                    if sleep_until > time.monotonic():
-                        with self._phase("sleep"):
-                            self._sleep_until(sleep_until)
+                self.step(target_tick_ns=target_tick_ns)
         finally:
             if self.metrics.finished_at is None:
                 self.metrics.finish()
@@ -298,9 +303,9 @@ class TeleopLoop:
     ) -> tuple[JointSample, JointSample]:
         if not self.parallel_arm_reads:
             with self._phase(leader_phase):
-                leader_sample = self.leader.read_joints()
+                leader_sample, _leader_latency_s = self._timed_read_joints(self.leader)
             with self._phase(follower_phase):
-                follower_sample = self.follower.read_joints()
+                follower_sample, _follower_latency_s = self._timed_read_joints(self.follower)
             return leader_sample, follower_sample
 
         executor = self._arm_read_executor()
@@ -329,8 +334,18 @@ class TeleopLoop:
     @staticmethod
     def _timed_read_joints(arm: Arm) -> tuple[JointSample, float]:
         started = time.monotonic()
+        started_ns = time.monotonic_ns()
         sample = arm.read_joints()
-        return sample, time.monotonic() - started
+        finished = time.monotonic()
+        finished_ns = time.monotonic_ns()
+        estimated_sample_ns = started_ns + (finished_ns - started_ns) // 2
+        sample = replace(
+            sample,
+            request_start_monotonic_time_ns=started_ns,
+            receive_monotonic_time_ns=finished_ns,
+            estimated_sample_monotonic_time_ns=estimated_sample_ns,
+        )
+        return sample, finished - started
 
     @contextmanager
     def _phase(self, name: str) -> Iterator[None]:

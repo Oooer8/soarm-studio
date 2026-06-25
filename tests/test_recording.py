@@ -9,7 +9,11 @@ from soarm_studio.recording.quality import RecordingQualityTracker
 from soarm_studio.recording.session import (
     RecordingControls,
     _start_camera_histories,
-    _write_episode_samples,
+)
+from soarm_studio.recording.timing import (
+    RecordingTimingCalibration,
+    timing_calibration_from_warmup,
+    write_episode_samples,
 )
 from soarm_studio.recording import record_lerobot_episodes
 from soarm_studio.types import CameraFrame, ControlSample, JointSample
@@ -68,6 +72,10 @@ def test_record_lerobot_episodes_writes_camera_timing_only_in_debug(tmp_path) ->
         (root / "episodes" / "episode_000000" / "camera_timing.json").read_text()
     )
     assert timing["sample_count"] > 0
+    assert timing["timing_model"] == {
+        "joint_read_lead_ms": 0.0,
+        "camera_receive_to_estimated_exposure_ms": {},
+    }
     assert timing["cameras"] == {}
 
 
@@ -244,7 +252,7 @@ def test_record_warmup_and_episode_share_one_stream(monkeypatch, tmp_path) -> No
     assert 0 < result["episodes"][0]["metrics"]["iterations"] <= 3
 
 
-def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:
+def test_write_episode_samples_matches_nearest_estimated_exposure_frame() -> None:
     captured: list[dict] = []
 
     class FakeEpisode:
@@ -255,11 +263,11 @@ def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:
         _sample(frame_index=0, monotonic_time_ns=1_000_000_000),
         _sample(frame_index=1, monotonic_time_ns=1_100_000_000),
     ]
-    early = _frame(monotonic_time_ns=960_000_000, pixel=b"\x01\x00\x00")
-    late = _frame(monotonic_time_ns=1_090_000_000, pixel=b"\x02\x00\x00")
+    early = _frame(monotonic_time_ns=1_040_000_000, pixel=b"\x01\x00\x00")
+    late = _frame(monotonic_time_ns=1_140_000_000, pixel=b"\x02\x00\x00")
     quality = RecordingQualityTracker()
 
-    timing = _write_episode_samples(
+    timing = write_episode_samples(
         FakeEpisode(),
         samples,
         quality,
@@ -269,11 +277,68 @@ def test_write_episode_samples_matches_nearest_camera_history_frame() -> None:
     assert captured[0]["images"]["wrist"] is early
     assert captured[1]["images"]["wrist"] is late
     assert [item["timestamp"] for item in captured] == [0.0, 0.1]
-    assert quality.to_dict()["max_camera_age_ms"] == 40.0
-    assert timing["cameras"]["wrist"]["raw_intervals_ms"] == [130.0]
-    assert timing["cameras"]["wrist"]["raw_observed_fps"] == 7.692308
+    assert quality.to_dict()["max_camera_age_ms"] == 10.0
+    assert timing["cameras"]["wrist"]["raw_intervals_ms"] == [100.0]
+    assert timing["cameras"]["wrist"]["raw_observed_fps"] == 10.0
     assert timing["cameras"]["wrist"]["matched_samples"][0]["camera_frame_index"] == 0
     assert timing["cameras"]["wrist"]["matched_samples"][1]["camera_frame_index"] == 1
+
+
+def test_write_episode_samples_uses_estimated_camera_exposure_time() -> None:
+    captured: list[dict] = []
+
+    class FakeEpisode:
+        def add_frame(self, **kwargs) -> None:
+            captured.append(kwargs)
+
+    sample = _sample(frame_index=0, monotonic_time_ns=1_000_000_000)
+    early = _frame(monotonic_time_ns=1_010_000_000, pixel=b"\x01\x00\x00")
+    aligned = _frame(monotonic_time_ns=1_040_000_000, pixel=b"\x02\x00\x00")
+    quality = RecordingQualityTracker()
+
+    timing = write_episode_samples(
+        FakeEpisode(),
+        [sample],
+        quality,
+        {"wrist": [early, aligned]},
+        RecordingTimingCalibration(
+            camera_receive_to_exposure_shift_ns={"wrist": -40_000_000},
+        ),
+    )
+
+    assert captured[0]["images"]["wrist"] is aligned
+    assert quality.to_dict()["max_camera_age_ms"] == 0.0
+    camera_timing = timing["cameras"]["wrist"]
+    assert camera_timing["receive_to_estimated_exposure_ms"] == -40.0
+    assert camera_timing["matched_samples"][0]["offset_ms"] == 0.0
+    assert camera_timing["matched_samples"][0]["receive_offset_ms"] == 40.0
+
+
+def test_timing_calibration_from_warmup_estimates_joint_lead_and_camera_shift() -> None:
+    samples = [
+        _sample(frame_index=0, monotonic_time_ns=1_000_000_000, joint_estimated_offset_ns=3_000_000),
+        _sample(frame_index=1, monotonic_time_ns=1_100_000_000, joint_estimated_offset_ns=3_000_000),
+        _sample(frame_index=2, monotonic_time_ns=1_200_000_000, joint_estimated_offset_ns=3_000_000),
+    ]
+    frames = [
+        _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+        _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+        _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+    ]
+
+    calibration = timing_calibration_from_warmup(samples, {"wrist": frames})
+
+    assert calibration.joint_read_lead_ns == 3_000_000
+    assert calibration.camera_receive_to_exposure_shift_ns == {"wrist": -50_000_000}
+
+
+def test_timing_calibration_from_warmup_ignores_insufficient_camera_history() -> None:
+    calibration = timing_calibration_from_warmup(
+        [],
+        {"wrist": [_frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00")]},
+    )
+
+    assert calibration.camera_receive_to_exposure_shift_ns == {}
 
 
 def test_start_camera_histories_seeds_latest_frame() -> None:
@@ -295,13 +360,26 @@ def test_start_camera_histories_seeds_latest_frame() -> None:
     assert camera.seed_latest is True
 
 
-def _sample(*, frame_index: int, monotonic_time_ns: int) -> ControlSample:
+def _sample(
+    *,
+    frame_index: int,
+    monotonic_time_ns: int,
+    joint_estimated_offset_ns: int = 0,
+) -> ControlSample:
     joints = {"a": float(frame_index)}
+    joint_sample = JointSample(
+        joints,
+        timestamp=monotonic_time_ns / 1_000_000_000.0,
+        monotonic_time_ns=monotonic_time_ns,
+        request_start_monotonic_time_ns=monotonic_time_ns - 1_000_000,
+        receive_monotonic_time_ns=monotonic_time_ns + 1_000_000,
+        estimated_sample_monotonic_time_ns=monotonic_time_ns + joint_estimated_offset_ns,
+    )
     return ControlSample(
         frame_index=frame_index,
         monotonic_time_ns=monotonic_time_ns,
-        leader=JointSample(joints),
-        follower_before=JointSample(joints),
+        leader=joint_sample,
+        follower_before=joint_sample,
         action={"a": float(frame_index) + 0.1},
         follower_after=None,
         camera_frames={},

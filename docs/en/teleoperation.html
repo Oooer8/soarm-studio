@@ -284,7 +284,7 @@
                 </tr>
                 <tr>
                   <td>Cameras</td>
-                  <td>The teleop debug path reads cached frames from background latest-frame threads, so camera USB or decode jitter does not block target publishing. During dataset recording, cameras that support history keep an episode-local frame history, and frames are matched to control samples by nearest monotonic timestamp after the episode finishes.</td>
+                  <td>The teleop debug path reads cached frames from background latest-frame threads, so camera USB or decode jitter does not block target publishing. During dataset recording, cameras that support history keep an episode-local frame history; after the episode finishes, frames are matched by estimated exposure time to the nearest target loop tick.</td>
                 </tr>
                 <tr>
                   <td>Scheduler</td>
@@ -393,7 +393,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 Because leader state, follower state, and action are sampled in the same loop just before the cached camera fetch, <code class="inline">camera_age</code> can be read as an approximate state/action-to-image offset: the image is usually about one frame older than the current state/action. The OpenCV path does not use a hardware exposure timestamp, so this is application-level cached-frame age rather than sensor-level synchronization error.
               </p>
               <p>
-                Dataset recording differs from teleop debug: cameras that support history record all frames in the background during the episode, while the Studio loop records only joint state, action, and monotonic timestamps. After the episode finishes, each control sample is matched to the nearest camera frame by monotonic timestamp. Recording quality should therefore be read as matched timestamp offset, not as the live teleop latest-frame <code class="inline">camera_age</code> value.
+                Dataset recording differs from teleop debug: cameras that support history record all frames in the background during the episode, while the Studio loop records joint state and action against the target <code class="inline">loop tick</code>. After the episode finishes, the warmup receive-to-exposure offset is used to match each control sample to the camera frame whose estimated exposure time is closest to that tick. Recording quality should therefore be read as tick-to-estimated-exposure offset, not as the live teleop latest-frame <code class="inline">camera_age</code> value.
               </p>
             </div>
           </div>

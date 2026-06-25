@@ -21,6 +21,9 @@ class JointSample:
     positions: dict[str, float]
     timestamp: float = field(default_factory=time.time)
     monotonic_time_ns: int = field(default_factory=time.monotonic_ns)
+    request_start_monotonic_time_ns: int | None = None
+    receive_monotonic_time_ns: int | None = None
+    estimated_sample_monotonic_time_ns: int | None = None
 
     def ordered(self, joint_names: list[str] | tuple[str, ...]) -> list[float]:
         return [float(self.positions[name]) for name in joint_names]
@@ -225,6 +228,7 @@ class ControlSample:
     camera_frames: dict[str, CameraFrame]
     camera_metrics: dict[str, CameraSyncMetric]
     latency_ms: float
+    step_start_monotonic_time_ns: int | None = None
 
     @property
     def state(self) -> dict[str, float]:

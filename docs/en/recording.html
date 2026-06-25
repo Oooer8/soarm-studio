@@ -239,31 +239,38 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
           <h2 id="capture-timing">Capture timing</h2>
           <p>
-            During recording, the live loop only records joint state, action, and monotonic timestamps; image synchronization is handled after the episode. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Cameras that support history start saving background frames at the episode boundary. Before writing the dataset, Studio matches each control sample to the nearest camera frame by <code class="inline">monotonic_time_ns</code>.
+            Recording uses the Studio target <code class="inline">loop tick</code> as the single dataset time base. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Warmup automatically estimates the joint read lead time and the camera receive-to-estimated-exposure offset; in normal use, keep <code class="inline">--warmup 1</code> instead of tuning extra offsets by hand.
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
 
 warmup:
-  same TeleopLoop, no sample/history collection
+  same TeleopLoop
+  collect joint request/receive timing
+  collect camera receive intervals
+  -> estimate joint_read_lead_ms
+  -> estimate camera_receive_to_estimated_exposure_ms
 
 episode start:
   enable episode camera history
 
 Studio loop @ loop_hz:
+  target_tick[n] = episode_start + n / loop_hz
+  sleep until target_tick[n] - joint_read_lead
   leader_read || follower_before_read
   -> action
   -> SDK direct stream update
-  -> append ControlSample(joints, action, timestamp)
+  -> append ControlSample(joints, action, target_tick)
 
 after episode:
-  sample.timestamp -> nearest camera frame timestamp
+  camera receive timestamp -> estimated exposure timestamp
+  target_tick -> nearest estimated exposure timestamp
   -> write LeRobot frame and quality sidecars</code></pre>
           <p>
-            This means teleop debug <code class="inline">camera_age:*</code> reports latest-frame preview freshness, while recording quality reports the post-matching sample-to-image offset.
+            This means teleop debug <code class="inline">camera_age:*</code> reports latest-frame preview freshness, while recording quality <code class="inline">max_camera_age_ms</code> reports the difference between the matched estimated exposure time and the target <code class="inline">loop tick</code>. Standard USB/UVC cameras do not provide hardware exposure timestamps here, so this is a software estimate rather than hardware sync.
           </p>
           <p>
-            Normal recording only saves summary quality metrics. Add <code class="inline">--debug</code> to the record command when you need raw per-camera frame timestamps, frame intervals, and per-sample matching offsets; the sidecar is written to <code class="inline">episodes/episode_000000/camera_timing.json</code>. These raw camera timestamps come from the episode history and do not include cached frames from warmup or <code class="inline">sync_start</code>.
+            Normal recording only saves summary quality metrics. Add <code class="inline">--debug</code> to the record command when you need the automatic timing model, joint read timing, raw per-camera receive timestamps, estimated exposure timestamps, and per-sample matching offsets; the sidecar is written to <code class="inline">episodes/episode_000000/camera_timing.json</code>. Its <code class="inline">timing_model</code> contains <code class="inline">joint_read_lead_ms</code> and <code class="inline">camera_receive_to_estimated_exposure_ms</code>.
           </p>
 
           <h2 id="recording-outputs">Check recording outputs</h2>

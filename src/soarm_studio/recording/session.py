@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-from bisect import bisect_left
 from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, Protocol
 
 from soarm_studio.config import SessionConfig
 from soarm_studio.datasets.lerobot_v3 import LeRobotV3Writer
-from soarm_studio.datasets.lerobot_v3.writer import EpisodeWriter
 from soarm_studio.hardware.runtime import HardwareSession
-from soarm_studio.types import CameraFrame, CameraSyncMetric
+from soarm_studio.types import CameraFrame
 from soarm_studio.teleop import ControlSample
 
 from .quality import RecordingQualityTracker
+from .timing import (
+    RecordingTimingCalibration,
+    merge_timing_calibration,
+    timing_calibration_from_warmup,
+    timing_calibration_to_dict,
+    write_episode_samples,
+)
 
 
 class _CameraHistoryRecorder(Protocol):
@@ -56,12 +61,6 @@ class RecordingControls:
     before_episode: Callable[[EpisodeStartInfo], bool] | None = None
     after_episode: Callable[[EpisodeResultInfo], EpisodeDecision] | None = None
     recording_context: Callable[[RecordingLoopControl], AbstractContextManager[None]] | None = None
-
-
-@dataclass(frozen=True)
-class _CameraHistory:
-    frames: list[CameraFrame]
-    timestamps_ns: list[int]
 
 
 def create_lerobot_writer(config: SessionConfig, *, overwrite: bool = False) -> LeRobotV3Writer:
@@ -111,6 +110,7 @@ def record_lerobot_episodes(
                 }
             )
             attempt = 0
+            timing_calibration = RecordingTimingCalibration()
             while len(saved) < total_episodes:
                 episode_number = len(saved) + 1
                 attempt += 1
@@ -137,18 +137,21 @@ def record_lerobot_episodes(
                     samples.append(sample)
 
                 try:
-                    metrics, frame_histories = _run_continuous_recording_loop(
+                    metrics, frame_histories, episode_timing_calibration = _run_continuous_recording_loop(
                         hardware,
                         seconds=seconds,
                         warmup=warmup if not saved else 0.0,
                         on_sample=add_sample,
                         recording_context=controls.recording_context,
+                        timing_calibration=timing_calibration,
                     )
-                    camera_timing = _write_episode_samples(
+                    timing_calibration = episode_timing_calibration
+                    camera_timing = write_episode_samples(
                         episode,
                         samples,
                         quality,
                         frame_histories,
+                        timing_calibration,
                     )
                     quality_dict = quality.to_dict()
                     pending = EpisodeResultInfo(
@@ -221,16 +224,38 @@ def _run_continuous_recording_loop(
     on_sample: Callable[[ControlSample], None],
     sample_cameras: bool | None = None,
     recording_context: Callable[[RecordingLoopControl], AbstractContextManager[None]] | None = None,
-) -> tuple[dict, dict[str, list[CameraFrame]]]:
+    timing_calibration: RecordingTimingCalibration | None = None,
+) -> tuple[dict, dict[str, list[CameraFrame]], RecordingTimingCalibration]:
     history_recorders: dict[str, _CameraHistoryRecorder] = {}
+    warmup_recorders: dict[str, _CameraHistoryRecorder] = {}
+    timing_calibration = timing_calibration or RecordingTimingCalibration()
     with hardware.running_loop(on_sample=None, sample_cameras=False) as loop:
         try:
+            warmup_samples: list[ControlSample] = []
+            warmup_frame_histories: dict[str, list[CameraFrame]] = {}
             if warmup > 0:
+                warmup_recorders = _start_camera_histories(
+                    hardware.cameras,
+                    seed_latest=False,
+                )
+                loop.on_sample = warmup_samples.append
                 loop.run(seconds=warmup, close_on_finish=False)
+                warmup_frame_histories = _stop_camera_histories(warmup_recorders)
+                warmup_recorders = {}
+                loop.on_sample = None
             else:
                 loop.run(steps=0, close_on_finish=False)
             loop.sync_start = False
             loop.reset_metrics()
+            warmup_timing_calibration = timing_calibration_from_warmup(
+                warmup_samples,
+                warmup_frame_histories,
+            )
+            timing_calibration = merge_timing_calibration(
+                timing_calibration,
+                warmup_timing_calibration,
+            )
+            loop.sensor_read_lead_s = timing_calibration.joint_read_lead_ns / 1_000_000_000.0
 
             history_recorders = _start_camera_histories(hardware.cameras)
             if sample_cameras is None:
@@ -249,46 +274,29 @@ def _run_continuous_recording_loop(
                 metrics_dict["stopped_early"] = True
             if getattr(loop, "stop_reason", None) is not None:
                 metrics_dict["stop_reason"] = loop.stop_reason
-            return metrics_dict, frame_histories
+            metrics_dict["sensor_timing_calibration_ms"] = timing_calibration_to_dict(
+                timing_calibration
+            )
+            return metrics_dict, frame_histories, timing_calibration
         finally:
+            _stop_camera_histories(warmup_recorders)
             _stop_camera_histories(history_recorders)
 
 
-def _write_episode_samples(
-    episode: EpisodeWriter,
-    samples: list[ControlSample],
-    quality: RecordingQualityTracker,
-    frame_histories: dict[str, list[CameraFrame]] | None = None,
-) -> dict:
-    histories = {
-        name: _camera_history(frames)
-        for name, frames in (frame_histories or {}).items()
-    }
-    first_sample_ns: int | None = None
-    for sample in samples:
-        if first_sample_ns is None:
-            first_sample_ns = sample.monotonic_time_ns
-        timestamp = (sample.monotonic_time_ns - first_sample_ns) / 1_000_000_000.0
-        matched_sample = _sample_with_matched_camera_frames(sample, histories)
-        episode.add_frame(
-            state=matched_sample.follower_before.positions,
-            action=matched_sample.action,
-            images=matched_sample.camera_frames,
-            timestamp=timestamp,
-        )
-        quality.observe(matched_sample)
-    return _camera_timing_payload(samples, histories, first_sample_ns)
-
-
-def _start_camera_histories(cameras: dict[str, object]) -> dict[str, _CameraHistoryRecorder]:
+def _start_camera_histories(
+    cameras: dict[str, object],
+    *,
+    seed_latest: bool = True,
+) -> dict[str, _CameraHistoryRecorder]:
     recorders: dict[str, _CameraHistoryRecorder] = {}
     for name, camera in cameras.items():
         start_history = getattr(camera, "start_history", None)
         stop_history = getattr(camera, "stop_history", None)
         if not callable(start_history) or not callable(stop_history):
             continue
-        start_history(seed_latest=True)
         recorders[name] = camera
+    for camera in recorders.values():
+        camera.start_history(seed_latest=seed_latest)
     return recorders
 
 
@@ -306,167 +314,6 @@ def _should_sample_cameras(
     history_recorders: dict[str, _CameraHistoryRecorder],
 ) -> bool:
     return any(name not in history_recorders for name in cameras)
-
-
-def _camera_history(frames: list[CameraFrame]) -> _CameraHistory:
-    sorted_frames = sorted(frames, key=lambda frame: frame.monotonic_time_ns)
-    return _CameraHistory(
-        frames=sorted_frames,
-        timestamps_ns=[frame.monotonic_time_ns for frame in sorted_frames],
-    )
-
-
-def _sample_with_matched_camera_frames(
-    sample: ControlSample,
-    frame_histories: dict[str, _CameraHistory],
-) -> ControlSample:
-    if not frame_histories:
-        return sample
-
-    frames = dict(sample.camera_frames)
-    metrics = dict(sample.camera_metrics)
-    for name, history in frame_histories.items():
-        matched = _nearest_frame(history, sample.monotonic_time_ns)
-        if matched is None:
-            metrics[name] = CameraSyncMetric(
-                camera=name,
-                ok=False,
-                timestamp=None,
-                monotonic_time_ns=None,
-                read_latency_ms=0.0,
-                error="missing camera history",
-            )
-            continue
-        frames[name] = matched
-        offset_ms = abs(sample.monotonic_time_ns - matched.monotonic_time_ns) / 1_000_000.0
-        metrics[name] = CameraSyncMetric(
-            camera=name,
-            ok=True,
-            timestamp=matched.timestamp,
-            monotonic_time_ns=matched.monotonic_time_ns,
-            read_latency_ms=0.0,
-            frame_age_ms=offset_ms,
-            width=matched.width,
-            height=matched.height,
-        )
-    return replace(sample, camera_frames=frames, camera_metrics=metrics)
-
-
-def _nearest_frame(history: _CameraHistory, monotonic_time_ns: int) -> CameraFrame | None:
-    index = _nearest_frame_index(history, monotonic_time_ns)
-    return None if index is None else history.frames[index]
-
-
-def _nearest_frame_index(history: _CameraHistory, monotonic_time_ns: int) -> int | None:
-    if not history.frames:
-        return None
-    index = bisect_left(history.timestamps_ns, monotonic_time_ns)
-    if index <= 0:
-        return 0
-    if index >= len(history.frames):
-        return len(history.frames) - 1
-    before = history.frames[index - 1]
-    after = history.frames[index]
-    before_delta = abs(monotonic_time_ns - before.monotonic_time_ns)
-    after_delta = abs(after.monotonic_time_ns - monotonic_time_ns)
-    return index - 1 if before_delta <= after_delta else index
-
-
-def _camera_timing_payload(
-    samples: list[ControlSample],
-    histories: dict[str, _CameraHistory],
-    first_sample_ns: int | None,
-) -> dict:
-    return {
-        "sample_count": len(samples),
-        "cameras": {
-            name: _camera_timing_for_history(name, history, samples, first_sample_ns)
-            for name, history in histories.items()
-        },
-    }
-
-
-def _camera_timing_for_history(
-    name: str,
-    history: _CameraHistory,
-    samples: list[ControlSample],
-    first_sample_ns: int | None,
-) -> dict:
-    intervals_ms = [
-        (history.timestamps_ns[index] - history.timestamps_ns[index - 1]) / 1_000_000.0
-        for index in range(1, len(history.timestamps_ns))
-    ]
-    matched_samples: list[dict] = []
-    for sample in samples:
-        matched_index = _nearest_frame_index(history, sample.monotonic_time_ns)
-        if matched_index is None:
-            matched_samples.append(
-                {
-                    "sample_frame_index": sample.frame_index,
-                    "sample_time_s": _relative_time_s(sample.monotonic_time_ns, first_sample_ns),
-                    "camera_frame_index": None,
-                    "camera_time_s": None,
-                    "offset_ms": None,
-                }
-            )
-            continue
-        matched = history.frames[matched_index]
-        matched_samples.append(
-            {
-                "sample_frame_index": sample.frame_index,
-                "sample_time_s": _relative_time_s(sample.monotonic_time_ns, first_sample_ns),
-                "camera_frame_index": matched_index,
-                "camera_time_s": _relative_time_s(matched.monotonic_time_ns, first_sample_ns),
-                "offset_ms": round(
-                    abs(sample.monotonic_time_ns - matched.monotonic_time_ns) / 1_000_000.0,
-                    6,
-                ),
-            }
-        )
-    offsets = [
-        item["offset_ms"]
-        for item in matched_samples
-        if item["offset_ms"] is not None
-    ]
-    return {
-        "camera": name,
-        "raw_frame_count": len(history.frames),
-        "raw_observed_fps": _observed_fps(history.timestamps_ns),
-        "raw_timestamps_s": [
-            _relative_time_s(timestamp_ns, first_sample_ns)
-            for timestamp_ns in history.timestamps_ns
-        ],
-        "raw_intervals_ms": [round(value, 6) for value in intervals_ms],
-        "raw_interval_stats_ms": _stats(intervals_ms),
-        "matched_samples": matched_samples,
-        "matched_offset_stats_ms": _stats(offsets),
-    }
-
-
-def _observed_fps(timestamps_ns: list[int]) -> float:
-    if len(timestamps_ns) < 2:
-        return 0.0
-    elapsed_s = (timestamps_ns[-1] - timestamps_ns[0]) / 1_000_000_000.0
-    if elapsed_s <= 0:
-        return 0.0
-    return round((len(timestamps_ns) - 1) / elapsed_s, 6)
-
-
-def _relative_time_s(monotonic_time_ns: int, first_sample_ns: int | None) -> float:
-    if first_sample_ns is None:
-        return 0.0
-    return round((monotonic_time_ns - first_sample_ns) / 1_000_000_000.0, 9)
-
-
-def _stats(values: list[float]) -> dict[str, float | int]:
-    if not values:
-        return {"count": 0, "avg": 0.0, "min": 0.0, "max": 0.0}
-    return {
-        "count": len(values),
-        "avg": round(sum(values) / len(values), 6),
-        "min": round(min(values), 6),
-        "max": round(max(values), 6),
-    }
 
 
 def _quality_summary(episodes: list[dict]) -> dict:

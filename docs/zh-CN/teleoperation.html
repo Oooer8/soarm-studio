@@ -278,7 +278,7 @@
                 </tr>
                 <tr>
                   <td>摄像头</td>
-                  <td>遥操作 debug 路径从后台 latest-frame 线程读取缓存帧，因此摄像头 USB 或解码抖动不会阻塞目标发布。数据集录制时，支持 history 的相机会在 episode 内保存帧历史，episode 结束后再按单调时间戳匹配最近图像。</td>
+                  <td>遥操作 debug 路径从后台 latest-frame 线程读取缓存帧，因此摄像头 USB 或解码抖动不会阻塞目标发布。数据集录制时，支持 history 的相机会在 episode 内保存帧历史，episode 结束后再按估计曝光时刻匹配最接近目标 loop tick 的图像。</td>
                 </tr>
                 <tr>
                   <td>调度器</td>
@@ -384,7 +384,7 @@ hardware: disconnecting; disabling servo torque before closing the port.</code><
                 因为主臂、从臂状态和 action 都在同一轮循环中、且在读取相机缓存前刚刚采样，所以 <code class="inline">camera_age</code> 可以近似理解为当前 state/action 与图像帧之间的时间差: 图像通常比当前 state/action 旧一帧左右。当前 OpenCV 路径没有使用硬件曝光时间戳，因此这个值是应用层缓存帧年龄，不是传感器级同步误差。
               </p>
               <p>
-                数据集录制路径与遥操作 debug 略有不同: 支持 history 的摄像头会在后台线程记录 episode 内所有帧，Studio 主循环只记录关节状态、action 和单调时间戳；episode 结束后再为每个控制样本匹配最近的相机帧。因此录制质量中的相机 offset 应按匹配后的时间差理解，而不是把遥操作中的 latest-frame <code class="inline">camera_age</code> 直接当成录制同步误差。
+                数据集录制路径与遥操作 debug 略有不同: 支持 history 的摄像头会在后台线程记录 episode 内所有帧，Studio 主循环以目标 <code class="inline">loop tick</code> 记录关节状态和 action；episode 结束后再用 warmup 得到的 receive-to-exposure 偏移，为每个控制样本匹配最接近目标 tick 的估计曝光时刻。因此录制质量中的相机 offset 应按 tick 到估计曝光的时间差理解，而不是把遥操作中的 latest-frame <code class="inline">camera_age</code> 直接当成录制同步误差。
               </p>
             </div>
           </div>

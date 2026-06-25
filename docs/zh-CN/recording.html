@@ -239,31 +239,38 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
           <h2 id="capture-timing">数采时序</h2>
           <p>
-            录制时，实时循环只负责关节状态、action 和单调时间戳，图像同步在 episode 结束后处理。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream；支持 history 的相机从 episode 起点开始保存后台采集线程里的帧。保存数据集前，Studio 会为每个控制样本按 <code class="inline">monotonic_time_ns</code> 匹配最近的相机帧。
+            录制以 Studio 的目标 <code class="inline">loop tick</code> 作为唯一时间轴。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream。warmup 会自动估计 joint 读取提前量，以及相机“收到帧”到“估计曝光时刻”的偏移；用户通常只需要保留 <code class="inline">--warmup 1</code>，不用手动配置额外 offset。
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
 
 warmup:
-  same TeleopLoop, no sample/history collection
+  same TeleopLoop
+  collect joint request/receive timing
+  collect camera receive intervals
+  -> estimate joint_read_lead_ms
+  -> estimate camera_receive_to_estimated_exposure_ms
 
 episode start:
   enable episode camera history
 
 Studio loop @ loop_hz:
+  target_tick[n] = episode_start + n / loop_hz
+  sleep until target_tick[n] - joint_read_lead
   leader_read || follower_before_read
   -> action
   -> SDK direct stream update
-  -> append ControlSample(joints, action, timestamp)
+  -> append ControlSample(joints, action, target_tick)
 
 after episode:
-  sample.timestamp -> nearest camera frame timestamp
+  camera receive timestamp -> estimated exposure timestamp
+  target_tick -> nearest estimated exposure timestamp
   -> write LeRobot frame and quality sidecars</code></pre>
           <p>
-            因此，遥操作 debug 里的 <code class="inline">camera_age:*</code> 表示 latest-frame 预览缓存的新鲜度；录制质量里的相机时间差则表示后处理匹配后的样本到图像 offset。
+            因此，遥操作 debug 里的 <code class="inline">camera_age:*</code> 表示 latest-frame 预览缓存的新鲜度；录制质量里的 <code class="inline">max_camera_age_ms</code> 表示“匹配到的估计曝光时刻”和目标 <code class="inline">loop tick</code> 的差值。普通 USB/UVC 相机没有硬件曝光时间戳，所以这里是软件估计，不是硬件同步。
           </p>
           <p>
-            默认录制只保存汇总质量指标。需要查看每个相机的 raw frame timestamp、相邻帧间隔和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。这些 raw camera timestamps 来自 episode history，不包含 warmup 或 <code class="inline">sync_start</code> 期间的缓存帧。
+            默认录制只保存汇总质量指标。需要查看自动时序模型、joint 读取时间、每个相机的 raw receive timestamp、估计曝光时间和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。其中 <code class="inline">timing_model</code> 会包含 <code class="inline">joint_read_lead_ms</code> 和 <code class="inline">camera_receive_to_estimated_exposure_ms</code>。
           </p>
 
           <h2 id="recording-outputs">检查录制输出</h2>

@@ -191,6 +191,33 @@ def test_teleop_reads_leader_and_follower_before_in_parallel() -> None:
     assert sample.follower_before.positions == {"a": 0.0, "b": 0.0}
 
 
+def test_teleop_run_records_target_tick_separately_from_step_start() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+    samples = []
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        sync_start=False,
+        on_sample=samples.append,
+    )
+
+    loop.run(steps=2, sleep=False)
+
+    assert len(samples) == 2
+    assert samples[1].monotonic_time_ns - samples[0].monotonic_time_ns == round(
+        1_000_000_000 / 30
+    )
+    assert samples[0].step_start_monotonic_time_ns is not None
+    assert samples[0].follower_before.estimated_sample_monotonic_time_ns is not None
+
+
 def test_teleop_profile_records_camera_frame_age() -> None:
     joints = ["a", "b"]
     leader = MockArm("leader", joints)
