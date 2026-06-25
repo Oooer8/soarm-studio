@@ -18,8 +18,8 @@ from .session import (
     RecordingLoopControl,
 )
 
-KEY_LEFT = "left"
-KEY_RIGHT = "right"
+KEY_SAVE_OR_SELECT = "d"
+KEY_RETRY = "a"
 
 
 @contextmanager
@@ -48,32 +48,7 @@ def _read_raw_char(timeout: float = 0.0) -> str | None:
 
 def _read_key_nonblocking(timeout: float = 0.0) -> str | None:
     """Read a key token from stdin without blocking."""
-    key = _read_raw_char(timeout)
-    if key != "\x1b":
-        return key
-    return _key_from_escape_sequence(key + _read_escape_suffix()) or key
-
-
-def _read_escape_suffix(*, timeout: float = 0.2, max_chars: int = 8) -> str:
-    chars: list[str] = []
-    while len(chars) < max_chars:
-        char = _read_raw_char(timeout if not chars else 0.05)
-        if char is None:
-            break
-        chars.append(char)
-        if char.isalpha() or char == "~":
-            break
-    return "".join(chars)
-
-
-def _key_from_escape_sequence(sequence: str) -> str | None:
-    if not sequence.startswith(("\x1b[", "\x1bO")):
-        return None
-    if sequence.endswith("D"):
-        return KEY_LEFT
-    if sequence.endswith("C"):
-        return KEY_RIGHT
-    return None
+    return _read_raw_char(timeout)
 
 
 def countdown(seconds: int, message: str = "") -> None:
@@ -156,7 +131,7 @@ class KeyboardListener:
 
     Usage::
 
-        listener = KeyboardListener(key_actions={"left": on_left})
+        listener = KeyboardListener(key_actions={"d": on_finish, "a": on_retry})
         listener.start()
         # ... do work, periodically check listener.stop_requested ...
         listener.stop()
@@ -264,19 +239,19 @@ def create_manual_recording_controls() -> RecordingControls:
         )
         if frames <= 0:
             key = wait_for_key(
-                "没有采集到帧。按右方向键舍弃并重新录制: ",
-                (KEY_RIGHT,),
+                "没有采集到帧。按 a 舍弃并重新录制: ",
+                KEY_RETRY,
             )
-            return "retry" if key == KEY_RIGHT else "abort"
+            return "retry" if key == KEY_RETRY else "abort"
         key = wait_for_key(
-            "按左方向键保存并进入下一集；按右方向键舍弃并重新录制: ",
-            (KEY_LEFT, KEY_RIGHT),
+            "按 d 保存并进入下一集；按 a 舍弃并重新录制: ",
+            KEY_SAVE_OR_SELECT + KEY_RETRY,
         )
-        return "save" if key == KEY_LEFT else "retry"
+        return "save" if key == KEY_SAVE_OR_SELECT else "retry"
 
     @contextmanager
     def recording_context(loop: RecordingLoopControl) -> Iterator[None]:
-        print("录制中：按左方向键提前结束并进入选择；按右方向键舍弃并重新录制。")
+        print("录制中：按 d 提前结束并进入选择；按 a 舍弃并重新录制。")
 
         def request_select() -> None:
             loop.stop_reason = "select"
@@ -289,8 +264,8 @@ def create_manual_recording_controls() -> RecordingControls:
         listener = KeyboardListener(
             stop_key=None,
             key_actions={
-                KEY_LEFT: request_select,
-                KEY_RIGHT: request_retry,
+                KEY_SAVE_OR_SELECT: request_select,
+                KEY_RETRY: request_retry,
             },
         )
         listener.start()
@@ -298,9 +273,9 @@ def create_manual_recording_controls() -> RecordingControls:
             yield
         finally:
             listener.stop()
-            if listener.last_key == KEY_LEFT:
+            if listener.last_key == KEY_SAVE_OR_SELECT:
                 print("已收到提前结束请求，本 episode 已停止采集。")
-            elif listener.last_key == KEY_RIGHT:
+            elif listener.last_key == KEY_RETRY:
                 print("已收到重新录制请求，本 episode 已停止采集。")
 
     return RecordingControls(

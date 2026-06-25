@@ -92,10 +92,9 @@ soarm-studio record --config configs/session.yaml --episodes 1 --warmup 1 --seco
 ```
 
 In manual recording mode, each episode waits for confirmation before it starts.
-During recording, press the left arrow to end the current episode and review it,
-or press the right arrow to discard it and immediately record the episode again.
-At the review prompt, press the left arrow to save and continue, or the right
-arrow to discard and retry.
+During recording, press `d` to end the current episode and review it, or press
+`a` to discard it and immediately record the episode again. At the review prompt,
+press `d` to save and continue, or `a` to discard and retry.
 
 On macOS, use the `/dev/cu.usbmodem*` or `/dev/cu.usbserial*` ports reported
 by `scan`, and use `--backend avfoundation` for camera preview/setup when the
