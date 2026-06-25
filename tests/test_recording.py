@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import json
 
 import soarm_studio.hardware.arms as arms
+import soarm_studio.recording.terminal as terminal
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.recording.quality import RecordingQualityTracker
 from soarm_studio.recording.session import (
@@ -13,6 +14,15 @@ from soarm_studio.recording.session import (
 )
 from soarm_studio.recording import record_lerobot_episodes
 from soarm_studio.types import CameraFrame, ControlSample, JointSample
+
+
+def test_terminal_arrow_key_escape_sequences() -> None:
+    assert terminal._key_from_escape_sequence("\x1b[D") == terminal.KEY_LEFT
+    assert terminal._key_from_escape_sequence("\x1b[C") == terminal.KEY_RIGHT
+    assert terminal._key_from_escape_sequence("\x1bOD") == terminal.KEY_LEFT
+    assert terminal._key_from_escape_sequence("\x1bOC") == terminal.KEY_RIGHT
+    assert terminal._key_from_escape_sequence("\x1b[1;5D") == terminal.KEY_LEFT
+    assert terminal._key_from_escape_sequence("\x1b[1;5C") == terminal.KEY_RIGHT
 
 
 def test_record_lerobot_episodes_writes_quality_sidecars(tmp_path) -> None:

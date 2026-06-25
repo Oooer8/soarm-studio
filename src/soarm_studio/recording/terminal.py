@@ -51,15 +51,29 @@ def _read_key_nonblocking(timeout: float = 0.0) -> str | None:
     key = _read_raw_char(timeout)
     if key != "\x1b":
         return key
-    second = _read_raw_char(0.05)
-    if second != "[":
-        return key
-    third = _read_raw_char(0.05)
-    if third == "D":
+    return _key_from_escape_sequence(key + _read_escape_suffix()) or key
+
+
+def _read_escape_suffix(*, timeout: float = 0.2, max_chars: int = 8) -> str:
+    chars: list[str] = []
+    while len(chars) < max_chars:
+        char = _read_raw_char(timeout if not chars else 0.05)
+        if char is None:
+            break
+        chars.append(char)
+        if char.isalpha() or char == "~":
+            break
+    return "".join(chars)
+
+
+def _key_from_escape_sequence(sequence: str) -> str | None:
+    if not sequence.startswith(("\x1b[", "\x1bO")):
+        return None
+    if sequence.endswith("D"):
         return KEY_LEFT
-    if third == "C":
+    if sequence.endswith("C"):
         return KEY_RIGHT
-    return key
+    return None
 
 
 def countdown(seconds: int, message: str = "") -> None:
