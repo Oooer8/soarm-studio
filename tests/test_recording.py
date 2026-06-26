@@ -4,14 +4,17 @@ from contextlib import contextmanager
 import json
 
 import soarm_studio.hardware.arms as arms
+import soarm_studio.recording.session as recording_session
 from soarm_studio.config import ArmEndpointConfig, DatasetConfig, SessionConfig
 from soarm_studio.recording.quality import RecordingQualityTracker
 from soarm_studio.recording.session import (
     RecordingControls,
+    _run_continuous_recording_loop,
     _start_camera_histories,
 )
 from soarm_studio.recording.timing import (
     RecordingTimingCalibration,
+    camera_phase_alignment_from_warmup,
     timing_calibration_from_warmup,
     write_episode_samples,
 )
@@ -361,6 +364,144 @@ def test_timing_calibration_from_warmup_ignores_insufficient_camera_history() ->
     )
 
     assert calibration.camera_receive_to_exposure_shift_ns == {}
+
+
+def test_camera_phase_alignment_targets_next_estimated_exposure() -> None:
+    frames = [
+        _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+        _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+        _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+    ]
+    calibration = RecordingTimingCalibration(
+        camera_receive_to_exposure_shift_ns={"wrist": -50_000_000},
+    )
+
+    alignment = camera_phase_alignment_from_warmup(
+        {"wrist": frames},
+        calibration,
+        earliest_target_ns=1_180_000_000,
+    )
+
+    assert alignment is not None
+    assert alignment.target_tick_ns == 1_250_000_000
+    assert alignment.wait_ns == 70_000_000
+    assert alignment.expected_camera_offset_ns == {"wrist": 0}
+    assert alignment.camera_period_ns == {"wrist": 100_000_000}
+
+
+def test_camera_phase_alignment_compromises_across_cameras() -> None:
+    calibration = RecordingTimingCalibration(
+        camera_receive_to_exposure_shift_ns={
+            "third_person": -50_000_000,
+            "wrist": -50_000_000,
+        },
+    )
+
+    alignment = camera_phase_alignment_from_warmup(
+        {
+            "third_person": [
+                _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+                _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+                _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+            ],
+            "wrist": [
+                _frame(monotonic_time_ns=1_010_000_000, pixel=b"\x04\x00\x00"),
+                _frame(monotonic_time_ns=1_110_000_000, pixel=b"\x05\x00\x00"),
+                _frame(monotonic_time_ns=1_210_000_000, pixel=b"\x06\x00\x00"),
+            ],
+        },
+        calibration,
+        earliest_target_ns=1_180_000_000,
+    )
+
+    assert alignment is not None
+    assert alignment.target_tick_ns == 1_255_000_000
+    assert alignment.expected_camera_offset_ns == {
+        "third_person": -5_000_000,
+        "wrist": 5_000_000,
+    }
+
+
+def test_recording_loop_uses_phase_aligned_first_target_tick(monkeypatch) -> None:
+    run_first_targets: list[int | None] = []
+
+    class FakeMetrics:
+        def to_dict(self) -> dict:
+            return {"iterations": 1}
+
+    class FakeLoop:
+        def __init__(self) -> None:
+            self.on_sample = None
+            self.sample_cameras = False
+            self.sensor_read_lead_s = 0.0
+            self.sync_start = True
+            self.stop_requested = False
+            self.stop_reason = None
+
+        def run(
+            self,
+            *,
+            seconds=None,
+            steps=None,
+            close_on_finish=True,
+            first_target_tick_ns=None,
+        ):
+            run_first_targets.append(first_target_tick_ns)
+            if self.on_sample is not None:
+                self.on_sample(_sample(frame_index=0, monotonic_time_ns=1_000_000_000))
+            return FakeMetrics()
+
+        def reset_metrics(self) -> None:
+            return None
+
+    class FakeCamera:
+        def __init__(self) -> None:
+            self.starts = 0
+
+        def start_history(self, *, seed_latest: bool = False) -> None:
+            self.starts += 1
+
+        def stop_history(self) -> list[CameraFrame]:
+            if self.starts == 1:
+                return [
+                    _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+                    _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+                    _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+                ]
+            return []
+
+    class FakeRunningLoop:
+        def __init__(self, loop: FakeLoop) -> None:
+            self.loop = loop
+
+        def __enter__(self) -> FakeLoop:
+            return self.loop
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+    class FakeHardware:
+        def __init__(self) -> None:
+            self.cameras = {"wrist": FakeCamera()}
+            self.loop = FakeLoop()
+
+        def running_loop(self, *, on_sample=None, sample_cameras=False):
+            self.loop.on_sample = on_sample
+            self.loop.sample_cameras = sample_cameras
+            return FakeRunningLoop(self.loop)
+
+    monkeypatch.setattr(recording_session.time, "monotonic_ns", lambda: 1_180_000_000)
+    samples: list[ControlSample] = []
+
+    metrics, _frame_histories, _calibration = _run_continuous_recording_loop(
+        FakeHardware(),
+        seconds=0.1,
+        warmup=0.1,
+        on_sample=samples.append,
+    )
+
+    assert run_first_targets == [None, 1_250_000_000]
+    assert metrics["camera_phase_alignment_ms"]["target_wait_ms"] == 69.0
 
 
 def test_start_camera_histories_seeds_latest_frame() -> None:

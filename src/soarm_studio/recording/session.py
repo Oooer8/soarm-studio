@@ -4,6 +4,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import time
 from typing import Literal, Protocol
 
 from soarm_studio.config import SessionConfig
@@ -15,7 +16,9 @@ from soarm_studio.teleop import ControlSample
 from .quality import RecordingQualityTracker
 from .timing import (
     RecordingTimingCalibration,
+    camera_phase_alignment_from_warmup,
     merge_timing_calibration,
+    phase_alignment_to_dict,
     timing_calibration_from_warmup,
     timing_calibration_to_dict,
     write_episode_samples,
@@ -26,6 +29,9 @@ class _CameraHistoryRecorder(Protocol):
     def start_history(self, *, seed_latest: bool = False) -> None: ...
 
     def stop_history(self) -> list[CameraFrame]: ...
+
+
+_PHASE_ALIGNMENT_GUARD_NS = 1_000_000
 
 
 class RecordingLoopControl(Protocol):
@@ -258,6 +264,15 @@ def _run_continuous_recording_loop(
             loop.sensor_read_lead_s = timing_calibration.joint_read_lead_ns / 1_000_000_000.0
 
             history_recorders = _start_camera_histories(hardware.cameras)
+            phase_alignment = camera_phase_alignment_from_warmup(
+                warmup_frame_histories,
+                timing_calibration,
+                earliest_target_ns=(
+                    time.monotonic_ns()
+                    + timing_calibration.joint_read_lead_ns
+                    + _PHASE_ALIGNMENT_GUARD_NS
+                ),
+            )
             if sample_cameras is None:
                 sample_cameras = _should_sample_cameras(hardware.cameras, history_recorders)
             loop.on_sample = on_sample
@@ -266,10 +281,20 @@ def _run_continuous_recording_loop(
             loop.stop_reason = None
             context = nullcontext() if recording_context is None else recording_context(loop)
             with context:
-                metrics = loop.run(seconds=seconds, close_on_finish=False)
+                metrics = loop.run(
+                    seconds=seconds,
+                    close_on_finish=False,
+                    first_target_tick_ns=(
+                        None if phase_alignment is None else phase_alignment.target_tick_ns
+                    ),
+                )
             frame_histories = _stop_camera_histories(history_recorders)
             history_recorders = {}
             metrics_dict = metrics.to_dict()
+            if phase_alignment is not None:
+                metrics_dict["camera_phase_alignment_ms"] = phase_alignment_to_dict(
+                    phase_alignment
+                )
             if getattr(loop, "stop_requested", False):
                 metrics_dict["stopped_early"] = True
             if getattr(loop, "stop_reason", None) is not None:

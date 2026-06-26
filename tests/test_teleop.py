@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
 import types
 
 from soarm_studio.config import CameraConfig
@@ -216,6 +217,30 @@ def test_teleop_run_records_target_tick_separately_from_step_start() -> None:
     )
     assert samples[0].step_start_monotonic_time_ns is not None
     assert samples[0].follower_before.estimated_sample_monotonic_time_ns is not None
+
+
+def test_teleop_run_can_use_external_first_target_tick() -> None:
+    joints = ["a", "b"]
+    leader = MockArm("leader", joints)
+    follower = MockArm("follower", joints)
+    leader.connect()
+    follower.connect()
+    samples = []
+    first_target_tick_ns = time.monotonic_ns() + 5_000_000
+
+    loop = TeleopLoop(
+        leader=leader,
+        follower=follower,
+        joint_names=joints,
+        hz=30,
+        sync_start=False,
+        on_sample=samples.append,
+    )
+
+    loop.run(steps=1, sleep=False, first_target_tick_ns=first_target_tick_ns)
+
+    assert len(samples) == 1
+    assert samples[0].monotonic_time_ns == first_target_tick_ns
 
 
 def test_teleop_profile_records_camera_frame_age() -> None:

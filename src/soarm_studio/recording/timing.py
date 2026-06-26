@@ -28,11 +28,26 @@ class RecordingTimingCalibration:
 
 
 @dataclass(frozen=True)
+class RecordingPhaseAlignment:
+    target_tick_ns: int
+    wait_ns: int
+    expected_camera_offset_ns: dict[str, int]
+    camera_period_ns: dict[str, int]
+
+
+@dataclass(frozen=True)
 class _CameraHistory:
     frames: list[CameraFrame]
     receive_timestamps_ns: list[int]
     estimated_exposure_timestamps_ns: list[int]
     receive_to_exposure_shift_ns: int = 0
+
+
+@dataclass(frozen=True)
+class _CameraPhaseModel:
+    name: str
+    period_ns: int
+    last_estimated_exposure_ns: int
 
 
 _WARMUP_TIMING_BUCKET_NS = 1_000_000
@@ -114,6 +129,61 @@ def timing_calibration_to_dict(calibration: RecordingTimingCalibration) -> dict:
     }
 
 
+def camera_phase_alignment_from_warmup(
+    frame_histories: dict[str, list[CameraFrame]],
+    timing_calibration: RecordingTimingCalibration,
+    *,
+    earliest_target_ns: int,
+    max_wait_ns: int | None = None,
+) -> RecordingPhaseAlignment | None:
+    models = _camera_phase_models(frame_histories, timing_calibration)
+    if not models:
+        return None
+    max_period_ns = max(model.period_ns for model in models)
+    if max_wait_ns is None:
+        max_wait_ns = max_period_ns
+
+    candidates = _phase_alignment_candidates(
+        models,
+        earliest_target_ns=earliest_target_ns,
+        max_wait_ns=max_wait_ns,
+    )
+    if not candidates:
+        return None
+
+    def score(candidate_ns: int) -> tuple[int, float, int]:
+        offsets = [
+            abs(_nearest_exposure_offset_ns(model, candidate_ns))
+            for model in models
+        ]
+        return (max(offsets), sum(offsets) / len(offsets), candidate_ns)
+
+    target_tick_ns = min(candidates, key=score)
+    return RecordingPhaseAlignment(
+        target_tick_ns=target_tick_ns,
+        wait_ns=max(0, target_tick_ns - earliest_target_ns),
+        expected_camera_offset_ns={
+            model.name: _nearest_exposure_offset_ns(model, target_tick_ns)
+            for model in models
+        },
+        camera_period_ns={model.name: model.period_ns for model in models},
+    )
+
+
+def phase_alignment_to_dict(alignment: RecordingPhaseAlignment) -> dict:
+    return {
+        "target_wait_ms": round(alignment.wait_ns / 1_000_000.0, 6),
+        "expected_camera_offset_ms": {
+            name: round(offset_ns / 1_000_000.0, 6)
+            for name, offset_ns in alignment.expected_camera_offset_ns.items()
+        },
+        "camera_period_ms": {
+            name: round(period_ns / 1_000_000.0, 6)
+            for name, period_ns in alignment.camera_period_ns.items()
+        },
+    }
+
+
 def _camera_history(
     frames: list[CameraFrame],
     *,
@@ -151,14 +221,85 @@ def _camera_receive_to_exposure_shift_ns(timestamps_ns: list[int]) -> int:
     if len(timestamps_ns) < 2:
         return 0
     ordered = sorted(timestamps_ns)
-    intervals_ns = [
-        ordered[index] - ordered[index - 1]
-        for index in range(1, len(ordered))
-        if ordered[index] > ordered[index - 1]
-    ]
+    intervals_ns = _positive_intervals_ns(ordered)
     if not intervals_ns:
         return 0
     return -int(_dominant_timing_ns(intervals_ns) / 2.0)
+
+
+def _camera_phase_models(
+    frame_histories: dict[str, list[CameraFrame]],
+    timing_calibration: RecordingTimingCalibration,
+) -> list[_CameraPhaseModel]:
+    models: list[_CameraPhaseModel] = []
+    for name, frames in frame_histories.items():
+        receive_timestamps_ns = sorted(frame.monotonic_time_ns for frame in frames)
+        intervals_ns = _positive_intervals_ns(receive_timestamps_ns)
+        if not intervals_ns:
+            continue
+        period_ns = _dominant_timing_ns(intervals_ns)
+        if period_ns <= 0:
+            continue
+        shift_ns = timing_calibration.camera_receive_to_exposure_shift_ns.get(name)
+        if shift_ns is None:
+            shift_ns = _camera_receive_to_exposure_shift_ns(receive_timestamps_ns)
+        models.append(
+            _CameraPhaseModel(
+                name=name,
+                period_ns=period_ns,
+                last_estimated_exposure_ns=receive_timestamps_ns[-1] + shift_ns,
+            )
+        )
+    return models
+
+
+def _phase_alignment_candidates(
+    models: list[_CameraPhaseModel],
+    *,
+    earliest_target_ns: int,
+    max_wait_ns: int,
+) -> set[int]:
+    latest_target_ns = earliest_target_ns + max(0, max_wait_ns)
+    candidates: set[int] = set()
+    for model in models:
+        next_exposure_ns = _next_exposure_at_or_after(model, earliest_target_ns)
+        for candidate_ns in (next_exposure_ns, next_exposure_ns + model.period_ns):
+            if earliest_target_ns <= candidate_ns <= latest_target_ns:
+                candidates.add(candidate_ns)
+
+    aggregate_candidates = set(candidates)
+    for candidate_ns in candidates:
+        nearest_exposures = [
+            candidate_ns + _nearest_exposure_offset_ns(model, candidate_ns)
+            for model in models
+        ]
+        mean_exposure_ns = int(round(sum(nearest_exposures) / len(nearest_exposures)))
+        if earliest_target_ns <= mean_exposure_ns <= latest_target_ns:
+            aggregate_candidates.add(mean_exposure_ns)
+    return aggregate_candidates
+
+
+def _next_exposure_at_or_after(model: _CameraPhaseModel, target_ns: int) -> int:
+    if target_ns <= model.last_estimated_exposure_ns:
+        return model.last_estimated_exposure_ns
+    periods_ahead = (target_ns - model.last_estimated_exposure_ns + model.period_ns - 1) // model.period_ns
+    return model.last_estimated_exposure_ns + periods_ahead * model.period_ns
+
+
+def _nearest_exposure_offset_ns(model: _CameraPhaseModel, target_ns: int) -> int:
+    next_exposure_ns = _next_exposure_at_or_after(model, target_ns)
+    previous_exposure_ns = next_exposure_ns - model.period_ns
+    before_offset_ns = previous_exposure_ns - target_ns
+    after_offset_ns = next_exposure_ns - target_ns
+    return before_offset_ns if abs(before_offset_ns) <= abs(after_offset_ns) else after_offset_ns
+
+
+def _positive_intervals_ns(timestamps_ns: list[int]) -> list[int]:
+    return [
+        timestamps_ns[index] - timestamps_ns[index - 1]
+        for index in range(1, len(timestamps_ns))
+        if timestamps_ns[index] > timestamps_ns[index - 1]
+    ]
 
 
 def _sample_with_matched_camera_frames(

@@ -239,7 +239,7 @@ hardware: disconnecting; disabling servo torque before closing the port.
 
           <h2 id="capture-timing">Capture timing</h2>
           <p>
-            Recording uses the Studio target <code class="inline">loop tick</code> as the single dataset time base. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Warmup uses 1 ms timing buckets and picks the stable dominant bucket to estimate the joint read lead time and the camera receive-to-estimated-exposure offset; in normal use, keep <code class="inline">--warmup 1</code> instead of tuning extra offsets by hand.
+            Recording uses the Studio target <code class="inline">loop tick</code> as the single dataset time base. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Warmup uses 1 ms timing buckets and picks the stable dominant bucket to estimate the joint read lead time and the camera receive-to-estimated-exposure offset. Before capture starts, Studio also uses the warmup camera phase to choose the first <code class="inline">loop tick</code> near the next estimated exposure frame, so sample 0 begins closer to the video stream phase. In normal use, keep <code class="inline">--warmup 1</code> instead of tuning extra offsets by hand.
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
@@ -253,6 +253,7 @@ warmup:
 
 episode start:
   enable episode camera history
+  choose first loop tick near the next estimated exposure phase
 
 Studio loop @ loop_hz:
   target_tick[n] = episode_start + n / loop_hz

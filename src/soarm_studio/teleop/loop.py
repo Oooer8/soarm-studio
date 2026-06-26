@@ -201,6 +201,7 @@ class TeleopLoop:
         steps: int | None = None,
         sleep: bool = True,
         close_on_finish: bool = True,
+        first_target_tick_ns: int | None = None,
     ) -> LoopMetrics:
         if seconds is None and steps is None:
             raise ValueError("Either seconds or steps is required")
@@ -208,8 +209,12 @@ class TeleopLoop:
             if self.sync_start and not self.paused:
                 self._sync_start_to_leader()
 
-            self.metrics.started_at = time.monotonic()
-            started_at_ns = time.monotonic_ns()
+            if first_target_tick_ns is None:
+                self.metrics.started_at = time.monotonic()
+                started_at_ns = time.monotonic_ns()
+            else:
+                started_at_ns = int(first_target_tick_ns)
+                self.metrics.started_at = started_at_ns / 1_000_000_000.0
             self.metrics.finished_at = None
             deadline = None if seconds is None else self.metrics.started_at + seconds
             while True:
