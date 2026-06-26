@@ -294,6 +294,9 @@ after episode:
           <p>
             <code class="inline">camera_phase_alignment_ms.phase_wait_ms</code> 是超过“最早可行首个 tick”的额外相位等待，不是完整的录制启动等待；完整等待还包含 joint read 提前量和 1 ms 调度余量。普通 USB/UVC 相机仍然自由运行，Studio 只是选择第一个 <code class="inline">loop tick</code> 更贴近下一张估计曝光帧，后处理的最近帧匹配仍然保留。多集录制时，第一集优先使用 warmup，相邻后续集会用上一集的 camera history 继续估计相位。
           </p>
+          <p>
+            如果手动提前结束 episode，最后一个控制 tick 可能发生在下一张相机帧进入 history 之前。Studio 会只裁掉这种已经超过相机尾部覆盖范围的 trailing samples，而不会按固定阈值丢弃中间样本；debug sidecar 会记录 <code class="inline">original_sample_count</code> 和 <code class="inline">tail_trim</code>，便于确认实际裁掉了哪些尾部 frame。
+          </p>
 
           <h2 id="recording-outputs">检查录制输出</h2>
           <div class="table-wrap">

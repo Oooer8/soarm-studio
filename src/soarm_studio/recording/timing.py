@@ -68,8 +68,9 @@ def write_episode_samples(
         )
         for name, frames in (frame_histories or {}).items()
     }
+    samples_to_write, tail_trim = _trim_trailing_samples_to_camera_coverage(samples, histories)
     first_sample_ns: int | None = None
-    for sample in samples:
+    for sample in samples_to_write:
         sample_time_ns = sample.monotonic_time_ns
         if first_sample_ns is None:
             first_sample_ns = sample_time_ns
@@ -83,10 +84,12 @@ def write_episode_samples(
         )
         quality.observe(matched_sample)
     return _camera_timing_payload(
-        samples,
+        samples_to_write,
         histories,
         first_sample_ns,
         timing_calibration=timing_calibration,
+        original_sample_count=len(samples),
+        tail_trim=tail_trim,
     )
 
 
@@ -302,6 +305,62 @@ def _positive_intervals_ns(timestamps_ns: list[int]) -> list[int]:
     ]
 
 
+def _trim_trailing_samples_to_camera_coverage(
+    samples: list[ControlSample],
+    frame_histories: dict[str, _CameraHistory],
+) -> tuple[list[ControlSample], dict]:
+    if len(samples) <= 1 or not frame_histories:
+        return samples, {}
+    camera_limits = _camera_tail_coverage_limits(frame_histories)
+    if not camera_limits:
+        return samples, {}
+
+    stop = len(samples)
+    while stop > 1:
+        target_tick_ns = samples[stop - 1].monotonic_time_ns
+        blocking_cameras = [
+            name
+            for name, limit_ns in camera_limits.items()
+            if target_tick_ns > limit_ns
+        ]
+        if not blocking_cameras:
+            break
+        stop -= 1
+
+    trimmed_count = len(samples) - stop
+    if trimmed_count <= 0:
+        return samples, {}
+
+    return samples[:stop], {
+        "original_sample_count": len(samples),
+        "trimmed_sample_count": trimmed_count,
+        "trimmed_frame_indices": [
+            sample.frame_index
+            for sample in samples[stop:]
+        ],
+        "reason": "trailing sample target tick exceeded camera coverage",
+        "camera_tail_coverage_limit_s": {
+            name: round(limit_ns / 1_000_000_000.0, 9)
+            for name, limit_ns in camera_limits.items()
+        },
+    }
+
+
+def _camera_tail_coverage_limits(
+    frame_histories: dict[str, _CameraHistory],
+) -> dict[str, int]:
+    limits: dict[str, int] = {}
+    for name, history in frame_histories.items():
+        intervals_ns = _positive_intervals_ns(history.estimated_exposure_timestamps_ns)
+        if not intervals_ns:
+            continue
+        period_ns = _dominant_timing_ns(intervals_ns)
+        if period_ns <= 0:
+            continue
+        limits[name] = history.estimated_exposure_timestamps_ns[-1] + period_ns // 2
+    return limits
+
+
 def _sample_with_matched_camera_frames(
     sample: ControlSample,
     frame_histories: dict[str, _CameraHistory],
@@ -368,9 +427,11 @@ def _camera_timing_payload(
     first_sample_ns: int | None,
     *,
     timing_calibration: RecordingTimingCalibration | None = None,
+    original_sample_count: int | None = None,
+    tail_trim: dict | None = None,
 ) -> dict:
     timing_calibration = timing_calibration or RecordingTimingCalibration()
-    return {
+    payload = {
         "sample_count": len(samples),
         "timing_model": timing_calibration_to_dict(timing_calibration),
         "joints": {
@@ -391,6 +452,11 @@ def _camera_timing_payload(
             for name, history in histories.items()
         },
     }
+    if original_sample_count is not None and original_sample_count != len(samples):
+        payload["original_sample_count"] = original_sample_count
+    if tail_trim:
+        payload["tail_trim"] = tail_trim
+    return payload
 
 
 def _joint_timing_for_samples(

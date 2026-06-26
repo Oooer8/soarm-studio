@@ -294,6 +294,9 @@ after episode:
           <p>
             <code class="inline">camera_phase_alignment_ms.phase_wait_ms</code> is the extra phase wait beyond the earliest feasible first tick, not the full capture startup wait; the full wait also includes the joint read lead and a 1 ms scheduling guard. Standard USB/UVC cameras still free-run. Studio only chooses the first <code class="inline">loop tick</code> closer to the next estimated exposure frame, and post-episode nearest-frame matching still remains active. In multi-episode recording, the first episode prefers warmup data and adjacent later episodes keep estimating phase from the previous episode's camera history.
           </p>
+          <p>
+            When an episode is stopped manually, the final control tick can land before the next camera frame reaches history. Studio only trims trailing samples that exceed the camera tail coverage window; it does not drop middle samples with a fixed threshold. The debug sidecar records <code class="inline">original_sample_count</code> and <code class="inline">tail_trim</code> so you can see exactly which tail frames were removed.
+          </p>
 
           <h2 id="recording-outputs">Check recording outputs</h2>
           <div class="table-wrap">

@@ -287,6 +287,54 @@ def test_write_episode_samples_matches_nearest_estimated_exposure_frame() -> Non
     assert timing["cameras"]["wrist"]["matched_samples"][1]["camera_frame_index"] == 1
 
 
+def test_write_episode_samples_trims_uncovered_tail_samples() -> None:
+    captured: list[dict] = []
+
+    class FakeEpisode:
+        def add_frame(self, **kwargs) -> None:
+            captured.append(kwargs)
+
+    samples = [
+        _sample(frame_index=0, monotonic_time_ns=1_000_000_000),
+        _sample(frame_index=1, monotonic_time_ns=1_100_000_000),
+        _sample(frame_index=2, monotonic_time_ns=1_200_000_000),
+        _sample(frame_index=3, monotonic_time_ns=1_300_000_000),
+    ]
+    frames = [
+        _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+        _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+        _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+    ]
+    quality = RecordingQualityTracker()
+
+    timing = write_episode_samples(
+        FakeEpisode(),
+        samples,
+        quality,
+        {"wrist": frames},
+        RecordingTimingCalibration(
+            camera_receive_to_exposure_shift_ns={"wrist": 0},
+        ),
+    )
+
+    assert len(captured) == 3
+    assert quality.to_dict()["frames"] == 3
+    assert quality.to_dict()["max_camera_age_ms"] == 0.0
+    assert timing["sample_count"] == 3
+    assert timing["original_sample_count"] == 4
+    assert timing["tail_trim"] == {
+        "original_sample_count": 4,
+        "trimmed_sample_count": 1,
+        "trimmed_frame_indices": [3],
+        "reason": "trailing sample target tick exceeded camera coverage",
+        "camera_tail_coverage_limit_s": {"wrist": 1.25},
+    }
+    assert [
+        item["sample_frame_index"]
+        for item in timing["cameras"]["wrist"]["matched_samples"]
+    ] == [0, 1, 2]
+
+
 def test_write_episode_samples_uses_estimated_camera_exposure_time() -> None:
     captured: list[dict] = []
 
