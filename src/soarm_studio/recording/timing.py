@@ -30,7 +30,7 @@ class RecordingTimingCalibration:
 @dataclass(frozen=True)
 class RecordingPhaseAlignment:
     target_tick_ns: int
-    wait_ns: int
+    phase_wait_ns: int
     expected_camera_offset_ns: dict[str, int]
     camera_period_ns: dict[str, int]
 
@@ -161,7 +161,7 @@ def camera_phase_alignment_from_warmup(
     target_tick_ns = min(candidates, key=score)
     return RecordingPhaseAlignment(
         target_tick_ns=target_tick_ns,
-        wait_ns=max(0, target_tick_ns - earliest_target_ns),
+        phase_wait_ns=max(0, target_tick_ns - earliest_target_ns),
         expected_camera_offset_ns={
             model.name: _nearest_exposure_offset_ns(model, target_tick_ns)
             for model in models
@@ -172,7 +172,7 @@ def camera_phase_alignment_from_warmup(
 
 def phase_alignment_to_dict(alignment: RecordingPhaseAlignment) -> dict:
     return {
-        "target_wait_ms": round(alignment.wait_ns / 1_000_000.0, 6),
+        "phase_wait_ms": round(alignment.phase_wait_ns / 1_000_000.0, 6),
         "expected_camera_offset_ms": {
             name: round(offset_ns / 1_000_000.0, 6)
             for name, offset_ns in alignment.expected_camera_offset_ns.items()

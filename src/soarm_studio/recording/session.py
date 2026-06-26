@@ -117,6 +117,7 @@ def record_lerobot_episodes(
             )
             attempt = 0
             timing_calibration = RecordingTimingCalibration()
+            phase_reference_histories: dict[str, list[CameraFrame]] = {}
             while len(saved) < total_episodes:
                 episode_number = len(saved) + 1
                 attempt += 1
@@ -150,8 +151,10 @@ def record_lerobot_episodes(
                         on_sample=add_sample,
                         recording_context=controls.recording_context,
                         timing_calibration=timing_calibration,
+                        phase_reference_histories=phase_reference_histories,
                     )
                     timing_calibration = episode_timing_calibration
+                    phase_reference_histories = frame_histories
                     camera_timing = write_episode_samples(
                         episode,
                         samples,
@@ -231,6 +234,7 @@ def _run_continuous_recording_loop(
     sample_cameras: bool | None = None,
     recording_context: Callable[[RecordingLoopControl], AbstractContextManager[None]] | None = None,
     timing_calibration: RecordingTimingCalibration | None = None,
+    phase_reference_histories: dict[str, list[CameraFrame]] | None = None,
 ) -> tuple[dict, dict[str, list[CameraFrame]], RecordingTimingCalibration]:
     history_recorders: dict[str, _CameraHistoryRecorder] = {}
     warmup_recorders: dict[str, _CameraHistoryRecorder] = {}
@@ -263,9 +267,10 @@ def _run_continuous_recording_loop(
             )
             loop.sensor_read_lead_s = timing_calibration.joint_read_lead_ns / 1_000_000_000.0
 
+            phase_histories = warmup_frame_histories or phase_reference_histories or {}
             history_recorders = _start_camera_histories(hardware.cameras)
             phase_alignment = camera_phase_alignment_from_warmup(
-                warmup_frame_histories,
+                phase_histories,
                 timing_calibration,
                 earliest_target_ns=(
                     time.monotonic_ns()

@@ -211,20 +211,38 @@ hardware: disconnecting; disabling servo torque before closing the port.
       "attempt": 1,
       "task": "pick object",
       "metrics": {
-        "iterations": 600,
-        "target_hz": 60,
-        "observed_hz": 60.0,
+        "iterations": 300,
+        "target_hz": 30,
+        "observed_hz": 30.0,
         "last_latency_ms": 2.224,
         "max_latency_ms": 2.824,
-        "elapsed_s": 10.0
+        "elapsed_s": 10.0,
+        "camera_phase_alignment_ms": {
+          "phase_wait_ms": 12.184,
+          "expected_camera_offset_ms": {
+            "third_person": -0.842,
+            "wrist": 0.842
+          },
+          "camera_period_ms": {
+            "third_person": 33.333,
+            "wrist": 33.333
+          }
+        },
+        "sensor_timing_calibration_ms": {
+          "joint_read_lead_ms": 3.0,
+          "camera_receive_to_estimated_exposure_ms": {
+            "third_person": -16.667,
+            "wrist": -16.667
+          }
+        }
       },
       "quality": {
-        "frames": 600,
+        "frames": 300,
         "dropped_camera_frames": 0,
         "stale_camera_frames": 0,
         "max_loop_latency_ms": 2.7824759999930393,
         "max_camera_latency_ms": 0.0,
-        "max_camera_age_ms": 0.0,
+        "max_camera_age_ms": 20.370959,
         "warnings": []
       }
     }
@@ -234,12 +252,12 @@ hardware: disconnecting; disabling servo torque before closing the port.
 }</code></pre>
           </details>
           <p>
-            对于 60 Hz 配置，10 秒 episode 应接近 <code class="inline">600</code> 次循环和 <code class="inline">600</code> 帧；<code class="inline">dropped_camera_frames</code>、<code class="inline">stale_camera_frames</code> 为 <code class="inline">0</code> 且 <code class="inline">warnings</code> 为空，表示这次 smoke test 可以作为继续扩大采集前的健康基线。
+            对于 30 Hz 配置，10 秒 episode 应接近 <code class="inline">300</code> 次循环和 <code class="inline">300</code> 帧；<code class="inline">dropped_camera_frames</code>、<code class="inline">stale_camera_frames</code> 为 <code class="inline">0</code> 且 <code class="inline">warnings</code> 为空，表示这次 smoke test 可以作为继续扩大采集前的健康基线。<code class="inline">camera_phase_alignment_ms</code> 记录 warmup 后为了贴近相机相位而额外等待的时间、预测的相机 offset 和帧周期；<code class="inline">sensor_timing_calibration_ms</code> 记录 joint 读取提前量和相机 receive-to-exposure 偏移。
           </p>
 
           <h2 id="capture-timing">数采时序</h2>
           <p>
-            录制以 Studio 的目标 <code class="inline">loop tick</code> 作为唯一时间轴。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream。warmup 会按 1 ms 分桶取稳定主峰，自动估计 joint 读取提前量，以及相机“收到帧”到“估计曝光时刻”的偏移；正式采集开始前，Studio 会根据 warmup 相机相位选择第一个 <code class="inline">loop tick</code>，让 sample 0 尽量贴近下一张估计曝光帧。用户通常只需要保留 <code class="inline">--warmup 1</code>，不用手动配置额外 offset。
+            录制以 Studio 的目标 <code class="inline">loop tick</code> 作为唯一时间轴。首个 episode 的 <code class="inline">--warmup</code> 和正式采集共用同一个 <code class="inline">TeleopLoop</code>，warmup 结束后不会重新 <code class="inline">sync_start</code> 或重启从臂 stream。warmup 会按 1 ms 分桶取稳定主峰，自动估计 joint 读取提前量，以及相机“收到帧”到“估计曝光时刻”的偏移；正式采集开始前，Studio 会根据 warmup 或上一集相机 history 选择第一个 <code class="inline">loop tick</code>，让 sample 0 尽量贴近下一张估计曝光帧。用户通常只需要保留 <code class="inline">--warmup 1</code>，不用手动配置额外 offset。
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
@@ -253,7 +271,7 @@ warmup:
 
 episode start:
   enable episode camera history
-  choose first loop tick near the next estimated exposure phase
+  choose first loop tick from warmup or previous episode camera phase
 
 Studio loop @ loop_hz:
   target_tick[n] = episode_start + n / loop_hz
@@ -272,6 +290,9 @@ after episode:
           </p>
           <p>
             默认录制只保存汇总质量指标。需要查看自动时序模型、joint 读取时间、每个相机的 raw receive timestamp、估计曝光时间和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。其中 <code class="inline">timing_model</code> 会包含 <code class="inline">joint_read_lead_ms</code> 和 <code class="inline">camera_receive_to_estimated_exposure_ms</code>。
+          </p>
+          <p>
+            <code class="inline">camera_phase_alignment_ms.phase_wait_ms</code> 是超过“最早可行首个 tick”的额外相位等待，不是完整的录制启动等待；完整等待还包含 joint read 提前量和 1 ms 调度余量。普通 USB/UVC 相机仍然自由运行，Studio 只是选择第一个 <code class="inline">loop tick</code> 更贴近下一张估计曝光帧，后处理的最近帧匹配仍然保留。多集录制时，第一集优先使用 warmup，相邻后续集会用上一集的 camera history 继续估计相位。
           </p>
 
           <h2 id="recording-outputs">检查录制输出</h2>

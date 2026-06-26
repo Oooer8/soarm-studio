@@ -384,7 +384,7 @@ def test_camera_phase_alignment_targets_next_estimated_exposure() -> None:
 
     assert alignment is not None
     assert alignment.target_tick_ns == 1_250_000_000
-    assert alignment.wait_ns == 70_000_000
+    assert alignment.phase_wait_ns == 70_000_000
     assert alignment.expected_camera_offset_ns == {"wrist": 0}
     assert alignment.camera_period_ns == {"wrist": 100_000_000}
 
@@ -423,6 +423,67 @@ def test_camera_phase_alignment_compromises_across_cameras() -> None:
 
 
 def test_recording_loop_uses_phase_aligned_first_target_tick(monkeypatch) -> None:
+    run_first_targets, metrics = _run_fake_recording_loop_for_phase_alignment(
+        monkeypatch,
+        warmup=0.1,
+        warmup_frames=[
+            _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+            _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+            _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+        ],
+    )
+
+    assert run_first_targets == [None, 1_250_000_000]
+    assert metrics["camera_phase_alignment_ms"]["phase_wait_ms"] == 69.0
+
+
+def test_recording_loop_uses_phase_reference_without_warmup(monkeypatch) -> None:
+    run_first_targets, metrics = _run_fake_recording_loop_for_phase_alignment(
+        monkeypatch,
+        warmup=0.0,
+        timing_calibration=RecordingTimingCalibration(
+            camera_receive_to_exposure_shift_ns={"wrist": -50_000_000},
+        ),
+        phase_reference_histories={
+            "wrist": [
+                _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
+                _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
+                _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
+            ],
+        },
+    )
+
+    assert run_first_targets == [None, 1_250_000_000]
+    assert metrics["camera_phase_alignment_ms"]["expected_camera_offset_ms"] == {"wrist": 0.0}
+
+
+def test_start_camera_histories_seeds_latest_frame() -> None:
+    class FakeCamera:
+        def __init__(self) -> None:
+            self.seed_latest = None
+
+        def start_history(self, *, seed_latest: bool = False) -> None:
+            self.seed_latest = seed_latest
+
+        def stop_history(self):
+            return []
+
+    camera = FakeCamera()
+
+    recorders = _start_camera_histories({"wrist": camera})
+
+    assert recorders == {"wrist": camera}
+    assert camera.seed_latest is True
+
+
+def _run_fake_recording_loop_for_phase_alignment(
+    monkeypatch,
+    *,
+    warmup: float,
+    warmup_frames: list[CameraFrame] | None = None,
+    timing_calibration: RecordingTimingCalibration | None = None,
+    phase_reference_histories: dict[str, list[CameraFrame]] | None = None,
+) -> tuple[list[int | None], dict]:
     run_first_targets: list[int | None] = []
 
     class FakeMetrics:
@@ -462,12 +523,8 @@ def test_recording_loop_uses_phase_aligned_first_target_tick(monkeypatch) -> Non
             self.starts += 1
 
         def stop_history(self) -> list[CameraFrame]:
-            if self.starts == 1:
-                return [
-                    _frame(monotonic_time_ns=1_000_000_000, pixel=b"\x01\x00\x00"),
-                    _frame(monotonic_time_ns=1_100_000_000, pixel=b"\x02\x00\x00"),
-                    _frame(monotonic_time_ns=1_200_000_000, pixel=b"\x03\x00\x00"),
-                ]
+            if self.starts == 1 and warmup_frames is not None:
+                return list(warmup_frames)
             return []
 
     class FakeRunningLoop:
@@ -492,35 +549,15 @@ def test_recording_loop_uses_phase_aligned_first_target_tick(monkeypatch) -> Non
 
     monkeypatch.setattr(recording_session.time, "monotonic_ns", lambda: 1_180_000_000)
     samples: list[ControlSample] = []
-
     metrics, _frame_histories, _calibration = _run_continuous_recording_loop(
         FakeHardware(),
         seconds=0.1,
-        warmup=0.1,
+        warmup=warmup,
         on_sample=samples.append,
+        timing_calibration=timing_calibration,
+        phase_reference_histories=phase_reference_histories,
     )
-
-    assert run_first_targets == [None, 1_250_000_000]
-    assert metrics["camera_phase_alignment_ms"]["target_wait_ms"] == 69.0
-
-
-def test_start_camera_histories_seeds_latest_frame() -> None:
-    class FakeCamera:
-        def __init__(self) -> None:
-            self.seed_latest = None
-
-        def start_history(self, *, seed_latest: bool = False) -> None:
-            self.seed_latest = seed_latest
-
-        def stop_history(self):
-            return []
-
-    camera = FakeCamera()
-
-    recorders = _start_camera_histories({"wrist": camera})
-
-    assert recorders == {"wrist": camera}
-    assert camera.seed_latest is True
+    return run_first_targets, metrics
 
 
 def _sample(

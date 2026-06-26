@@ -211,20 +211,38 @@ hardware: disconnecting; disabling servo torque before closing the port.
       "attempt": 1,
       "task": "pick object",
       "metrics": {
-        "iterations": 600,
-        "target_hz": 60,
-        "observed_hz": 60.0,
+        "iterations": 300,
+        "target_hz": 30,
+        "observed_hz": 30.0,
         "last_latency_ms": 2.224,
         "max_latency_ms": 2.824,
-        "elapsed_s": 10.0
+        "elapsed_s": 10.0,
+        "camera_phase_alignment_ms": {
+          "phase_wait_ms": 12.184,
+          "expected_camera_offset_ms": {
+            "third_person": -0.842,
+            "wrist": 0.842
+          },
+          "camera_period_ms": {
+            "third_person": 33.333,
+            "wrist": 33.333
+          }
+        },
+        "sensor_timing_calibration_ms": {
+          "joint_read_lead_ms": 3.0,
+          "camera_receive_to_estimated_exposure_ms": {
+            "third_person": -16.667,
+            "wrist": -16.667
+          }
+        }
       },
       "quality": {
-        "frames": 600,
+        "frames": 300,
         "dropped_camera_frames": 0,
         "stale_camera_frames": 0,
         "max_loop_latency_ms": 2.7824759999930393,
         "max_camera_latency_ms": 0.0,
-        "max_camera_age_ms": 0.0,
+        "max_camera_age_ms": 20.370959,
         "warnings": []
       }
     }
@@ -234,12 +252,12 @@ hardware: disconnecting; disabling servo torque before closing the port.
 }</code></pre>
           </details>
           <p>
-            With a 60 Hz config, a 10-second episode should be close to <code class="inline">600</code> loop iterations and <code class="inline">600</code> frames. <code class="inline">dropped_camera_frames</code>, <code class="inline">stale_camera_frames</code>, and <code class="inline">warnings</code> should stay at zero or empty before scaling collection.
+            With a 30 Hz config, a 10-second episode should be close to <code class="inline">300</code> loop iterations and <code class="inline">300</code> frames. <code class="inline">dropped_camera_frames</code>, <code class="inline">stale_camera_frames</code>, and <code class="inline">warnings</code> should stay at zero or empty before scaling collection. <code class="inline">camera_phase_alignment_ms</code> records the extra wait used to start near the camera phase, the expected camera offsets, and the measured camera periods. <code class="inline">sensor_timing_calibration_ms</code> records joint read lead and camera receive-to-exposure offsets.
           </p>
 
           <h2 id="capture-timing">Capture timing</h2>
           <p>
-            Recording uses the Studio target <code class="inline">loop tick</code> as the single dataset time base. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Warmup uses 1 ms timing buckets and picks the stable dominant bucket to estimate the joint read lead time and the camera receive-to-estimated-exposure offset. Before capture starts, Studio also uses the warmup camera phase to choose the first <code class="inline">loop tick</code> near the next estimated exposure frame, so sample 0 begins closer to the video stream phase. In normal use, keep <code class="inline">--warmup 1</code> instead of tuning extra offsets by hand.
+            Recording uses the Studio target <code class="inline">loop tick</code> as the single dataset time base. The first episode's <code class="inline">--warmup</code> and capture segment share one <code class="inline">TeleopLoop</code>, so Studio does not run a second <code class="inline">sync_start</code> or restart the follower stream after warmup. Warmup uses 1 ms timing buckets and picks the stable dominant bucket to estimate the joint read lead time and the camera receive-to-estimated-exposure offset. Before capture starts, Studio also uses the warmup or previous-episode camera history to choose the first <code class="inline">loop tick</code> near the next estimated exposure frame, so sample 0 begins closer to the video stream phase. In normal use, keep <code class="inline">--warmup 1</code> instead of tuning extra offsets by hand.
           </p>
           <pre><code>camera threads:
   camera.read() @ camera.fps -> latest frame
@@ -253,7 +271,7 @@ warmup:
 
 episode start:
   enable episode camera history
-  choose first loop tick near the next estimated exposure phase
+  choose first loop tick from warmup or previous episode camera phase
 
 Studio loop @ loop_hz:
   target_tick[n] = episode_start + n / loop_hz
@@ -272,6 +290,9 @@ after episode:
           </p>
           <p>
             Normal recording only saves summary quality metrics. Add <code class="inline">--debug</code> to the record command when you need the automatic timing model, joint read timing, raw per-camera receive timestamps, estimated exposure timestamps, and per-sample matching offsets; the sidecar is written to <code class="inline">episodes/episode_000000/camera_timing.json</code>. Its <code class="inline">timing_model</code> contains <code class="inline">joint_read_lead_ms</code> and <code class="inline">camera_receive_to_estimated_exposure_ms</code>.
+          </p>
+          <p>
+            <code class="inline">camera_phase_alignment_ms.phase_wait_ms</code> is the extra phase wait beyond the earliest feasible first tick, not the full capture startup wait; the full wait also includes the joint read lead and a 1 ms scheduling guard. Standard USB/UVC cameras still free-run. Studio only chooses the first <code class="inline">loop tick</code> closer to the next estimated exposure frame, and post-episode nearest-frame matching still remains active. In multi-episode recording, the first episode prefers warmup data and adjacent later episodes keep estimating phase from the previous episode's camera history.
           </p>
 
           <h2 id="recording-outputs">Check recording outputs</h2>
