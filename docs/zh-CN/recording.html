@@ -289,6 +289,9 @@ after episode:
             因此，遥操作 debug 里的 <code class="inline">camera_age:*</code> 表示 latest-frame 预览缓存的新鲜度；录制质量里的 <code class="inline">max_camera_age_ms</code> 表示“匹配到的估计曝光时刻”和目标 <code class="inline">loop tick</code> 的差值。普通 USB/UVC 相机没有硬件曝光时间戳，所以这里是软件估计，不是硬件同步。
           </p>
           <p>
+            如果某路相机 history 的实际 FPS 明显低于 dataset tick 频率，<code class="inline">quality.json</code> 的 <code class="inline">warnings</code> 会直接指出这路相机的观测 FPS，避免把低帧率误读成单纯的时间戳 offset。
+          </p>
+          <p>
             默认录制只保存汇总质量指标。需要查看自动时序模型、joint 读取时间、每个相机的 raw receive timestamp、估计曝光时间和每个控制样本的匹配 offset 时，在录制命令后加 <code class="inline">--debug</code>；输出会写到 <code class="inline">episodes/episode_000000/camera_timing.json</code>。其中 <code class="inline">timing_model</code> 会包含 <code class="inline">joint_read_lead_ms</code> 和 <code class="inline">camera_receive_to_estimated_exposure_ms</code>。
           </p>
           <p>

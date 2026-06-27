@@ -289,6 +289,9 @@ after episode:
             This means teleop debug <code class="inline">camera_age:*</code> reports latest-frame preview freshness, while recording quality <code class="inline">max_camera_age_ms</code> reports the difference between the matched estimated exposure time and the target <code class="inline">loop tick</code>. Standard USB/UVC cameras do not provide hardware exposure timestamps here, so this is a software estimate rather than hardware sync.
           </p>
           <p>
+            If a camera history runs noticeably below the dataset tick rate, <code class="inline">quality.json</code> adds a <code class="inline">warnings</code> entry with that camera's observed FPS so low camera rate is not mistaken for a pure timestamp offset.
+          </p>
+          <p>
             Normal recording only saves summary quality metrics. Add <code class="inline">--debug</code> to the record command when you need the automatic timing model, joint read timing, raw per-camera receive timestamps, estimated exposure timestamps, and per-sample matching offsets; the sidecar is written to <code class="inline">episodes/episode_000000/camera_timing.json</code>. Its <code class="inline">timing_model</code> contains <code class="inline">joint_read_lead_ms</code> and <code class="inline">camera_receive_to_estimated_exposure_ms</code>.
           </p>
           <p>

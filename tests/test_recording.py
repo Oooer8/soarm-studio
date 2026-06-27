@@ -365,6 +365,34 @@ def test_write_episode_samples_uses_estimated_camera_exposure_time() -> None:
     assert camera_timing["matched_samples"][0]["receive_offset_ms"] == 40.0
 
 
+def test_write_episode_samples_warns_when_camera_history_fps_is_low() -> None:
+    class FakeEpisode:
+        def add_frame(self, **kwargs) -> None:
+            pass
+
+    samples = [
+        _sample(frame_index=index, monotonic_time_ns=1_000_000_000 + index * 33_333_333)
+        for index in range(5)
+    ]
+    frames = [
+        _frame(monotonic_time_ns=1_000_000_000 + index * 66_666_666, pixel=b"\x01\x00\x00")
+        for index in range(3)
+    ]
+    quality = RecordingQualityTracker()
+
+    write_episode_samples(
+        FakeEpisode(),
+        samples,
+        quality,
+        {"wrist": frames},
+        RecordingTimingCalibration(camera_receive_to_exposure_shift_ns={"wrist": 0}),
+    )
+
+    assert quality.warnings == [
+        "camera wrist history observed 15.000 fps while dataset samples are 30.000 fps"
+    ]
+
+
 def test_timing_calibration_from_warmup_estimates_joint_lead_and_camera_shift() -> None:
     samples = [
         _sample(frame_index=0, monotonic_time_ns=1_000_000_000, joint_estimated_offset_ns=3_000_000),

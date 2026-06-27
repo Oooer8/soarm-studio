@@ -69,6 +69,7 @@ def write_episode_samples(
         for name, frames in (frame_histories or {}).items()
     }
     samples_to_write, tail_trim = _trim_trailing_samples_to_camera_coverage(samples, histories)
+    _warn_on_low_camera_history_fps(quality, histories, samples_to_write)
     first_sample_ns: int | None = None
     for sample in samples_to_write:
         sample_time_ns = sample.monotonic_time_ns
@@ -359,6 +360,29 @@ def _camera_tail_coverage_limits(
             continue
         limits[name] = history.estimated_exposure_timestamps_ns[-1] + period_ns // 2
     return limits
+
+
+def _warn_on_low_camera_history_fps(
+    quality: RecordingQualityTracker,
+    histories: dict[str, _CameraHistory],
+    samples: list[ControlSample],
+) -> None:
+    if len(samples) < 2:
+        return
+    sample_elapsed_s = (
+        samples[-1].monotonic_time_ns - samples[0].monotonic_time_ns
+    ) / 1_000_000_000.0
+    if sample_elapsed_s <= 0:
+        return
+    sample_fps = (len(samples) - 1) / sample_elapsed_s
+    for name, history in histories.items():
+        camera_fps = _observed_fps(history.receive_timestamps_ns)
+        if camera_fps <= 0 or camera_fps >= sample_fps * 0.9:
+            continue
+        quality.warnings.append(
+            f"camera {name} history observed {camera_fps:.3f} fps "
+            f"while dataset samples are {sample_fps:.3f} fps"
+        )
 
 
 def _sample_with_matched_camera_frames(
