@@ -136,12 +136,15 @@ class LeRobotV3Writer:
         episode_index = self.info.total_episodes
         episode_length = len(self._episode_buffer)
         data_metadata = self._write_episode_data(self._episode_buffer)
-        video_metadata = self._write_episode_videos(
+        video_metadata, video_stats = self._write_episode_videos(
             episode_index,
             episode_length,
             self._episode_buffer,
         )
-        episode_stats = _compute_stats(self._episode_buffer, ["observation.state", "action"])
+        episode_stats = {
+            **_compute_stats(self._episode_buffer, ["observation.state", "action"]),
+            **video_stats,
+        }
 
         episode_row = {
             "episode_index": episode_index,
@@ -233,8 +236,9 @@ class LeRobotV3Writer:
         episode_index: int,
         episode_length: int,
         rows: list[dict],
-    ) -> dict:
+    ) -> tuple[dict, dict]:
         metadata: dict[str, int | float] = {}
+        stats: dict[str, dict[str, list[float]]] = {}
         from_timestamp = float(rows[0]["timestamp"]) if rows else 0.0
         to_timestamp = float(rows[-1]["timestamp"]) + (1.0 / self.fps) if rows else 0.0
         for camera_name, frames in self._episode_video_frames.items():
@@ -244,7 +248,7 @@ class LeRobotV3Writer:
                 chunk_index=0,
                 file_index=episode_index,
             )
-            _write_video(path, frames, fps=self.fps)
+            stats[video_key] = _write_video(path, frames, fps=self.fps)
             self.info.features[video_key]["info"] = {
                 "video.fps": self.fps,
                 "video.height": frames[0].height if frames else self.camera_shapes[camera_name][0],
@@ -255,7 +259,7 @@ class LeRobotV3Writer:
             metadata[f"videos/{video_key}/file_index"] = episode_index
             metadata[f"videos/{video_key}/from_timestamp"] = from_timestamp
             metadata[f"videos/{video_key}/to_timestamp"] = to_timestamp
-        return metadata
+        return metadata, stats
 
     def _write_tasks(self) -> None:
         pa, pq = require_pyarrow(purpose="LeRobot v3 dataset writing")
@@ -300,9 +304,9 @@ class LeRobotV3Writer:
         write_json(timing, path)
 
 
-def _write_video(path: Path, frames: list[CameraFrame], *, fps: int) -> None:
+def _write_video(path: Path, frames: list[CameraFrame], *, fps: int) -> dict[str, list[float]]:
     if not frames:
-        return
+        return _empty_image_stats()
     try:
         import cv2  # type: ignore
         import numpy as np
@@ -320,13 +324,64 @@ def _write_video(path: Path, frames: list[CameraFrame], *, fps: int) -> None:
     if not writer.isOpened():
         raise RuntimeError(f"Failed to open video writer for {path}")
 
+    pixel_count = 0
+    channel_sums = np.zeros(3, dtype=np.float64)
+    channel_square_sums = np.zeros(3, dtype=np.float64)
+    channel_mins = np.full(3, 255, dtype=np.uint8)
+    channel_maxs = np.zeros(3, dtype=np.uint8)
+
     try:
         for frame in frames:
             rgb = np.frombuffer(frame.rgb, dtype=np.uint8).reshape(frame.height, frame.width, 3)
+            pixels = rgb.reshape(-1, 3)
+            pixel_count += pixels.shape[0]
+            channel_sums += pixels.sum(axis=0, dtype=np.float64)
+            rgb_float = pixels.astype(np.float64)
+            channel_square_sums += (rgb_float * rgb_float).sum(axis=0)
+            channel_mins = np.minimum(channel_mins, pixels.min(axis=0))
+            channel_maxs = np.maximum(channel_maxs, pixels.max(axis=0))
             bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
             writer.write(bgr)
     finally:
         writer.release()
+    return _image_stats_from_accumulator(
+        pixel_count=pixel_count,
+        sums=channel_sums,
+        square_sums=channel_square_sums,
+        mins=channel_mins,
+        maxs=channel_maxs,
+    )
+
+
+def _empty_image_stats() -> dict[str, list[float]]:
+    return {
+        "mean": [0.0, 0.0, 0.0],
+        "std": [0.0, 0.0, 0.0],
+        "min": [0.0, 0.0, 0.0],
+        "max": [0.0, 0.0, 0.0],
+    }
+
+
+def _image_stats_from_accumulator(
+    *,
+    pixel_count: int,
+    sums,
+    square_sums,
+    mins,
+    maxs,
+) -> dict[str, list[float]]:
+    if pixel_count <= 0:
+        return _empty_image_stats()
+    mean = sums / pixel_count
+    second_moment = square_sums / pixel_count
+    variance = second_moment - mean * mean
+    std = [math.sqrt(max(0.0, float(value))) / 255.0 for value in variance]
+    return {
+        "mean": [float(value) / 255.0 for value in mean],
+        "std": std,
+        "min": [float(value) / 255.0 for value in mins],
+        "max": [float(value) / 255.0 for value in maxs],
+    }
 
 
 def _compute_stats(rows: list[dict], keys: list[str]) -> dict[str, dict[str, list[float]]]:
